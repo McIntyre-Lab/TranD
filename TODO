@@ -1,0 +1,5 @@
+For tha paper we must compare 2 GTF files:
+
+Celegans_flair.isoforms.gtf and Celegans_isoseq3Cluster_corrected_associated_gene.gtf
+
+from data/raw/input_into_transcript_distance_2_GTF/

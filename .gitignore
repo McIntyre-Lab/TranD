@@ -1,0 +1,11 @@
+conda
+external_code
+original
+testout
+tmp
+upstream
+data/reference
+data/gff_fasta
+data/design
+data/raw
+data/raw/input_into_transcript_distance_2_GTF
