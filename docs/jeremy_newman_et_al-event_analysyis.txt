@@ -1,0 +1,265 @@
+jeremy_newman_et_al-event_analysyis.txt
+
+:Author: Oleksandr Moskalenko
+:Email: om@rc.ufl.edu
+:Date: 2021-03-11 09:25
+
+Code and simulated data: https://github.com/McIntyre-Lab/events
+
+Terminology:
+Constitutive exons - exons which are consitently conserved after splicing.
+Outrons - An outron is a nucleotide sequence at the 5' end of the primary transcript of a gene that
+is removed by a special form of RNA splicing during maturation of the final RNA product. Whereas
+intron sequences are located inside the gene, outron sequences lie outside the gene.
+
+Introns always have two distinct nucleotides at either end. At the 5' end the DNA nucleotides are
+GT [GU in the premessenger RNA (pre-mRNA)]; at the 3' end they are AG. These nucleotides are part
+of the splicing sites.
+DONOR-SPLICE: splicing site at the beginning of an intron, intron 5' left end.
+ACCEPTOR-SPLICE: splicing site at the end of an intron, intron 3' right end.
+-- http://www.imgt.org/IMGTeducation/Aide-memoire/_UK/splicing/
+
+Point mutations in the underlying DNA or errors during transcription can activate a cryptic
+splice site in part of the transcript that usually is not spliced. This results in a mature
+messenger RNA with a missing section of an exon. In this way, a point mutation, which might
+otherwise affect only a single amino acid, can manifest as a deletion or truncation in the final
+protein.
+-- https://en.wikipedia.org/wiki/RNA_splicing
+
+TPM for evaluation of diff. expression programs.
+-- https://www.rna-seqblog.com/rpkm-fpkm-and-tpm-clearly-explained/
+
+Abstract:
+The approach in this work is to project transcripts onto the genome and identify overlapping/unique
+regions and junctions. In addition, all possible logical junctions are assembled into a catalog.
+Transcripts are filtered before quantitation based on simple measures: the proportion of the events
+detected, and the coverage.
+
+Four major classes of alternative splicing events can be broadly defined: exon skipping (SE),
+intron retention (RI), alternative 5′ splice sites (A5SS), and alternative 3′ splice sites (A3SS)
+Compared with constitutive exons, skipped exons tend to have weaker splice sites and higher
+sequence conservation, which may reflect selective pressure to maintain the binding sites of
+splicing regulatory proteins. In contrast, intron retention appears to be largely dependent on
+intron length and cis-regulatory sequence elements recognized directly by the spliceosome.
+Alternative 5′ and 3′ splice sites appear to originate via mutations in ancestral constitutive
+exons, creating new splice sites that compete with the original sites. Perhaps the simplest
+examples of this involve tandem alternative 3′ sites, a specific subclass of A3SS events separated
+by a single NAG (commonly referred to as “NAGNAGs”). Gains and losses of NAGNAG sites have
+accelerated protein evolution. The relative strength of alternative 5′ and 3′ splice sites is
+correlated with their usage, however, only when the competing sites are in close proximity.
+Surprisingly, splicing regulatory sequences can modulate alternative 5′ splice site usage through
+direct interaction with the spliceosome, bypassing the need for trans-acting protein factors.
+-- https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4009608/
+
+Reads aligning to the alternative exon or to its junctions with adjacent constitutive exons provide
+support for the inclusion isoform, whereas reads aligning to the junction between the adjacent
+constitutive exons support the exclusion isoform; the relative read density of these two sets forms
+the standard estimate of Ψ, denoted ΨˆSJ
+-- https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3037023/#SD2
+
+Background:
+The accurate identification of an individual transcript requires the presence of at least one exon
+or splicing event unique to that transcript. However, there are transcript isoforms that contain no
+events unique to that isoform. Even when a unique event is detected in one isoform, reads mapping
+to non-unique portions of the transcript cannot be assigned with certainty. Alternatives to isoform
+estimation include focusing on differential abundance of junctions and alternative exon inclusion.
+Tests of differential splicing are then exon based or exon/junction based. However, there are
+drawbacks with these approaches, as currently implemented, that include an increased multiple
+testing burden, difficulties in making inferences about the impact of splicing for a particular
+gene, and challenges in identifying patterns in results. Here, we generalize the event- or
+feature-based analysis approach to assessing alternative splicing, resulting in a number of
+improvements in sensitivity and specificity, and in improved replicate-to-replicate concordance of
+transcript estimates. We take advantage of prior observations from long read PacBio data indicating
+that, while there are many novel isoforms detected most are new combinations of known components.
+Nellore et al. (Nellore et al. 2016) studied more than 20,000 human RNA-seq samples derived from
+multiple cell types and found that that only 3.5% of junctions are not derivable in from existing
+genome annotations in some form, and that 81.4% are from already annotated transcripts. Here we
+present Event Analysis (EA), a strategy for pre-filtering sample-specific transcriptomes to improve
+transcript quantification. Basically, we expand the reference catalog by including all plausible
+events based on known exons and annotate all events. Then, for a particular RNA-seq sample, we
+quantitate events and use this information to calculate summary measures for transcripts which are
+used to filter the transcriptome of that sample.
+
+EVENT ANALYSIS
+
+Creation of the Junction catalog:
+
+The first step of the EA approach creates a junction catalog starting with existing junctions, and
+augment this catalog by creating all possible logical junctions based on the set of known exons and
+map reads directly to junctions. Starting with a GFF3 file (e.g., Ensembl, RefSeq, UCSC, AceView,
+or an individually curated custom reference) all junctions from logical combinations of exon pairs
+within the gene going from 5′-to-3′ were generated. By extending the 3′ sequence of a donor exon,
+or the 5′ region of an acceptor exon into the neighboring intron, putative novel exon
+donor/acceptors can be identified. To ensure that only currently annotated intronic sequences are
+evaluated for putative novel donor/acceptor sites, the junction from the 5′-most donor exon and the
+junction from 3′-most acceptor exon were used as the starting points. The complete catalog contains
+all previously annotated junctions; unannotated junctions that are novel combinations of existing
+donor/acceptor sites; and potential novel new donor/acceptor sites. The detection of previously
+unannotated junctions provides evidence that a gene may be producing a novel isoform. We adopt the
+naming convention used by AStalavista (Foissac and Sammeth 2007) and others, where each junction is
+identified by the combination of chromosome (or scaffold, contig, etc.), the last position of the
+donor exon, first position of the acceptor exon, and strand (i.e., [chromosome]:[donor
+position]:[acceptor position]:[strand]).
+
+Exons are labeled sequentially by their 5′ start and 3′ end positions relative to the orientation
+of their respective gene, and exons with the same 5′ start and 3′ end positions are considered to
+be the same exon (A, B, C, ...). Reads mapping to exonic regions or exon-intron borders are
+indicated by single bars, and reads mapping to junctions are denoted by pairs of bars connected by
+a line. Reads can map to sequences unique to a single transcript, multiple transcripts, theoretical
+junctions not present in any transcript (OM: how are those determined?), or exon-intron boundaries.
+
+Exonic regions:
+
+The second step of event analysis is to identify all the exonic regions. In higher eukaryotes,
+exons may overlap with one another (e.g., due to alternative donors, alternative acceptors,
+alternative transcription initiation/termination sites, etc.). The exonic region may be quantified
+without regard to differences in donor/acceptor sites (Dalton et al. 2013; Graze et al. 2014; Fear
+et al. 2016; Newell et al. 2016) to avoid double counting reads. In regions where differences are
+small (less than 10 bp) there is no meaningful loss of information in this approach. However, where
+exonic regions are comprised of overlapping exons that differ measurably, the 5′ and 3′ positions
+of exons within the exonic region are used to separate the region into exon fragments (OM: How are
+the reads assigned here, do exon fragments become the new units?). EA annotates each exon fragment
+within an exonic region to indicate whether it is exclusive to a single exon or is shared among
+sets of exons and is further annotated to transcripts.
+
+Annotating events:
+
+EA annotates junctions based on whether they exclude exons (exon-skipping splice junctions) or if
+they use alternative 5′ and/or 3′ splice sites (alternative donor junctions, alternative acceptor
+junctions). Exon-skipping junctions are defined as splice junctions that exclude (“skip”) one or
+more exons that are situated in the reference annotation between the donor and acceptor site of the
+junction. Where there are multiple possible donor and/or acceptor sites within a group of
+overlapping exons, all donors/acceptors are classified as “alternative”. This follows a similar
+convention to other splicing definitions, such as those used by AStalavista (Foissac and Sammeth
+2007). Junction definitions are not mutually exclusive: a junction can utilize both alternative
+donor and alternative acceptor sites and also exclude one or more intermediary exons. The
+unannotated, putative novel donor/novel acceptor sites may reflect unprocessed transcript and
+intron retention events. To accommodate this uncertainty EA annotates these as border junctions.
+The likelihood of truly novel donor/acceptor sites is evaluated in a separate step based on the
+experimental data that includes mapping information from the adjoining exons/intron region. (OM: It
+looks like short read coverage is evaluated - high read numbers indicate a possible novel donor
+site, medium read numbers indicate a possible intron retention, and low read numbers indicate a
+possible unprocessed transcript.) Detected border junctions are only classified if their adjacent
+exon is also detected. If the coverage at the border junction was similar in coverage to its
+adjacent exon (defined as the border junction having a mean APN of at least 90% of the APN of the
+exon), then the border junction is classified as a possible novel donor. If the coverage (as APN)
+of the border junction was at least 10% of the adjacent exon and the adjacent intron was also
+detected, then the border junction is classified as possible intron retention. These values are
+conservative and can be changed. Where a border junction could be classified as both a possible
+novel donor and possible intron retention, the event is classified as ambiguous intron retention.
+All remaining border junctions are classified as possible unprocessed transcript.
+
+Events – junctions, exonic regions, and exon fragments – that are only annotated in a single
+isoform in the reference database are classified as “unique”. Events that are common to a multiple
+but not all isoforms are classified as “common”, while events that are annotated in all isoforms
+are classified as “constitutive”. Events that are not annotated to any isoform are classified as
+“unannotated”. Non-unique sequences can also result from the same event being shared in a set of
+transcripts as well as genes within the same gene family that are highly homologous. Uniqueness is
+expected to increase with longer reads. When events are not unique among different genes, it is
+classified as “multi-gene”. The complexity of resolving multi-gene events is well known (Djebali et
+al. 2012; Treangen and Salzberg 2012) and multi-gene events are not analyzed further. As more
+experiments are strand specific, the incidence of multi-gene junctions and multi-gene exonic
+regions will be reduced.
+
+Mapping to the junction catalog:
+
+To apply EA to data, reads are mapped to the junction catalog. For the RNA-seq data used here,
+duplicate reads are removed and no other processing/trimming is performed. Distinct (non-duplicate)
+RNA sequence reads are aligned as single-ended reads to the set of cataloged junction sequences
+using the Bowtie1 algorithm (version 0.12.9) (Langmead et al. 2009), allowing for only a single
+alignment per read (parameter “-m 1”) and for up to three mismatched nucleotides (“-v 3”).The
+“–tryhard” parameter, and the “best” alignment in terms of stratum were reported using the options
+“–best–strata–chunkmbs 1024”.
+
+Mapping to the genome:
+
+The next step of EA is to map reads not mapped to the junction catalog to the genome. Reads
+unmapped to junctions were mapped to the genome (GRCm38/mm10 version for the mouse data,
+GRCh37/hg19 version (release 73) for the T1D data) using BWA-MEM (version 0.7.12) (Li 2013). Reads
+mapping to exon fragments were identified using the BED file for the genomic regions defining these
+events. Coverage is summarized as the average number of reads per nucleotide (APN = number of reads
+aligning to region / region length). For the simulated data, detection was defined as an APN > 0 in
+at least three of the six samples. For the mouse neural data, detection was defined as an APN > 0
+for both replicates. For the T1D data, detection was defined as an APN > 5 in at least 50% of
+subjects per cell type (Newman et al. 2017).
+
+Filtering transcripts:
+
+The EA process continues with a summarization of the events as they map to transcripts. Each
+transcript consists of a series of events (junctions and fragments) (Figure 1). To identify
+transcripts that may be expressed and filter those that are likely not expressed, EA uses simple
+measures that capture the elements determining the likelihood a transcript is expressed: coverage,
+the proportion of events detected, and the proportion of unique events detected. EA outputs a
+tab-delimited file containing these simple summary statistics. Users can use this to decide what
+combination of detection, coverage and uniqueness is to be used to filter transcripts. For example,
+transcripts with no reads mapping to them are clearly not expressed and can be filtered.
+
+For each transcript, coverage is calculated by combining all of the events for that transcript.
+Since the events are of varying lengths, EA reports the average number of reads per nucleotide
+(reads in region/ length of the region: APN). APN can be interpreted directly: an APN of 2 means
+that an average of 2 reads cover that region. The proportion of events detected is calculated by
+counting the number of these events with coverage (detected; APN > 0) and dividing this by the
+total number of events in a transcript. Similarly, for transcripts with unique events the
+proportion of unique events detected is calculated. The inclusion of non-expressed transcripts in
+the reference can impact the expression estimates of transcripts that are expressed (Liu et al.
+2016b; Tardaguila et al. 2018). Using the measures proposed, it is possible to filter transcripts.
+For example, a transcript with no unique events but only 10% of its events detected is a candidate
+for filtering. The measures, coverage, proportion of events detected and proportion of unique
+events detected are all given in the output of the code provided and so the users can set their own
+filtering criteria. For the purposes of this manuscript, we focus on several specific references:
+the complete RefSeq transcriptome (i.e., no filtering), a reduced reference of transcripts with all
+their associated events detected at APN > 0, and a reduced reference of transcripts with at least
+75% of their associated events detected at APN ≥ 5.
+
+
+Summary of the workflow:
+
+The Event Analysis workflow. Event Analysis consists of three main components: (1) annotation
+generation; (2) alignment and coverage; (3) event detection and transcript identification. First,
+annotations for exon-level annotations (exonic regions, exon fragments, introns) and junction
+annotations are generated. A GFF3 file as input to generate annotations for exonic regions, exon
+fragments, distinct introns and a catalog of all possible, logical junctions within a gene, and a
+genome FASTA file is used to extract junction sequences to use for quantification. Second, RNA-seq
+reads are first aligned to junction sequences and coverage is calculated. Reads that do not align
+to junctions are then aligned to the genome to calculate the coverage of exonic regions, exon
+fragments and introns. Third, the output set of counts from alignments are then analyzed to
+determine what transcriptional events (exonic regions, exon fragment, introns, and junctions) are
+detected and what transcripts likely present/absent in a given condition.
+
+
+
+Supplementary material:
+
+Simulation List of genes and transcripts:
+
+Gene ID Gene symbol Transcript ID
+11864   Arnt2   NM_007488, XM_006507238, XM_006507239, XM_006507240, XM_006507242, XM_006507243, XM_006507244, XM_011241655
+12419   Cbx5    NM_001076789, NM_001110216, NM_007626, XM_006520372, XM_006520374, XM_006520375, XM_006520376, XM_006520377
+12830   Col4a5  NM_001163155, NM_007736, XM_006528696, XM_006528697
+
+
+Simulation table of 1k transcripts:
+
+Gene ID Gene symbol Transcript ID
+2   11298   Aanat   XM_011248669
+3   11302   Aatk    XM_006531991
+4   11302   Aatk    XR_388325
+
+
+Supplementary Table 1. All other possible, logical splice junctions derived from the gene model in
+Figure 1 example
+
+|| Splice junction* | Isoform | Annotated (Y/N) | Annotated frequency (unique, common, constitutive) | Exon-skipping? (Y/N) | Alternative donor? (Y/N) | Alternative acceptor? (Y/N) | Exon-intron border? (Y/N) ||
+
+|| Exon A:Exon D | Isoform 1 | Y | Unique | N | Y | N | N ||
+|| Exon B:Exon D | Isoform 2 | Y | Unique | N | Y | N | N ||
+|| Exon C:Exon D | Isoform 3 | Y | Unique | N | Y | N | N ||
+|| Exon D:Exon E | Isoforms 1, 2 and 3 | Y | Constitutive | N | N | N | N ||
+|| Exon E:Exon F|Exon E:Exon G** | Isoform 1 (E:G), Isoform 2 (E:F) | Y | Common | N | N | N | N ||
+|| Exon A:Exon E | N | n/a | Y | Y | N | N ||
+|| Exon D:Exon F|Exon D:Exon G** | N | n/a | Y | N | N | N ||
+* Event ID is denoted with the 5’most exon/intron first. The second exon/intron is separated from
+the first using a colon. Events with identical donors and acceptors are separated by a “|”
+** Junction is not unique as exons F and G share the same acceptor site
+
+

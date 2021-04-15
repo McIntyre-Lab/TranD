@@ -1,0 +1,83 @@
+Event_Analysis_2.0_main.txt
+
+:Author: Oleksandr Moskalenko
+:Email: om@rc.ufl.edu
+:Date: 2021-03-11 17:24
+
+From:
+https://docs.google.com/document/d/17y7h1CZJNzvXtxon5jKMv3yCrUgYpfCIiAGauUlQTtY/edit?pli=1#heading=h.f8j6zjgm55q2
+
+Introduction
+
+Event analysis is a comprehensive catalog of transcript features.   See figure 1 in
+https://www.g3journal.org/content/8/9/2923
+
+Current features are annotated in two complementary ways:
+
+Exonic Regions (slang fusions) these are depicted on the bottom of panel B and are the total length
+of the exonic regions, without regard to the transcript of origin. Each transcript that contains
+any subset of an exonic region are annotated as containing the exonic region. This is effectively
+the ‘maximum’ exonic region
+Fragments:  these are depicted on the bottom of panel B and are the colored sunsets of exonic
+regions. Each transcript is annotated based on only the fragments present in that transcript.
+
+
+Constitutive: ER/Fragment in all transcripts
+Common: ER/Fragment in more than one transcript
+Unique: ER/Fragment in 1 transcript
+
+Number of transcripts per gene
+Number of ERs
+Number of fragments
+
+
+Scope
+
+Input GTF
+Output 2 GTF
+
+Junctions:  As of this moment the junctions script is not part of this project.
+
+There are problems with specifying exonic regions (ER) in the case of intron retentions.  Intron
+retention in one transcript results in several exonic regions in  non IR transcripts to be
+considered part of the same combined ER.
+
+ER should be defined excluding IR events
+
+New annotation IR: intronic region,  the minimum intronic region between two ER,  should contain
+only the minimum intron regardless of the actual intron in the transcript
+flag_IRx_longer (if the transcript intronic region is longer than the annotation flag=1
+flag_multiple_IR is 1 when a transcript has more than 1 non-contiguous IR event
+
+In the case where the IR event spans 3 or more exons, each intronic region will be separately
+annotated, if all the IR events are adjacent then  flag_multiple_IR=0
+
+The current version of event analysis takes hours or even days to process.  The architecture
+depends on loading the annotations for a whole genome into memory.
+
+This process needs to be made efficient and run times should be fast ~1 hour if possible even for
+large genomes.
+
+Capacity to run in two modes, all transcripts or pairwise.
+
+Drosophila data may include rare transsplicing events (watch out for the '-' strand). E.g.
+see if FBgn0002781 gene is there. Drop/record those, but not use.
+
+Qs:
+
+* Do we need to reassemble exons from cds + 5utr/3utr or do we expect that to be duplicate data?
+
+* The entire intron must be kept for an event to be considered as an Intron Retention event.
+
+Make a fake transcript from distance between 5' and 3' most exon ends and use
+
+
+dmel617_pairwise_transcript_distance.csv from the original data is the file we want to get in the end.
+
+4 columnns - IR in T1 only, T2 only with number and (ids + coordinates) for both types of events.
+
+gene_id,transcript_1,transcript_2,num_junction_T1_only,num_junction_T2_only,num_junction_shared,prop_junction_diff,prop_junction_similar,junction_T1_only,junction_T2_only,junction_shared,num_ER_T1_only,num_ER_T2_only,num_ER_shared,prop_ER_diff,prop_ER_similar,ER_T1_only,ER_T2_only,ER_shared,num_fragment_T1_only,num_fragment_T2_only,num_fragment_shared,prop_fragment_diff,prop_fragment_similar,fragment_T1_only,fragment_T2_only,fragment_shared,num_fragment_singletons_T1_only,num_fragment_singletons_T2_only,num_fragment_singletons_shared,num_nt_shared,num_nt_T1_only,num_nt_T2_only,total_nt,prop_nt_diff,prop_nt_similar,num_nt_T1_only_in_shared_ER,num_nt_T2_only_in_shared_ER,num_nt_shared_in_shared_ER,total_nt_in_shared_ER,prop_nt_diff_in_shared_ER,prop_nt_similar_in_shared_ER,num_nt_T1_only_in_unique_ER,num_nt_T2_only_in_unique_ER
+FBgn0013531,FBtr0079544,FBtr0329946,0,0,0,0,1,,,,0,0,1,0.0,1.0,,,S4594_SI,0,0,1,0.0,1.0,,,S4594_SI:1,0,0,1,1037,0,0,1037,0.0,1.0,0,0,1037,1037,0.0,1.0,0,0
+FBgn0023537,FBtr0070092,FBtr0070093,1,1,0,1.0,0.0,X:492628:493388:-,X:492628:492743:-,,1,1,1,0.6666666666666666,0.33333333333333337,S54345_SI,S54344_SI,S54343_SI,1,1,1,0.6666666666666666,0.33333333333333337,S54345_SI:1,S54344_SI:1,S54343_SI:1,1,1,1,1842,108,281,2231,0.09681757059614522,0.9031824294038547,0,0,1842,1842,0.0,1.0,108,281
+FBgn0028550,FBtr0070244,FBtr0345507,2,1,2,0.6,0.4,X:1252096:1259959:-|X:1260008:1274426:-,X:1252096:1274426:-,X:1248008:1251172:-|X:1251261:1251340:-,1,0,4,0.2,0.8,S54641_SI,,S54638_SI|S54639_SI|S54640_SI|S54642_SI,1,0,4,0.2,0.8,S54641_SI:1,,S54638_SI:1|S54639_SI:1|S54640_SI:1|S54642_SI:1,1,0,4,6975,50,0,7025,0.014234875444839857,0.9857651245551602,0,0,6975,6975,0.0,1.0,50,0
+

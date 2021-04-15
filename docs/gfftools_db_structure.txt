@@ -1,0 +1,94 @@
+gfftools_db_structure.txt
+Date: 2021-03-18 13:15
+
+https://pythonhosted.org/gffutils/database-schema.html
+
+sqlite> .fullschema
+CREATE TABLE features (
+    id text,
+    seqid text,
+    source text,
+    featuretype text,
+    start int,
+    end int,
+    score text,
+    strand text,
+    frame text,
+    attributes text,
+    extra text,
+    bin int,
+    primary key (id)
+    );
+CREATE TABLE relations (
+    parent text,
+    child text,
+    level int,
+    primary key (parent, child, level)
+    );
+CREATE TABLE meta (
+    dialect text,
+    version text
+    );
+CREATE TABLE directives (
+    directive text
+    );
+CREATE TABLE autoincrements (
+    base text,
+    n int,
+    primary key (base)
+    );
+CREATE TABLE duplicates (
+    idspecid text,
+    newid text,
+    primary key (newid)
+    );
+CREATE INDEX binindex ON features (bin);
+CREATE INDEX relationsparent ON relations (parent);
+CREATE INDEX relationschild ON relations (child);
+CREATE INDEX featuretype ON features (featuretype);
+CREATE INDEX seqidstartend ON features (seqid, start, end);
+CREATE INDEX seqidstartendstrand ON features (seqid, start, end, strand);
+
+binindex                           seqidstartendstrand
+featuretype                        sqlite_autoindex_autoincrements_1
+relationschild                     sqlite_autoindex_duplicates_1
+relationsparent                    sqlite_autoindex_features_1
+seqidstartend                      sqlite_autoindex_relations_1
+
+
+Table relations:
+level: In graph terms, the number of edges between child and parent. In biological terms, if parent=gene and child=mRNA, then level=1. If parent=gene and child=exon, then level=2.
+
+
+sqlite> select * from meta limit 10;
+{"leading semicolon":false,"trailing semicolon":false,"quoted GFF2 values":false,"field separator":";","keyval separator":"=","multival separator":",","fmt":"gff3","repeated keys":false,"order":["ID","Name","Parent","parent_type"]}|0.9
+sqlite> select * from relations limit 10;
+FBtr0347033|exon_1|1
+FBgn0267594|FBtr0347033|1
+FBtr0300146|exon_2|1
+FBgn0259849|FBtr0300146|1
+FBtr0308947|exon_3|1
+FBgn0085494|FBtr0308947|1
+FBtr0308947|intron_1|1
+FBtr0308947|exon_4|1
+FBtr0302344|CDS_1|1
+FBtr0302344|exon_5|1
+sqlite> select * from autoincrements limit 10;
+exon|84666
+intron|152635
+CDS|160943
+sqlite> select * from directives limit 10;
+gff-version 3
+sqlite> select * from duplicates limit 10;
+sqlite> select * from features limit 10;
+211000022278279|211000022278279|FlyBase_gff3_converted|chromosome|1|13709|.|.|.|{"ID":["211000022278279"],"Name":["211000022278279"]}|[]|4681
+exon_1|211000022278279|FlyBase_gff3_converted|exon|11634|12709|.|-|.|{"Name":["FBgn0267594:1"],"Parent":["FBtr0347033"],"parent_type":["transcript"]}|[]|4681
+FBgn0267594|211000022278279|FlyBase_gff3_converted|gene|11634|12709|.|-|.|{"ID":["FBgn0267594"],"Name":["CR45932"]}|[]|4681
+FBtr0347033|211000022278279|FlyBase_gff3_converted|pseudogene|11634|12709|.|-|.|{"ID":["FBtr0347033"],"Name":["CR45932-RA"],"Parent":["FBgn0267594"]}|[]|4681
+211000022278436|211000022278436|FlyBase_gff3_converted|chromosome|1|3815|.|.|.|{"ID":["211000022278436"],"Name":["211000022278436"]}|[]|4681
+exon_2|211000022278436|FlyBase_gff3_converted|exon|1551|2815|.|-|.|{"Name":["FBgn0259849:1"],"Parent":["FBtr0300146"],"parent_type":["transcript"]}|[]|4681
+FBgn0259849|211000022278436|FlyBase_gff3_converted|gene|1551|2815|.|-|.|{"ID":["FBgn0259849"],"Name":["Su(Ste):CR42418"]}|[]|4681
+FBtr0300146|211000022278436|FlyBase_gff3_converted|ncRNA|1551|2815|.|-|.|{"ID":["FBtr0300146"],"Name":["Su(Ste):CR42418-RA"],"Parent":["FBgn0259849"]}|[]|4681
+211000022278449|211000022278449|FlyBase_gff3_converted|chromosome|1|2635|.|.|.|{"ID":["211000022278449"],"Name":["211000022278449"]}|[]|4681
+exon_3|211000022278449|FlyBase_gff3_converted|exon|528|1187|.|-|.|{"Name":["FBgn0085494:1"],"Parent":["FBtr0308947"],"parent_type":["transcript"]}|[]|4681
+

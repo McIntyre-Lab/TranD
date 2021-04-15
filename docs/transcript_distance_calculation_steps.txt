@@ -1,0 +1,190 @@
+transcript_distance_calculation_steps.txt
+
+Date: 2021-03-11
+
+Extracted from a 'flybase617_transcript_distance_documentation.xlsx' file by Adalena
+
+# Documentation for transcript distance calculation – developed using drosophila (dmel flybase 617)
+
+Analysis:    Drosophila melanogaster 6.17 transcript distance
+
+Variables:
+    PROJ=~/mclab/SHARE/useful_dmel_data/flybase617
+    SCRIPTS=$PROJ/scripts
+
+Note: Transcript consolidation can be run before transcript distance but it is not necessary
+      Transcript distance can be run independently of transcript consolidation.
+
+Step: Event analysis annotations
+
+Description: Get event analysis annotations for reference transcriptome. Using 150 bp EA files but
+read length does not matter in terms of the distance calculations.
+
+Program: None
+
+Script:
+    $SCRIPTS/run_create_formatted_gff3.sh
+    $SCRIPTS/run_buildAnnotations_dm617_150bp.sh
+
+Inputs:
+    $PROJ/event_analysis_annotations/gff/dmel-all-no-analysis-r6.17.gff
+
+Outputs:
+    $PROJ/event_analysis_annotations/150bp_annotations/dmel617_*
+    $PROJ/event_analysis_annotations/gff/dmel-all-no-analysis-r6.17.converted.gff
+
+
+Step: Extract transcript_id gene_id pairs
+
+Description: Extract all unique pairs of individual transcript_id to gene_id.
+
+This is the file junction variables will be merged on (contains all transcripts present in EA
+files, including monoexon transcripts).
+
+This function is included in both FSM consolidation and transcript distance because they can both
+be run without the other.
+
+Program:
+    $SCRIPTS/transcript_distance/extract_transcript_id_gene_id_pairs.py
+
+Script:
+    $SCRIPTS/transcript_distance/run_transcriptDistance.sh
+    ** dmel617 run by $SCRIPTS/run_transcriptDistance_dmel617.sh
+
+Inputs:
+    $PROJ/event_analysis_annotations/150bp_annotations/dmel617_event2transcript2gene_index.csv
+
+Outputs:
+    $PROJ/transcript_distance_dmel617/dmel617_transcript_id_2_gene_id.csv
+
+
+Step: Transcripts per gene
+
+Description: Get frequency of transcripts per gene prior to collapse
+
+Program:
+    $SCRIPTS/collapseTranscriptomeByJunctions/get_freq_transcript_per_gene_pre_collapse.py
+
+Script:
+    $SCRIPTS/transcript_distance/run_transcriptDistance.sh
+    ** dmel617 run by $SCRIPTS/run_transcriptDistance_dmel617.sh
+
+Inputs:
+    $PROJ/transcript_distance_dmel617/dmel617_transcript_id_2_gene_id.csv
+
+Outputs:
+    $PROJ/transcript_distance_dmel617/dmel617_transcript_per_gene_freq_pre_collapse.csv
+
+Step: Identify junction variables
+
+Description: Get transcript-level junction variables
+** junctionID_order = piped list of all junction_id values contained within the transcripts
+Output file also contains gene_id and transcript_id merged from all transcripts (including monoexon
+transcripts which are not contained within the junction annotation file) - monoexon transcripts are
+flagged.
+
+Program:
+    $SCRIPTS/transcript_distance/get_transcript_level_junction_variables_04avn.py
+    $SCRIPTS/transcript_distance/FSM_consolidation_functions.py
+
+Script:
+    $SCRIPTS/transcript_distance/run_transcriptDistance.sh
+    ** dmel617 run by $SCRIPTS/run_transcriptDistance_dmel617.sh
+
+Inputs:
+    $PROJ/event_analysis_annotations/150bp_annotations/dmel617_junctions_full_annotation.csv
+    $PROJ/transcript_distance_dmel617/dmel617_transcript_id_2_gene_id.csv
+
+Outputs:
+    $PROJ/transcript_distance_dmel617/dmel617_transcript_level_junction.csv
+
+Step: Identify fragment variables
+
+Description: Get transcript-level fragment variables
+** fragmentID_order = piped list of all fragment_id values contained within the transcripts
+** fragmentLength_order = piped list of all fragment length values that correspond to fragment_id
+in the same order as fragmentID_order
+
+Program:
+    $SCRIPTS/transcript_distance/get_transcript_level_frag_variables_03avn.py
+    $SCRIPTS/transcript_distance/FSM_consolidation_functions.py
+
+Script:
+    $SCRIPTS/transcript_distance/run_transcriptDistance.sh
+    ** dmel617 run by $SCRIPTS/run_transcriptDistance_dmel617.sh
+
+Inputs:
+    $PROJ/event_analysis_annotations/150bp_annotations/dmel617_exon_fragment_annotations.csv
+
+Outputs:
+    $PROJ/transcript_distance_dmel617/dmel617_transcript_level_frag.csv
+
+Step: Identify exon region variables
+
+Description: Get transcript-level exon region variable
+** exonRegion_order = piped list of all fusion_id values contained within the transcripts
+** exonRegionLength_order = piped list of all fusion length values that correspond to fusion_id in
+the same order as exonRegion_order
+!!! Do not actually use this variable in distance calculations but keeping in for now
+
+Program:
+    $SCRIPTS/transcript_distance/get_transcript_level_fusion_variables_03avn.py
+    $SCRIPTS/transcript_distance/FSM_consolidation_functions.py
+
+Script:
+    $SCRIPTS/transcript_distance/run_transcriptDistance.sh
+    ** dmel617 run by $SCRIPTS/run_transcriptDistance_dmel617.sh
+
+Inputs:
+    $PROJ/event_analysis_annotations/150bp_annotations/dmel617_fusion_annotations.csv
+
+Outputs:
+    $PROJ/transcript_distance_dmel617/dmel617_transcript_level_exonRegion.csv
+
+Step: Merge variables
+
+Description: Merge transcript-level junction, fragment, and exon region  variables
+** length of all inputs are verified to be the same prior to merge
+
+Program:
+    $SCRIPTS/transcript_distance/merge_transcript_level_junction_frag_exonRegion_02avn.py
+    $SCRIPTS/transcript_distance/FSM_consolidation_functions.py
+
+Script:
+    $SCRIPTS/transcript_distance/run_transcriptDistance.sh
+    ** dmel617 run by $SCRIPTS/run_transcriptDistance_dmel617.sh
+
+Inputs:
+    $PROJ/transcript_distance_dmel617/dmel617_transcript_level_junction.csv
+    $PROJ/transcript_distance_dmel617/dmel617_transcript_level_frag.csv
+    $PROJ/transcript_distance_dmel617/dmel617_transcript_level_exonRegion.csv
+
+Outputs:
+    $PROJ/transcript_distance_dmel617/dmel617_transcript_level_merged.csv
+
+Step: Calculate pairwise distance
+
+Description: Calculate pairwise distance measures for each pair of transcripts within a gene using
+the variables collected
+** Can be paralellized to reduce time to calculate, but will increase memory
+
+Program:
+    $SCRIPTS/transcript_distance/calculate_pairwise_distance_02avn.py
+
+Script:
+    $SCRIPTS/transcript_distance/run_transcriptDistance.sh
+    ** dmel617 run by $SCRIPTS/run_transcriptDistance_dmel617.sh
+
+Inputs:
+    $PROJ/transcript_distance_dmel617/dmel617_transcript_level_merged.csv
+
+Outputs:
+    $PROJ/transcript_distance_dmel617/dmel617_transcript_distance_log.txt
+    $PROJ/transcript_distance_dmel617/dmel617_pairwise_transcript_distance.csv
+
+Notes:
+    !! Full transcript distance pipeline with 8 cpu takes < 4min and just over 605 Mb memory
+    !! Full transcript distance pipeline with 1 cpu takes almost 8min and just over 605 Mb memory
+    ** Only kept output from 8 cpu test
+
+

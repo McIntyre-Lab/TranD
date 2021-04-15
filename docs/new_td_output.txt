@@ -1,0 +1,159 @@
+:Date: 2021-04-01
+
+From the 'output_file_column_descriptions.xlsx' on April 1st, 2021
+
+Single GTF file
+===============
+
+Full Gene Event ER (Exonic Region):
+
+Column                          = Description
+---------------------------------------------
+gene_id                         = Gene ID
+transcript_id                   = Piped ("|") list of transcript IDs the exon region is present in
+er_id                           = Exon region ID (continuous region of exonic space present in either any transcript)
+er_chr                          = Chromosome exon region is located
+er_start                        = Start coordinate of exon region (0-based)
+er_end                          = End coordinate of exon region
+er_strand                       = Strand of exon region
+er_flag_ir                      = Binary indicator (1,0) if the exon region contains an intron retention
+                                  event (where an intron of one transcript is entirely contained within an
+                                  exon of the other transcript)
+exons_per_er                    = Number of exons in exonic region
+exon_id                         = Piped ("|") list of exon IDs that are contained within the exon region
+transcripts_per_er              = Number of transcripts assoicated with the exon region
+annotation_frequency            = Annotation frequency as either “unique”, “common”, “constitutive”
+
+
+Full Gene Event EF (Exonic Fragment):
+
+Column                          = Description
+---------------------------------------------
+fragment_id                     = Fragment ID (distinct exon fragment present in any transcript in the
+                                  gene), formatted as [associated exon region ID]:[fragment number within
+                                  exon region]
+fragment_chr                    = Chromosome fragment is located
+fragment_start                  = Start coordinate of fragment (0-based)
+fragment_end                    = End coordinate of fragment
+fragment_strand                 = Strand of fragment
+fragment_flag_ir                = Binary indicator (1,0) if the fragment is involved in an intron retention
+                                  event (where an intron of one transcript is entirely contained within an
+                                  exon of the other transcript)
+er_id                           = Exon region ID  the fragment is contained within (continuous region of
+                                  exonic space present in either any transcript)
+er_chr                          = Chromosome exon region is located
+er_start                        = Start coordinate of exon region (0-based)
+er_end                          = End coordinate of exon region
+er_strand                       = Strand of exon region
+exon_id                         = Piped ("|") list of exon IDs that are contained within the fragment
+exons_per_fragment              = Number of exons in fragment
+transcripts_per_fragment        = Number of transcripts assoicated with the fragment
+annotation_frequency            = Annotation frequency as either “unique”, “common”, “constitutive”
+
+Pairwise Event Output:
+
+Column                          = Description
+---------------------------------------------
+gene_id                         = Gene ID
+transcript_1                    = Transcript ID for transcript 1
+transcript_2                    = Transcript ID for transcript 2
+transcript_id                   = Piped ("|") list of transcript IDs the fragment is present in (if only in
+                                  transcript 1 then transcript_id = transcript_1, if only in transcript 2
+                                  then transcript_id = transcript_2, if present in both then transcript_id
+                                  = transcript_1|transcript_2)
+fragment_id                     = Fragment ID (distinct exon fragment present in either transcript 1 or transcript 2)
+fragment_chr                    = Chromosome fragment is located
+fragment_start                  = Start coordinate of fragment (0-based)
+fragment_end                    = End coordinate of fragment
+fragment_strand                 = Strand of fragment
+fragment_flag_ir                = Binary indicator (1,0) if the fragment is involved in an intron retention
+                                  event (where an intron of one transcript is entirely contained within an
+                                  exon of the other transcript)
+er_id                           = Exon region ID  the fragment is contained within (continuous region of
+                                  exonic space present in either transcript 1 or transcript 2)
+er_chr                          = Chromosome exon region is located
+er_start                        = Start coordinate of exon region (0-based)
+er_end                          = End coordinate of exon region
+er_strand                       = Strand of exon region
+
+Distance Output:
+
+Column                          = Description
+---------------------------------------------
+gene_id                         = Gene ID
+transcript_1                    = Transcript ID for transcript 1 (T1)
+transcript_2                    = Transcript ID for transcript 2 (T2)
+num_junction_t1_only            = Number of junctions in transcript 1 only
+num_junction_t2_only            = Number of junctions in transcript 2 only
+num_junction_shared             = Number of junctions shared by transcript 1 and transcript 2
+prop_junction_diff              = Proportion of different junctions ((num_junction_T1_only +
+                                  num_junction_T2_only)/(num_junction_T1_only + num_junction_T2_only + num_junction_shared))
+prop_junction_similar           = Proportion of shared junctions (num_junction_shared/(num_junction_T1_only
+                                  + num_junction_T2_only + num_junction_shared))
+junction_t1_only                = Piped ("|") list of junction IDs (chr:start:end:strand) in transcript 1 only
+junction_t2_only                = Piped ("|") list of junction IDs (chr:start:end:strand) in transcript 2 only
+junction_shared                 = Piped ("|") list of junction IDs (chr:start:end:strand) shared by transcript 1 and transcript 2
+num_er_t1_only                  = Number of exon regions in transcript 1 only
+num_er_t2_only                  = Number of exon regions in transcript 2 only
+num_er_shared                   = Number of exon regions shared by transcript 1 and transcript 2
+prop_er_diff                    = Proportion of different exon regions ((num_ER_T1_only +
+                                  num_ER_T2_only)/(num_ER_T1_only + num_ER_T2_only + num_ER_shared))
+prop_er_similar                 = Proportion of shared exon regions (num_ER_shared/(num_ER_T1_only +
+                                  num_ER_T2_only + num_ER_shared))
+er_t1_only                      = Piped ("|") list of exon region IDs in transcript 1 only
+er_t2_only                      = Piped ("|") list of exon region IDs in transcript 2 only
+er_shared                       = Piped ("|") list of exon region IDs shared by transcript 1 and transcript 2
+num_fragment_t1_only            = Number of exon fragments in transcript 1 only
+num_fragment_t2_only            = Number of exon fragments in transcript 2 only
+num_fragment_shared             = Number of exon fragments shared by transcript 1 and transcript 2
+prop_fragment_diff              = Proportion of different exon fragments ((num_fragment_T1_only +
+                                  num_fragment_T2_only)/(num_fragment_T1_only + num_fragment_T2_only + num_fragment_shared))
+prop_fragment_similar           = Proportion of shared exon regions
+                                  (num_fragment_shared/(num_fragment_T1_only + num_fragment_T2_only + num_fragment_shared))
+fragment_t1_only                = Piped ("|") list of exon fragment IDs in transcript 1 only
+fragment_t2_only                = Piped ("|") list of exon fragment IDs in transcript 2 only
+fragment_shared                 = Piped ("|") list of exon fragment IDs shared by transcript 1 and transcript 2
+num_fragment_singletons_t1_only = Number of exon fragment singletons (fragment is a full exon
+                                  region) in transcript 1 only
+num_fragment_singletons_t2_only = Number of exon fragment singletons (fragment is a full exon
+                                  region) in transcript 2 only
+num_fragment_singletons_shared  = Number of exon fragment singletons (fragment is a full exon
+                                  region) shared by transcript 1 and transcript 2
+num_ir_t1                       = Number of intron retention events in transcript 1 (where an intron of
+                                  transcript 2 is entirely contained within an exon of transcript 2)
+num_ir_t2                       = Number of intron retention events in transcript 2 (where an intron of
+                                  transcript 1 is entirely contained within an exon of transcript 2)
+ir_t1                           = Piped ("|") list of intron IDs (chr:start:end:strand) retained in transcript 1
+ir_t2                           = Piped ("|") list of intron IDs (chr:start:end:strand) retained in transcript 2
+num_nt_t1_only                  = Number of nucleotides in transcript 1 only
+num_nt_t2_only                  = Number of nucleotides in transcript 2 only
+num_nt_shared                   = Number of nucleotides shared by transcript 1 and transcript 2
+total_nt                        = Total number of nucleotides covered by either transcript 1 or transcript 2 (union)
+prop_nt_diff                    = Proportion of different nucleotides ((num_nt_T1_only + num_nt_T2_only)/total_nt)
+prop_nt_similar                 = Proportion of shared nucleotides (num_nt_shared/total_nt)
+num_nt_t1_only_in_shared_er     = Number of nucleotides in transcript 1 only in shared exon regions
+num_nt_t2_only_in_shared_er     = Number of nucleotides in transcript 2 only in shared exon regions
+num_nt_shared_in_shared_er      = Number of nucleotides shared by transcript 1 and transcript 2 in shared exon regions
+total_nt_in_shared_er           = Total number of nucleotides in shared exon regions
+prop_nt_diff_in_shared_er       = Proportion of different nucleotides in shared exon regions
+                                  ((num_nt_T1_only_shared_ER + num_nt_T2_only_shared_ER)/total_nt_in_shared_ER)
+prop_nt_similar_in_shared_er    = Proportion of shared nucleotides (num_nt_shared_in_shared_ER/total_nt_in_shared_ER)
+num_nt_t1_only_in_unique_er     = Number of nucleotides in transcript 1 only in exon regions unique to transcript 1
+num_nt_t2_only_in_unique_er     = Number of nucleotides in transcript 2 only in exon regions unique to transcript 2
+flag_alt_exon                   = Binary indicator (1,0) if there is an alternate exon in the pair (unique exon region in either transcript)
+flag_alt_donor_acceptor         = Binary indicator (1,0) if there is an alternate donor and/or alternate
+acceptor in the pair            = (num_nt_T1_only_in_shared_ER + num_nt_T2_only_in_shared_ER > 0)
+flag_ir                         = Binary indicator (1,0) if there is an intron retention event in the pair (num_IR_T1 + num_IR_T2 > 0)
+
+
+Two GTF Files
+=============
+
+Distance Output:
+
+Column                  = Description
+-------------------------------------
+*** All columns are the same as 1 GTF distance with the following changes
+transcript_1 -> gtf_1_transcriptID  Transcript ID for transcript in GTF 1 (T1)
+transcript_2    Transcript ID for transcript in GTF 2 (T2)
+

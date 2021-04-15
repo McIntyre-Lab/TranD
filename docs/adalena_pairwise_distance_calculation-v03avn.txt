@@ -1,0 +1,42 @@
+adalena_pairwise_distance_calculation-v03avn.txt
+
+:Author: Oleksandr Moskalenko
+:Email: om@rc.ufl.edu
+:Date: 2021-03-11 16:16
+
+Copy from the Word Doc Adelina sent me.
+
+This is to calculate pairwise distance and should generate all pairwise exonic
+regions and fragments.
+
+For gene G with Transcripts T1 and T2
+
+Input: pair of transcripts, each converted into a BED file of exons (1 line per exon)
+
+Generate exon regions (ERs) and determine how many overlap and how many do not: Bedtools intersect transcripts T1 and T2 -v and the reciprocal (bedtools intersect -v T2 to T1)
+$ bedtools intersect -v -a T1.bed -b T2.bed
+$ bedtools intersect -v -a T2.bed -b T1.bed
+    • If the resulting concatenation of the reciprocal bedtools intersect -v is empty then the two
+    transcripts have all of the same ERs overlapping
+        ◦ Go to ER module with complete input BED files to compare
+        ◦ Count how many ER are overlapping, 0 are unique to T1, 0 are unique to T2
+
+    • Else there is at least one region not overlapping these should now be annotated accordingly
+
+        ◦ “subtract” non overlapping regions for T1 and T2 from the original input bed files, go to
+        ER module with the subset original BED files with the non-overlapping removed
+            ▪ Count how many exonic regions overlap and how many are unique to either T1 or T2
+            ▪ Count how many nucleotides are in the unique ER for each transcript
+
+ER module - here input is two bed files of the ER that overlap in T1 and T2
+    A. Identify all shared fragments between T1 and T2: bedtools intersect T1 to T2 (no reciprocal
+       needed, either direction works)
+        ◦ Count how many fragments are shared
+        ◦ Count how many nucleotides in shared fragments
+    B. Identify unique fragments in T1: bedtools subtract T1 from the intersection (A)
+        ◦ Count how many fragments are unique to T2
+        ◦ Count how many nucleotides in T1 only fragments in shared ER
+    C. Identify unique fragments in T2: bedtools subtract T2 from the intersection (A)
+        ◦ Count how many fragments are unique to T2
+        ◦ Count how many nucleotides in T2 only fragments in shared ER
+

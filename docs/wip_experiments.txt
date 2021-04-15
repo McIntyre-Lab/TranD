@@ -1,0 +1,112 @@
+wip_experiments.txt
+
+:Author: Oleksandr Moskalenko
+:Email: om@rc.ufl.edu
+:Date: 2021-03-11 13:30
+
+Describe the experimentation in progress to evaluate performance improvements to event
+analysis sequence annotation step.
+
+* Separate GFF and Fasta data into separate files. After the separation the fasta file has
+$ grep '>' data/gff_fasta/dmel-all-no-analysis-r6.17.fa | wc -l
+1870 records
+
+Gff file has
+$ grep -v '^#' data/gff_fasta/dmel-all-no-analysis-r6.17.gff | wc -l
+2576057 records
+
+# GFF parsing:
+
+GFF3 spec: https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md
+
+Significant Pragmas:
+
+###
+    This directive (three # signs in a row) indicates that all forward references to feature IDs
+    that have been seen to this point have been resolved. After seeing this directive, a program
+    that is processing the file serially can close off any open objects that it has created and
+    return them, thereby allowing iterative access to the file. Otherwise, software cannot know
+    that a feature has been fully populated by its subfeatures until the end of the file has been
+    reached. It is recommended that complex features, such as the canonical gene, be terminated
+    with the ### notation.
+
+##FASTA
+    This notation indicates that the annotation portion of the file is at an end and that the
+    remainder of the file contains one or more sequences (nucleotide or protein) in FASTA
+    format. This allows features and sequences to be bundled together. All FASTA sequences
+    included in the file must be included together at the end of the file and may not be
+    interspersed with the features lines. Once a ##FASTA section is encountered no other
+    content beyond valid FASTA sequence is allowed.
+
+Experimental software:
+* Try the new TAMU-CPT GFF parser from https://github.com/TAMU-CPT/CPT_GffParser
+gffParse(gff3In, base_dict = {}, outStream = sys.stderr, codingTypes=["CDS"], metaTypes =
+["remark"], suppressMeta = 2, pragmaPriority = True, pragmaOverridePriority = True)
+
+The primary function for reading in GFF files. Will return a list of SeqRecord objects, with
+gffSeqFeature objects as their .feature lists.
+
+This parser still wasn't done after an hour of parsing gff records into SeqRecord biopython objects
+
+  PID USER      PR  NI    VIRT    RES    SHR S  %CPU %MEM     TIME+ COMMAND
+  19399 moskale+  20   0 2360644   1.0g   9316 R 100.3  1.6  54:17.06 python
+
+* Another parser: https://github.com/Jverma/GFF-Parser
+
+
+# Fasta parsing:
+
+Try the pyfaidx package for fast random access to fasta data. Separate the gff and fasta portions
+of the input data into separate files first.
+
+* Extract fasta from the gff file and try the pyfaidx package for ultra-fast access to the fasta
+  data when/if needed. -- https://github.com/mdshw5/pyfaidx
+
+Note:  for a FASTA file to work with this method (and this applies to samtools faidx) the fasta
+files need to be wrapped with the same column length. This condition is usually satisfied but when
+it is not all kinds of subtle errors could occur.
+
+Performance caveat: bedtools getfasta is always going to be the fastest for large numbers of
+regions, since it reads the entire FASTA file into memory and then subsets from in-memory arrays
+rather than seeking to file offsets - access times here are orders of magnitude different.
+
+E.g.
+from pyfaidx import Fasta
+>>> genes = Fasta('tests/data/genes.fasta')
+>>> genes
+>>> Fasta("tests/data/genes.fasta")  # set strict_bounds=True for bounds checking
+>>> genes.keys()
+>>> ('AB821309.1', 'KF435150.1', 'KF435149.1', 'NR_104216.1', 'NR_104215.1', 'NR_104212.1',
+>>> 'NM_001282545.1', 'NM_001282543.1', 'NM_000465.3', 'NM_001282549.1', 'NM_001282548.1',
+>>> 'XM_005249645.1', 'XM_005249644.1', 'XM_005249643.1', 'XM_005249642.1', 'XM_005265508.1',
+>>> 'XM_005265507.1', 'XR_241081.1', 'XR_241080.1', 'XR_241079.1')
+>>> genes['NM_001282543.1'][200:230]
+>NM_001282543.1:201-230
+>CTCGTTCCGCGCCCGCCATGGAACCGGATG
+
+>>> genes['NM_001282543.1'][200:230].seq
+'CTCGTTCCGCGCCCGCCATGGAACCGGATG'
+
+>>> genes['NM_001282543.1'][200:230].name
+>>> 'NM_001282543.1'
+
+# Start attributes are 1-based
+>>> genes['NM_001282543.1'][200:230].start
+>>> 201
+
+# End attributes are 0-based
+>>> genes['NM_001282543.1'][200:230].end
+>>> 230
+
+>>> genes['NM_001282543.1'][200:230].fancy_name
+>>> 'NM_001282543.1:201-230'
+
+>>> len(genes['NM_001282543.1'])
+>>> 5466
+
+This parser looks fast and useful. Keep it.
+
+
+##############
+
+

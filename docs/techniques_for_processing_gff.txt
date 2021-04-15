@@ -1,0 +1,28 @@
+techniques_for_processing_gff.txt
+
+:Author: Oleksandr Moskalenko
+:Email: om@rc.ufl.edu
+:Date: 2021-03-11 09:47
+
+There is a relatively new full-featured gff parser from TAMU that might work better than
+gffutils - https://github.com/TAMU-CPT/CPT_GffParser. Let's check it out.
+
+
+* Two approaches for getting fasta out of gff and using the data:
+
+https://www.biostars.org/p/265692/
+
+1. "You should just split your file into two separate files, a GFF and FASTA. Then you can do:"
+
+import gffutils
+import pyfaidx
+
+db = gffutils.create_db('input.gff')
+fasta = pyfaidx.Fasta('input.fa')
+
+for cds in db.features_of_type('cds', order_by='start'):
+  print(cds.sequence(fasta))
+
+2. bedtools getfasta can do that. Use -s to force strandness. http://bedtools.readthedocs.io/en/latest/content/tools/getfasta.html
+
+     bedtools getfasta -fi yourgenome.fa -fo out.fa -bed yourgff.bed -s

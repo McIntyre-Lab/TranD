@@ -1,0 +1,28 @@
+# Equal
+2L	FlyBase	exon	9839	11344	.	-	.	gene_symbol "l(2)gl"; transcript_id "FBtr0078169"; transcript_symbol "l(2)gl-RF"; gene_id "FBgn0002121";
+2L	FlyBase	exon	9839	11344	.	-	.	gene_symbol "l(2)gl"; transcript_id "FBtr0078170"; transcript_symbol "l(2)gl-RC"; gene_id "FBgn0002121";
+# Two exon Intron Retention
+2L	FlyBase	exon	11410	11518	.	-	.	gene_symbol "l(2)gl"; transcript_id "FBtr0078169"; transcript_symbol "l(2)gl-RF"; gene_id "FBgn0002121";
+2L	FlyBase	exon	11779	12221	.	-	.	gene_symbol "l(2)gl"; transcript_id "FBtr0078169"; transcript_symbol "l(2)gl-RF"; gene_id "FBgn0002121";
+2L	FlyBase	exon	11410	12221	.	-	.	gene_symbol "l(2)gl"; transcript_id "FBtr0078170"; transcript_symbol "l(2)gl-RC"; gene_id "FBgn0002121";
+# T1 exon skipping
+2L	FlyBase	exon	12286	12928	.	-	.	gene_symbol "l(2)gl"; transcript_id "FBtr0078170"; transcript_symbol "l(2)gl-RC"; gene_id "FBgn0002121";
+# Two-sided overlap
+2L	FlyBase	exon	13520	13601	.	-	.	gene_symbol "l(2)gl"; transcript_id "FBtr0078169"; transcript_symbol "l(2)gl-RC"; gene_id "FBgn0002121";
+2L	FlyBase	exon	13572	13625	.	-	.	gene_symbol "l(2)gl"; transcript_id "FBtr0078170"; transcript_symbol "l(2)gl-RC"; gene_id "FBgn0002121";
+# Left-sided overlap
+2L	FlyBase	exon	13683	14874	.	-	.	gene_symbol "l(2)gl"; transcript_id "FBtr0078169"; transcript_symbol "l(2)gl-RF"; gene_id "FBgn0002121";
+2L	FlyBase	exon	13683	14207	.	-	.	gene_symbol "l(2)gl"; transcript_id "FBtr0078170"; transcript_symbol "l(2)gl-RC"; gene_id "FBgn0002121";
+# Right-sided overlap
+2L	FlyBase	exon	15110	15711	.	-	.	gene_symbol "l(2)gl"; transcript_id "FBtr0078169"; transcript_symbol "l(2)gl-RF"; gene_id "FBgn0002121";
+2L	FlyBase	exon	14933	15711	.	-	.	gene_symbol "l(2)gl"; transcript_id "FBtr0078170"; transcript_symbol "l(2)gl-RC"; gene_id "FBgn0002121";
+# Truncated exon
+2L	FlyBase	exon	16130	16690	.	-	.	gene_symbol "l(2)gl"; transcript_id "FBtr0078169"; transcript_symbol "l(2)gl-RC"; gene_id "FBgn0002121";
+2L	FlyBase	exon	16053	17212	.	-	.	gene_symbol "l(2)gl"; transcript_id "FBtr0078170"; transcript_symbol "l(2)gl-RC"; gene_id "FBgn0002121";
+# T2 exon skipping
+2L	FlyBase	exon	18261	18570	.	-	.	gene_symbol "l(2)gl"; transcript_id "FBtr0078169"; transcript_symbol "l(2)gl-RC"; gene_id "FBgn0002121";
+# Multi-exon Intron Retention event
+2L	FlyBase	exon	19880	20020	.	-	.	gene_symbol "l(2)gl"; transcript_id "FBtr0078169"; transcript_symbol "l(2)gl-RF"; gene_id "FBgn0002121";
+2L	FlyBase	exon	21066	21200	.	-	.	gene_symbol "l(2)gl"; transcript_id "FBtr0078169"; transcript_symbol "l(2)gl-RF"; gene_id "FBgn0002121";
+2L	FlyBase	exon	21349	21376	.	-	.	gene_symbol "l(2)gl"; transcript_id "FBtr0078169"; transcript_symbol "l(2)gl-RF"; gene_id "FBgn0002121";
+2L	FlyBase	exon	19880	21376	.	-	.	gene_symbol "l(2)gl"; transcript_id "FBtr0078170"; transcript_symbol "l(2)gl-RF"; gene_id "FBgn0002121";
