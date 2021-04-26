@@ -52,8 +52,8 @@ jct_df_cols = ['gene_id', 'transcript_id', 'coords']
 #                    'gene_ea_exonic_fragments.csv', 'ea_pairwise_fh': 'pairwise_ea.csv', 'td_fh':
 #                    'transcript_distances.csv'}
 
-two_gtfs_outfiles = {'gtf1_fh': 'gtf1_only.gtf', 'gtf2_fh': 'gtf2_only.gtf', 'gtf_names_fh':
-                     'gtf_metadata.csv'}
+two_gtfs_outfiles = {'gtf1_fh': 'gtf1_only.gtf', 'gtf2_fh': 'gtf2_only.gtf'}
+# , 'gtf_names_fh': 'gtf_metadata.csv'}
 
 
 def parse_args(print_help=False):
@@ -163,6 +163,7 @@ def setup_logging(debug, verbose, logfile):
             logger.info("Logging to {}", logfile)
     if logfile:
         logger.add(logfile, level=level)
+    logger.debug("Logging level set to : {}", level)
 
 
 def open_output_files(outdir, outfiles):
@@ -371,7 +372,7 @@ def do_ea_pair(data):
     # Transcripts are not identical
     else:
         strand = list(set([x.strand for x in tx1_bed]))[0]
-        raw_ers_bed = tx1_bed.cat(tx2_bed, postmerge=True).saveas()
+        raw_ers_bed = tx1_bed.cat(tx2_bed, postmerge=True)
         raw_ers_list = [str(x).split() for x in raw_ers_bed]
         er_id = 1
         ers_list = []
@@ -405,7 +406,7 @@ def do_ea_pair(data):
             efs_list.append(ef_str)
             ef_id += 1
         efs_str = "\n".join(efs_list)
-        efs_bed = BedTool(efs_str, from_string=True).saveas()
+        efs_bed = BedTool(efs_str, from_string=True)
         common_efs_set = set([x.name for x in efs_bed.intersect(ef_both)])
         common_efs = list(common_efs_set)
         tx1_efs = list(set([x.name for x in efs_bed.intersect(tx1_bed)]).difference(common_efs_set))
@@ -438,7 +439,11 @@ def do_ea_pair(data):
 
 def do_ea(tx_data):
     """Perform even analysis using pybedtools on bed string data"""
-    bed_data = prep_bed_for_ea(tx_data)
+    try:
+        bed_data = prep_bed_for_ea(tx_data)
+    except ValueError:
+        raise
+    logger.debug(bed_data)
     if len(bed_data) == 4:
         ea_results, jct_catalog = do_ea_pair(bed_data)
         return ea_results, jct_catalog
@@ -447,7 +452,7 @@ def do_ea(tx_data):
         raise NotImplementedError
 
 
-def ea_pairwise(data, out_fhs, gene_id, mode='single'):
+def ea_pairwise(data, out_fhs, gene_id):
     "Do EA (Event Analysis) for a pair transcripts."
     transcripts = data.groupby("transcript_id")
     transcript_groups = transcripts.groups
@@ -455,11 +460,7 @@ def ea_pairwise(data, out_fhs, gene_id, mode='single'):
     for transcript in transcript_groups:
         transcript_df = data[data['transcript_id'] == transcript]
         tx_data[transcript] = transcript_df
-    # Do this for a single file, but not for two files!
-    if mode == 'single':
-        transcript_pairs = list(itertools.combinations(tx_data.keys(), 2))
-    else:
-        transcript_pairs = generate_transcript_pairs(data)
+    transcript_pairs = list(itertools.combinations(tx_data.keys(), 2))
     ea_df = pd.DataFrame(columns=ea_df_cols)
     jct_df = pd.DataFrame(columns=jct_df_cols)
     for tx_pair in transcript_pairs:
@@ -508,9 +509,43 @@ def process_single_file(infile, ea_mode, outdir, outfiles):
                 logger.error(e)
                 continue
         else:
-            ea_data, jct_data = ea_pairwise(gene_df, out_fhs, gene, mode='single')
+            ea_data, jct_data = ea_pairwise(gene_df, out_fhs, gene)
             write_output(ea_data, out_fhs, 'ea_pairwise_fh')
             write_output(jct_data, out_fhs, 'jc_fh')
+
+
+def add_suffix(value, suffix):
+    """Add a column value suffix"""
+    return value + suffix
+
+
+def ea_two_files(f1_data, f2_data, out_fhs, gene_id):
+    "Do EA (Event Analysis) for pairs of transcripts from two files for a gene."
+    f1_transcripts = list(set(f1_data['transcript_id']))
+    f2_transcripts = list(set(f2_data['transcript_id']))
+    transcript_combos = list(itertools.product(f1_transcripts, f2_transcripts))
+    logger.debug("Transcript combinations to process for {}: \n{}", gene_id, transcript_combos)
+    for pair in transcript_combos:
+        ea_df = pd.DataFrame(columns=ea_df_cols)
+        jct_df = pd.DataFrame(columns=jct_df_cols)
+        # try:
+        tx_df_1 = f1_data[f1_data['transcript_id'] == pair[0]]
+        tx_df_1_s = tx_df_1.assign(transcript_id=lambda x: x.transcript_id + '_d1')
+        tx_df_2 = f2_data[f2_data['transcript_id'] == pair[1]]
+        tx_df_2_s = tx_df_2.assign(transcript_id=lambda x: x.transcript_id + '_d2')
+        tx_pair_data = pd.concat([tx_df_1_s, tx_df_2_s])
+        try:
+            ea_data, jct_data = do_ea(tx_pair_data)
+            ea_df = ea_df.append(ea_data)
+            jct_df = jct_df.append(jct_data)
+        except ValueError:
+            raise
+        # except ValueError as e:
+        #     logger.error(e)
+        #     exit(1)
+        #     #     # DEBUG, exit for now, just write to rejects later
+        #     #     # continue
+    return ea_df, jct_df
 
 
 def process_two_files(infiles, outdir, outfiles):
@@ -523,16 +558,46 @@ def process_two_files(infiles, outdir, outfiles):
     infile_2 = infiles[1]
     in_f1 = read_exon_data_from_file(infile_1)
     in_f2 = read_exon_data_from_file(infile_2)
-    f1_genes = in_f1.groupby("gene_id")
-    f1_transcripts = in_f1.groupby(["gene_id", "transcript_id"])
-    f2_genes = in_f2.groupby("gene_id")
-    f2_transcripts = in_f2.groupby(["gene_id", "transcript_id"])
+    f1_gene_names = set(in_f1['gene_id'])
+    f2_gene_names = set(in_f2['gene_id'])
+    only_f1_genes = f1_gene_names.difference(f2_gene_names)
+    only_f2_genes = f2_gene_names.difference(f1_gene_names)
+    only_f1_genes_str = ", ".join(list(only_f1_genes))
+    only_f2_genes_str = ", ".join(list(only_f2_genes))
+    if only_f1_genes or only_f2_genes:
+        logger.warning("Datasets have different genes:")
+        logger.warning("Skipping genes only in the {} dataset: \n{}", infile_1, only_f1_genes_str)
+        logger.warning("Skipping genes only in the {} dataset: \n{}", infile_2, only_f2_genes_str)
+    odd_genes = only_f1_genes.union(only_f2_genes)
+    f1_odds = in_f1[in_f1['gene_id'].isin(only_f1_genes)]
+    f2_odds = in_f2[in_f2['gene_id'].isin(only_f2_genes)]
+    write_output(f1_odds, out_fhs, 'gtf1_fh')
+    write_output(f2_odds, out_fhs, 'gtf2_fh')
+    common_genes = f1_gene_names.difference(odd_genes)
+    valid_f1 = in_f1[in_f1['gene_id'].isin(common_genes)]
+    valid_f2 = in_f2[in_f2['gene_id'].isin(common_genes)]
+    f1_genes = valid_f1.groupby("gene_id")
+    f1_transcripts = valid_f1.groupby(["gene_id", "transcript_id"])
+    f2_genes = valid_f2.groupby("gene_id")
+    f2_transcripts = valid_f2.groupby(["gene_id", "transcript_id"])
     logger.info("Found {} genes and {} transcripts in {} file", len(f1_genes), len(f1_transcripts),
-                infile_1, len(f2_genes), len(f2_transcripts), infile_2)
-
-    # Create transcript groups for matching genes from the two files for pairwise EA.
-    # TODO
-    # ea_data, jct_data = ea_pairwise(gene_df, out_fhs, gene, mode='pair')
+                infile_1)
+    logger.info("Found {} genes and {} transcripts in {} file", len(f2_genes), len(f2_transcripts),
+                infile_2)
+    gene_list = list(set(valid_f1['gene_id']))
+    logger.debug("Genes to process: \n{}", gene_list)
+    for gene in gene_list:
+        f1_data = valid_f1[valid_f1['gene_id'] == gene]
+        f2_data = valid_f2[valid_f2['gene_id'] == gene]
+        logger.debug(f1_data.head())
+        logger.debug(f2_data.head())
+        try:
+            ea_data, jct_data = ea_two_files(f1_data, f2_data, out_fhs, gene)
+        except ValueError as e:
+            logger.error(e)
+            continue
+        write_output(ea_data, out_fhs, 'ea_pairwise_fh')
+        write_output(jct_data, out_fhs, 'jc_fh')
 
 
 def main():
@@ -544,9 +609,11 @@ def main():
     outdir = handle_outdir(args)
     ea_mode = args.ea_mode
     if len(infiles) == 1:
+        logger.debug("Single file pairwise analysis")
         outfiles = common_outfiles
         process_single_file(infiles[0], ea_mode, outdir, outfiles)
     else:
+        logger.debug("Two files pairwise analysis")
         outfiles = common_outfiles
         outfiles.update(two_gtfs_outfiles)
         process_two_files(infiles, outdir, outfiles)
