@@ -367,6 +367,7 @@ def do_ea_pair(data):
             ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name, i.chrom,
                             i.start, i.end, i.strand, 0, er_name, i.chrom, i.start, i.end,
                             i.strand])
+            er_id += 1
         ea_df = pd.DataFrame(ea_data, columns=ea_df_cols)
         junction_df = pd.DataFrame(junction_data, columns=jct_df_cols)
         return ea_df, junction_df
