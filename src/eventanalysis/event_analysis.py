@@ -527,9 +527,9 @@ def ea_two_files(f1_data, f2_data, out_fhs, gene_id):
     f2_transcripts = list(set(f2_data['transcript_id']))
     transcript_combos = list(itertools.product(f1_transcripts, f2_transcripts))
     logger.debug("Transcript combinations to process for {}: \n{}", gene_id, transcript_combos)
+    ea_df = pd.DataFrame(columns=ea_df_cols)
+    jct_df = pd.DataFrame(columns=jct_df_cols)
     for pair in transcript_combos:
-        ea_df = pd.DataFrame(columns=ea_df_cols)
-        jct_df = pd.DataFrame(columns=jct_df_cols)
         # try:
         tx_df_1 = f1_data[f1_data['transcript_id'] == pair[0]]
         tx_df_1_s = tx_df_1.assign(transcript_id=lambda x: x.transcript_id + '_d1')
