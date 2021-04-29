@@ -312,8 +312,9 @@ def create_junction_catalog(gene, tx, tx_data):
             left_end = int(e.end) - 10
             continue
         right_start = int(e.start + 10)
-        jct_coords = f"{e.chrom}:{right_start}:{left_end}:{e.strand}"
+        jct_coords = f"{e.chrom}:{left_end}:{right_start}:{e.strand}"
         junctions.append([gene, tx, jct_coords])
+        left_end = int(e.end) - 10
     return junctions
 
 
