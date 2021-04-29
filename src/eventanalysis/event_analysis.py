@@ -445,7 +445,7 @@ def do_ea(tx_data):
         bed_data = prep_bed_for_ea(tx_data)
     except ValueError:
         raise
-    logger.debug(bed_data)
+    # logger.debug(bed_data)
     if len(bed_data) == 4:
         ea_results, jct_catalog = do_ea_pair(bed_data)
         return ea_results, jct_catalog
@@ -566,10 +566,10 @@ def process_two_files(infiles, outdir, outfiles):
     only_f2_genes = f2_gene_names.difference(f1_gene_names)
     only_f1_genes_str = ", ".join(list(only_f1_genes))
     only_f2_genes_str = ", ".join(list(only_f2_genes))
-    if only_f1_genes or only_f2_genes:
-        logger.warning("Datasets have different genes:")
-        logger.warning("Skipping genes only in the {} dataset: \n{}", infile_1, only_f1_genes_str)
-        logger.warning("Skipping genes only in the {} dataset: \n{}", infile_2, only_f2_genes_str)
+    # if only_f1_genes or only_f2_genes:
+    #     logger.warning("Datasets have different genes:")
+    #     logger.warning("Skipping genes only in the {} dataset: \n{}", infile_1, only_f1_genes_str)
+    #     logger.warning("Skipping genes only in the {} dataset: \n{}", infile_2, only_f2_genes_str)
     odd_genes = only_f1_genes.union(only_f2_genes)
     f1_odds = in_f1[in_f1['gene_id'].isin(only_f1_genes)]
     f2_odds = in_f2[in_f2['gene_id'].isin(only_f2_genes)]
