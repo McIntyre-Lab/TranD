@@ -564,12 +564,6 @@ def process_two_files(infiles, outdir, outfiles):
     f2_gene_names = set(in_f2['gene_id'])
     only_f1_genes = f1_gene_names.difference(f2_gene_names)
     only_f2_genes = f2_gene_names.difference(f1_gene_names)
-    only_f1_genes_str = ", ".join(list(only_f1_genes))
-    only_f2_genes_str = ", ".join(list(only_f2_genes))
-    # if only_f1_genes or only_f2_genes:
-    #     logger.warning("Datasets have different genes:")
-    #     logger.warning("Skipping genes only in the {} dataset: \n{}", infile_1, only_f1_genes_str)
-    #     logger.warning("Skipping genes only in the {} dataset: \n{}", infile_2, only_f2_genes_str)
     odd_genes = only_f1_genes.union(only_f2_genes)
     f1_odds = in_f1[in_f1['gene_id'].isin(only_f1_genes)]
     f2_odds = in_f2[in_f2['gene_id'].isin(only_f2_genes)]
