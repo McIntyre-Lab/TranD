@@ -339,11 +339,22 @@ def get_intron_retention_efs(ers_bed, efs_bed, common_efs):
     return ir_efs
 
 
-def do_ea_pair(data):
+def do_ea_gene(data):
     """
     Event Analysis on a pair of transcripts
     """
     ea_data = []
+    gene_id = data['gene_id']
+    print(ea_data)
+    print(gene_id)
+    return "one", "two"
+    # return ea_df, junction_df
+
+
+def do_ea_pair(data):
+    """
+    Event Analysis on a pair of transcripts
+    """
     gene_id = data['gene_id']
     tx_names = data['transcript_list']
     tx1_name, tx2_name = tx_names[0], tx_names[1]
@@ -351,95 +362,114 @@ def do_ea_pair(data):
     tx1_bed = BedTool(tx1_bed_str).saveas()
     tx2_bed_str = data[tx2_name]
     tx2_bed = BedTool(tx2_bed_str).saveas()
-    # logger.debug("Comparing {} vs {}", tx1_name, tx2_name)
-    # logger.debug("TX1: {}: \n{}", tx1_name, tx1_bed)
-    # logger.debug("TX2: {}: \n{}", tx2_name, tx2_bed)
+    logger.debug("Comparing {} vs {}", tx1_name, tx2_name)
     junction_data = create_junction_catalog(gene_id, tx1_name, tx1_bed)
     junction_data.extend(create_junction_catalog(gene_id, tx2_name, tx2_bed))
-    # logger.debug("Junction data: \n{}", "\n".join(junction_data))
     # Check if identical - enumerate EFs from tx1 if true and return
-    sub_2_from_1 = tx1_bed.subtract(tx2_bed)
-    sub_1_from_2 = tx1_bed.subtract(tx2_bed)
-    if sub_2_from_1 == sub_1_from_2:
-        logger.info("ERs are identical for {}.", " / ".join(tx_names))
-        # Represent the features as if EFs were generated from non-identical ERs to generalize
-        er_id, ef_id = 1, 1
-        for i in tx1_bed:
-            er_name = f"{gene_id}:ER{er_id}"
-            ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
-            ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
-                            i.chrom, i.start, i.end, i.strand, 0, er_name, i.chrom, i.start,
-                            i.end, i.strand])
-            er_id += 1
-        ea_df = pd.DataFrame(ea_data, columns=ea_df_cols)
-        junction_df = pd.DataFrame(junction_data, columns=jct_df_cols)
-        return ea_df, junction_df
+    t2_t1_v_intersect = tx2_bed.intersect(tx1_bed, v=True)
+    t1_t2_v_intersect = tx1_bed.intersect(tx2_bed, v=True)
+    # Double step verification to get a bit more performance
+    if t1_t2_v_intersect == t2_t1_v_intersect:
+        sub_2_from_1 = tx2_bed.subtract(tx1_bed)
+        sub_1_from_2 = tx1_bed.subtract(tx2_bed)
+        if sub_2_from_1 == sub_1_from_2:
+            # Transcripts are identical
+            logger.info("ERs are identical for {}.", " / ".join(tx_names))
+            ea_data = format_identical_pair_ea(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
+        else:
+            # Transcripts are not identical
+            ea_data = er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
     # Transcripts are not identical
     else:
-        strand = list(set([x.strand for x in tx1_bed]))[0]
-        raw_ers_bed = tx1_bed.cat(tx2_bed, postmerge=True)
-        raw_ers_list = [str(x).split() for x in raw_ers_bed]
-        er_id = 1
-        ers_list = []
-        for i in raw_ers_list:
-            i.extend([f"{gene_id}:ER{er_id}", '0', strand])
-            ers_list.append("\t".join(i))
-            er_id += 1
-        ers_str = "\n".join(ers_list)
-        # logger.debug("ERs str:\n{}", ers_str)
-        ers_bed = BedTool(ers_str, from_string=True)
-        er_data = {}
-        er_datum = namedtuple('ER', ['chrom', 'start', 'end', 'strand'])
-        for er in ers_bed:
-            er_data[er.name] = er_datum(er.chrom, er.start, er.end, er.strand)
-        ef_tx1 = tx1_bed.subtract(tx2_bed)
-        ef_tx2 = tx2_bed.subtract(tx1_bed)
-        ef_both = tx1_bed.intersect(tx2_bed)
-        efs_raw = ef_tx1.cat(ef_tx2, postmerge=False).cat(ef_both, postmerge=False).sort()
-        efs_er = ers_bed.intersect(efs_raw).sort()
-        efs_list = []
-        for i in efs_er:
-            if efs_list == []:
-                old_er = i.name
-                ef_id = 1
-            if i.name != old_er:
-                ef_id = 1
-                old_er = i.name
-            ef_name = i.name
-            ef_name = f"{ef_name}:EF{ef_id}"
-            ef_str = f"{i.chrom}\t{i.start}\t{i.end}\t{ef_name}\t {i.score}\t{i.strand}"
-            efs_list.append(ef_str)
-            ef_id += 1
-        efs_str = "\n".join(efs_list)
-        efs_bed = BedTool(efs_str, from_string=True)
-        common_efs_set = set([x.name for x in efs_bed.intersect(ef_both)])
-        common_efs = list(common_efs_set)
-        tx1_efs = list(set([x.name for x in efs_bed.intersect(tx1_bed)]).difference(common_efs_set))
-        tx2_efs = list(set([x.name for x in efs_bed.intersect(tx2_bed)]).difference(common_efs_set))
-        ir_efs = get_intron_retention_efs(ers_bed, efs_bed, common_efs)
-
-        for ef in efs_bed:
-            ir_flag = '0'
-            ef_name = ef.name
-            er_name = ":".join(ef_name.split(':')[:-1])
-            if ef_name in ir_efs:
-                ir_flag = '1'
-            if ef_name in common_efs:
-                tx_list = f"{tx1_name}|{tx2_name}"
-            elif ef_name in tx1_efs:
-                tx_list = f"{tx1_name}"
-            elif ef_name in tx2_efs:
-                tx_list = f"{tx2_name}"
-            else:
-                logger.error(f"Cannot find the fragment {ef_name} in any fragment lists, skipping")
-            ea_datum = [gene_id, tx1_name, tx2_name, tx_list, ef_name, ef.chrom, ef.start, ef.end,
-                        ef.strand, ir_flag, er_name, er_data[er_name].chrom, er_data[er_name].start,
-                        er_data[er_name].end, er_data[er_name].strand]
-            ea_data.append(ea_datum)
-
+        ea_data = er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
     out_df = pd.DataFrame(ea_data, columns=ea_df_cols)
     junction_df = pd.DataFrame(junction_data, columns=jct_df_cols)
     return out_df, junction_df
+
+
+def er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id):
+    """Convert ERs (Exonic Regions) into EFs (Exonic Fragments) and analyze all er events"""
+    ea_data = []
+    strand = list(set([x.strand for x in tx1_bed]))[0]
+    # logger.debug("TX1: {}: \n{}", tx1_name, tx1_bed)
+    # logger.debug("TX2: {}: \n{}", tx2_name, tx2_bed)
+    raw_ers_bed = tx1_bed.cat(tx2_bed, postmerge=True)
+    raw_ers_list = [str(x).split() for x in raw_ers_bed]
+    er_id = 1
+    ers_list = []
+    for i in raw_ers_list:
+        i.extend([f"{gene_id}:ER{er_id}", '0', strand])
+        ers_list.append("\t".join(i))
+        er_id += 1
+    ers_str = "\n".join(ers_list)
+    # logger.debug("ERs for {} and {}: \n{}", tx1_name, tx2_name, ers_str)
+    # logger.debug("ERs str:\n{}", ers_str)
+    ers_bed = BedTool(ers_str, from_string=True)
+    er_data = {}
+    er_datum = namedtuple('ER', ['chrom', 'start', 'end', 'strand'])
+    for er in ers_bed:
+        er_data[er.name] = er_datum(er.chrom, er.start, er.end, er.strand)
+    ef_tx1 = tx1_bed.subtract(tx2_bed)
+    ef_tx2 = tx2_bed.subtract(tx1_bed)
+    ef_both = tx1_bed.intersect(tx2_bed)
+    efs_raw = ef_tx1.cat(ef_tx2, postmerge=False).cat(ef_both, postmerge=False).sort()
+    # logger.debug("Raw EFs: \n{}", efs_raw)
+    efs_er = ers_bed.intersect(efs_raw).sort()
+    # logger.debug("EFs in ERs: \n{}", efs_er)
+    efs_list = []
+    ef_id = 1
+    er_name = ''
+    for i in efs_er:
+        if i.name != er_name:
+            ef_id = 1
+        er_name = i.name
+        ef_name = f"{er_name}:EF{ef_id}"
+        ef_str = f"{i.chrom}\t{i.start}\t{i.end}\t{ef_name}\t {i.score}\t{i.strand}"
+        efs_list.append(ef_str)
+        ef_id += 1
+    efs_str = "\n".join(efs_list)
+    # logger.debug("Final EFs: \n{}", efs_str)
+    efs_bed = BedTool(efs_str, from_string=True)
+    common_efs_set = set([x.name for x in efs_bed.intersect(ef_both)])
+    common_efs = list(common_efs_set)
+    tx1_efs = list(set([x.name for x in efs_bed.intersect(tx1_bed)]).difference(common_efs_set))
+    tx2_efs = list(set([x.name for x in efs_bed.intersect(tx2_bed)]).difference(common_efs_set))
+    ir_efs = get_intron_retention_efs(ers_bed, efs_bed, common_efs)
+
+    for ef in efs_bed:
+        ir_flag = '0'
+        ef_name = ef.name
+        er_name = ":".join(ef_name.split(':')[:-1])
+        if ef_name in ir_efs:
+            ir_flag = '1'
+        if ef_name in common_efs:
+            tx_list = f"{tx1_name}|{tx2_name}"
+        elif ef_name in tx1_efs:
+            tx_list = f"{tx1_name}"
+        elif ef_name in tx2_efs:
+            tx_list = f"{tx2_name}"
+        else:
+            logger.error(f"Cannot find the fragment {ef_name} in any fragment lists, skipping")
+        ea_datum = [gene_id, tx1_name, tx2_name, tx_list, ef_name, ef.chrom, ef.start, ef.end,
+                    ef.strand, ir_flag, er_name, er_data[er_name].chrom, er_data[er_name].start,
+                    er_data[er_name].end, er_data[er_name].strand]
+        ea_data.append(ea_datum)
+    logger.debug("Final EA data: \n{}", ea_data)
+    return ea_data
+
+
+def format_identical_pair_ea(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id):
+    ea_data = []
+    er_id, ef_id = 1, 1
+    for i in tx1_bed:
+        er_name = f"{gene_id}:ER{er_id}"
+        ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+        ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+                        i.chrom, i.start, i.end, i.strand, 0, er_name, i.chrom, i.start,
+                        i.end, i.strand])
+        er_id += 1
+    ea_df = pd.DataFrame(ea_data, columns=ea_df_cols)
+    return ea_df
 
 
 def do_ea(tx_data):
