@@ -351,22 +351,25 @@ def do_ea_pair(data):
     tx1_bed = BedTool(tx1_bed_str).saveas()
     tx2_bed_str = data[tx2_name]
     tx2_bed = BedTool(tx2_bed_str).saveas()
+    # logger.debug("Comparing {} vs {}", tx1_name, tx2_name)
+    # logger.debug("TX1: {}: \n{}", tx1_name, tx1_bed)
+    # logger.debug("TX2: {}: \n{}", tx2_name, tx2_bed)
     junction_data = create_junction_catalog(gene_id, tx1_name, tx1_bed)
     junction_data.extend(create_junction_catalog(gene_id, tx2_name, tx2_bed))
     # logger.debug("Junction data: \n{}", "\n".join(junction_data))
-    t2_t1_v_intersect = tx2_bed.intersect(tx1_bed, v=True)
-    t1_t2_v_intersect = tx1_bed.intersect(tx2_bed, v=True)
     # Check if identical - enumerate EFs from tx1 if true and return
-    if t1_t2_v_intersect == t2_t1_v_intersect:
+    sub_2_from_1 = tx1_bed.subtract(tx2_bed)
+    sub_1_from_2 = tx1_bed.subtract(tx2_bed)
+    if sub_2_from_1 == sub_1_from_2:
         logger.info("ERs are identical for {}.", " / ".join(tx_names))
         # Represent the features as if EFs were generated from non-identical ERs to generalize
         er_id, ef_id = 1, 1
         for i in tx1_bed:
             er_name = f"{gene_id}:ER{er_id}"
             ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
-            ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name, i.chrom,
-                            i.start, i.end, i.strand, 0, er_name, i.chrom, i.start, i.end,
-                            i.strand])
+            ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+                            i.chrom, i.start, i.end, i.strand, 0, er_name, i.chrom, i.start,
+                            i.end, i.strand])
             er_id += 1
         ea_df = pd.DataFrame(ea_data, columns=ea_df_cols)
         junction_df = pd.DataFrame(junction_data, columns=jct_df_cols)
