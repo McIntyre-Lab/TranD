@@ -39,17 +39,21 @@ from pybedtools import BedTool
 
 
 # DATA OUTPUT CONFIGURATION
-common_outfiles = {'ea_pairwise_fh': 'pairwise_ea.csv', 'jc_fh': 'junction_catalog.csv'}
+common_outfiles = {'ea_fh': 'event_analysis.csv', 'jc_fh': 'junction_catalog.csv'}
 
 ea_df_cols = ['gene_id', 'transcript_1', 'transcript_2', 'transcript_id', 'ef_id', 'ef_chr',
               'ef_start', 'ef_end', 'ef_strand', 'ef_ir_flag', 'er_id', 'er_chr', 'er_start',
               'er_end', 'er_strand']
 jct_df_cols = ['gene_id', 'transcript_id', 'coords']
 
+ea_df_gene_cols = ['gene_id', 'transcript_1', 'transcript_2', 'transcript_id', 'ef_id', 'ef_chr',
+              'ef_start', 'ef_end', 'ef_strand', 'ef_ir_flag', 'er_id', 'er_chr', 'er_start',
+              'er_end', 'er_strand']
+
 
 # Later when TD has been added
 # common_outfiles = {'ea_er_fh': 'gene_ea_exonic_regions.csv', 'ea_ef_fh':
-#                    'gene_ea_exonic_fragments.csv', 'ea_pairwise_fh': 'pairwise_ea.csv', 'td_fh':
+#                    'gene_ea_exonic_fragments.csv', 'ea_fh': 'pairwise_ea.csv', 'td_fh':
 #                    'transcript_distances.csv'}
 
 two_gtfs_outfiles = {'gtf1_fh': 'gtf1_only.gtf', 'gtf2_fh': 'gtf2_only.gtf'}
@@ -126,8 +130,6 @@ def parse_args(print_help=False):
     if args.ea_mode == 'gene':
         if len(args.infiles) > 1:
             logger.warning("EA 'gene' mode is ignored for two GTF files - only pairwise is done.")
-        else:
-            logger.warning("No TD will be done as full-gene EA was specified.")
     return args
 
 
@@ -343,12 +345,23 @@ def do_ea_gene(data):
     """
     Event Analysis on a pair of transcripts
     """
-    ea_data = []
     gene_id = data['gene_id']
-    print(ea_data)
-    print(gene_id)
-    return "one", "two"
-    # return ea_df, junction_df
+    logger.debug("Gene EA on {}", gene_id)
+    logger.debug(data)
+    tx_names = data['transcript_list']
+    tx_data = {}
+    for tx_name in tx_names:
+        tx_bed_str = data[tx_name]
+        logger.debug("Gene EA Raw Tx: {}\n{}", tx_name, tx_bed_str)
+        tx_data[tx_name] = BedTool(tx_bed_str).saveas()
+    tx0 = tx_names[0]
+    junction_data = create_junction_catalog(gene_id, tx0, tx_data[tx0])
+    for tx_name in tx_names[1:]:
+        junction_data.extend(create_junction_catalog(gene_id, tx_name, tx_data[tx_name]))
+    junction_df = pd.DataFrame(junction_data, columns=jct_df_cols)
+    logger.debug(tx_data)
+    ea_df = pd.DataFrame(columns=ea_df_gene_cols)
+    return ea_df, junction_df
 
 
 def do_ea_pair(data):
@@ -478,13 +491,13 @@ def do_ea(tx_data):
         bed_data = prep_bed_for_ea(tx_data)
     except ValueError:
         raise
-    # logger.debug(bed_data)
     if len(bed_data) == 4:
         ea_results, jct_catalog = do_ea_pair(bed_data)
         return ea_results, jct_catalog
     # full-gene, more transcripts than two
     else:
-        raise NotImplementedError
+        ea_results, jct_catalog = do_ea_gene(bed_data)
+        return ea_results, jct_catalog
 
 
 def ea_pairwise(data, out_fhs, gene_id):
@@ -520,7 +533,7 @@ def process_single_file(infile, ea_mode, outdir, outfiles):
     logger.info("Input file: {}", infile)
     logger.debug("Output files: {}", outfiles)
     out_fhs = open_output_files(outdir, outfiles)
-    out_fhs['ea_pairwise_fh'].write_text(",".join(ea_df_cols) + '\n')
+    out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
     out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
     data = read_exon_data_from_file(infile)
     genes = data.groupby("gene_id")
@@ -538,14 +551,14 @@ def process_single_file(infile, ea_mode, outdir, outfiles):
         if ea_mode == 'gene':
             try:
                 ea_data, jct_data = do_ea(gene_df)
-                write_output(ea_data, out_fhs, 'ea_pairwise_fh')
+                write_output(ea_data, out_fhs, 'ea_fh')
                 write_output(jct_data, out_fhs, 'jc_fh')
             except ValueError as e:
                 logger.error(e)
                 continue
         else:
             ea_data, jct_data = ea_pairwise(gene_df, out_fhs, gene)
-            write_output(ea_data, out_fhs, 'ea_pairwise_fh')
+            write_output(ea_data, out_fhs, 'ea_fh')
             write_output(jct_data, out_fhs, 'jc_fh')
 
 
@@ -587,7 +600,7 @@ def process_two_files(infiles, outdir, outfiles):
     """Compare transcript pairs between two GTF files."""
     logger.info("Input files: {}", infiles)
     out_fhs = open_output_files(outdir, outfiles)
-    out_fhs['ea_pairwise_fh'].write_text(",".join(ea_df_cols) + '\n')
+    out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
     out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
     infile_1 = infiles[0]
     infile_2 = infiles[1]
@@ -625,7 +638,7 @@ def process_two_files(infiles, outdir, outfiles):
         except ValueError as e:
             logger.error(e)
             continue
-        write_output(ea_data, out_fhs, 'ea_pairwise_fh')
+        write_output(ea_data, out_fhs, 'ea_fh')
         write_output(jct_data, out_fhs, 'jc_fh')
 
 
