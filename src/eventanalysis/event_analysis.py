@@ -372,29 +372,40 @@ def do_ea_pair(data):
     tx_names = data['transcript_list']
     tx1_name, tx2_name = tx_names[0], tx_names[1]
     tx1_bed_str = data[tx1_name]
-    tx1_bed = BedTool(tx1_bed_str).saveas()
+    tx1_bed = BedTool(tx1_bed_str)
     tx2_bed_str = data[tx2_name]
-    tx2_bed = BedTool(tx2_bed_str).saveas()
+    tx2_bed = BedTool(tx2_bed_str)
     logger.debug("Comparing {} vs {}", tx1_name, tx2_name)
-    junction_data = create_junction_catalog(gene_id, tx1_name, tx1_bed)
-    junction_data.extend(create_junction_catalog(gene_id, tx2_name, tx2_bed))
-    # Check if identical - enumerate EFs from tx1 if true and return
-    t2_t1_v_intersect = tx2_bed.intersect(tx1_bed, v=True)
-    t1_t2_v_intersect = tx1_bed.intersect(tx2_bed, v=True)
-    # Double step verification to get a bit more performance
-    if t1_t2_v_intersect == t2_t1_v_intersect:
-        sub_2_from_1 = tx2_bed.subtract(tx1_bed)
-        sub_1_from_2 = tx1_bed.subtract(tx2_bed)
-        if sub_2_from_1 == sub_1_from_2:
-            # Transcripts are identical
-            logger.info("ERs are identical for {}.", " / ".join(tx_names))
-            ea_data = format_identical_pair_ea(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
-        else:
-            # Transcripts are not identical
-            ea_data = er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
-    # Transcripts are not identical
+    junction_data1 = create_junction_catalog(gene_id, tx1_name, tx1_bed)
+    junction_data2 = create_junction_catalog(gene_id, tx2_name, tx2_bed)
+    junction_str1 = "|".join(pd.DataFrame(junction_data1,columns=['gene_id','transcript_id','junction_id'])['junction_id'])
+    junction_str2 = "|".join(pd.DataFrame(junction_data2,columns=['gene_id','transcript_id','junction_id'])['junction_id'])
+    junction_data = junction_data1 + junction_data2
+    # Check if transcripts are full-splice match (all junctions are the same)
+    if junction_str1 == junction_str2:
+        logger.info("Junctions are identical for {}.", " / ".join(tx_names))
+        # !!! Add calculation of distances (will only need to calculate the difference of 5' and 3' ends)
     else:
-        ea_data = er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
+        tx1_bed = BedTool(tx1_bed_str).saveas()
+        tx2_bed_str = data[tx2_name]
+        tx2_bed = BedTool(tx2_bed_str).saveas()
+        # Check if identical - enumerate EFs from tx1 if true and return
+        t2_t1_v_intersect = tx2_bed.intersect(tx1_bed, v=True)
+        t1_t2_v_intersect = tx1_bed.intersect(tx2_bed, v=True)
+        # Double step verification to get a bit more performance
+        if t1_t2_v_intersect == t2_t1_v_intersect:
+            sub_2_from_1 = tx2_bed.subtract(tx1_bed)
+            sub_1_from_2 = tx1_bed.subtract(tx2_bed)
+            if sub_2_from_1 == sub_1_from_2:
+                # Transcripts are identical
+                logger.info("Exons are identical for {}.", " / ".join(tx_names))
+                ea_data = format_identical_pair_ea(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
+            else:
+                # Transcripts are not identical
+                ea_data = er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
+        # Transcripts are not identical
+        else:
+            ea_data = er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
     out_df = pd.DataFrame(ea_data, columns=ea_df_cols)
     junction_df = pd.DataFrame(junction_data, columns=jct_df_cols)
     return out_df, junction_df
@@ -486,7 +497,7 @@ def format_identical_pair_ea(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id):
 
 
 def do_ea(tx_data):
-    """Perform even analysis using pybedtools on bed string data"""
+    """Perform event analysis using pybedtools on bed string data"""
     try:
         bed_data = prep_bed_for_ea(tx_data)
     except ValueError:
