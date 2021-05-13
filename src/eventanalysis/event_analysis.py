@@ -382,9 +382,34 @@ def do_ea_pair(data):
     junction_str2 = "|".join(pd.DataFrame(junction_data2,columns=['gene_id','transcript_id','junction_id'])['junction_id'])
     junction_data = junction_data1 + junction_data2
     # Check if transcripts are full-splice match (all junctions are the same)
+    same_start = False
+    same_end = False
     if junction_str1 == junction_str2:
-        logger.info("Junctions are identical for {}.", " / ".join(tx_names))
-        # !!! Add calculation of distances (will only need to calculate the difference of 5' and 3' ends)
+        # Check if start coordinates of the transcripts the same
+        if pd.DataFrame(tx1_bed_str)[1].min() == pd.DataFrame(tx2_bed_str)[1].min():
+            same_start = True
+        # Check if end coordinates of transcripts are also the same
+        if pd.DataFrame(tx1_bed_str)[2].max() == pd.DataFrame(tx2_bed_str)[2].max():
+            same_end = True
+        if same_start and same_end:
+            # Transcripts are identical
+            logger.info("Exons are identical for {}.", " / ".join(tx_names))
+            ea_data = format_identical_pair_ea(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
+        elif same_start and not same_end:
+            # Start coordinates and junctions are the same
+            logger.info("Junctions and start coordinates are identical for {}.", " / ".join(tx_names))
+            ea_data = format_fsm_pair_ea(tx1_bed, tx2_bed, tx1_bed_str, tx2_bed_str, tx1_name, tx2_name, gene_id, side_diff="end")
+            # !!! Add calculation of distances (will only need to calculate the difference of 3' ends
+        elif same_end and not same_start:
+            # End coordinates and junctions are the same
+            logger.info("Junctions and end coordinates are identical for {}.", " / ".join(tx_names))
+            ea_data = format_fsm_pair_ea(tx1_bed, tx2_bed, tx1_bed_str, tx2_bed_str, tx1_name, tx2_name, gene_id, side_diff="start")
+            # !!! Add calculation of distances (will only need to calculate the difference of 5' ends
+        else:
+            # Junctions are the same and ends are both different
+            logger.info("Junctions are identical for {}.", " / ".join(tx_names))
+            ea_data = format_fsm_pair_ea(tx1_bed, tx2_bed, tx1_bed_str, tx2_bed_str, tx1_name, tx2_name, gene_id, side_diff="both")
+            # !!! Add calculation of distances (will only need to calculate the difference of 5' and 3' ends)
     else:
         tx1_bed = BedTool(tx1_bed_str).saveas()
         tx2_bed_str = data[tx2_name]
@@ -495,6 +520,50 @@ def format_identical_pair_ea(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id):
     ea_df = pd.DataFrame(ea_data, columns=ea_df_cols)
     return ea_df
 
+# !!! Below function potentially can replace format_identical_pair_ea (side = "none", or anything not "start", "end", or "both")
+def format_fsm_pair_ea(tx1_bed, tx2_bed, tx1_bed_str, tx2_bed_str, tx1_name, tx2_name, gene_id, side_diff):
+    ea_data = []
+    er_id = 1
+    max_er_id = len(tx1_bed)
+    for i in tx1_bed:
+        ef_id = 1
+        if er_id == 1 and (side_diff == "start" or side_diff == "both"):
+            tx1_start = pd.DataFrame(tx1_bed_str)[1].min()
+            tx2_start = pd.DataFrame(tx2_bed_str)[1].min()
+            min_start = min(tx1_start,tx2_start)
+            max_start = max(tx1_start,tx2_start)
+            er_name = f"{gene_id}:ER{er_id}"
+            ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+            ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+                            i.chrom, min_start, max_start, i.strand, 0, er_name, i.chrom, min_start,
+                            i.end, i.strand])
+            ef_id += 1
+            ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+                            i.chrom, max_start, i.end, i.strand, 0, er_name, i.chrom, min_start,
+                            i.end, i.strand])
+        elif er_id == max_er_id and (side_diff == "end" or side_diff == "both"):
+            tx1_end = pd.DataFrame(tx1_bed_str)[2].max()
+            tx2_end = pd.DataFrame(tx2_bed_str)[2].max()
+            min_end = min(tx1_end,tx2_end)
+            max_end = max(tx1_end,tx2_end)
+            er_name = f"{gene_id}:ER{er_id}"
+            ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+            ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+                            i.chrom, i.start, min_end, i.strand, 0, er_name, i.chrom, i.start,
+                            max_end, i.strand])
+            ef_id += 1
+            ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+                            i.chrom, min_end, max_end, i.strand, 0, er_name, i.chrom, i.start,
+                            max_end, i.strand])
+        else:
+            er_name = f"{gene_id}:ER{er_id}"
+            ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+            ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+                            i.chrom, i.start, i.end, i.strand, 0, er_name, i.chrom, i.start,
+                            i.end, i.strand])
+        er_id += 1
+    ea_df = pd.DataFrame(ea_data, columns=ea_df_cols)
+    return ea_df
 
 def do_ea(tx_data):
     """Perform event analysis using pybedtools on bed string data"""
