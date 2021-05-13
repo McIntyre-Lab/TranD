@@ -37,6 +37,8 @@ from numpy import nan
 from pathlib import Path
 from pybedtools import BedTool
 
+# Import transcript distance functions and variables
+import transcript_distance as TD
 
 # DATA OUTPUT CONFIGURATION
 common_outfiles = {'ea_fh': 'event_analysis.csv', 'jc_fh': 'junction_catalog.csv'}
@@ -50,7 +52,7 @@ ea_df_gene_cols = ['gene_id', 'transcript_1', 'transcript_2', 'transcript_id', '
               'ef_start', 'ef_end', 'ef_strand', 'ef_ir_flag', 'er_id', 'er_chr', 'er_start',
               'er_end', 'er_strand']
 
-
+pairwise_outfiles = {'td_fh':'pairwise_transcript_distance.csv'}
 # Later when TD has been added
 # common_outfiles = {'ea_er_fh': 'gene_ea_exonic_regions.csv', 'ea_ef_fh':
 #                    'gene_ea_exonic_fragments.csv', 'ea_fh': 'pairwise_ea.csv', 'td_fh':
@@ -400,7 +402,9 @@ def do_ea_pair(data):
     # Check if transcripts are full-splice match (all junctions are the same)
     same_start = False
     same_end = False
+    is_fsm = False
     if junction_str1 == junction_str2:
+        is_fsm = True
         # Check if start coordinates of the transcripts the same
         if pd.DataFrame(tx1_bed_str)[1].min() == pd.DataFrame(tx2_bed_str)[1].min():
             same_start = True
@@ -433,7 +437,8 @@ def do_ea_pair(data):
         ea_data = er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
     out_df = pd.DataFrame(ea_data, columns=ea_df_cols)
     junction_df = pd.DataFrame(junction_data, columns=jct_df_cols)
-    return out_df, junction_df
+    td_df = pd.DataFrame(TD.calculate_distance(out_df, junction_df, gene_id, tx1_name, tx2_name, fsm=is_fsm)).T
+    return out_df, junction_df, td_df
 
 
 def er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id):
@@ -542,7 +547,11 @@ def format_fsm_pair_ea(tx1_bed_str, tx2_bed_str, tx1_name, tx2_name, gene_id, si
             max_start = max(tx1_start,tx2_start)
             er_name = f"{gene_id}:ER{er_id}"
             ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
-            ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+            if min_start == tx1_start:
+                tx_name = tx1_name
+            else:
+                tx_name = tx2_name
+            ea_data.append([gene_id, tx1_name, tx2_name, f"{tx_name}", ef_name,
                             i.chrom, min_start, max_start, i.strand, 0, er_name, i.chrom, min_start,
                             i.end, i.strand])
             ef_id += 1
@@ -562,7 +571,11 @@ def format_fsm_pair_ea(tx1_bed_str, tx2_bed_str, tx1_name, tx2_name, gene_id, si
                             max_end, i.strand])
             ef_id += 1
             ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
-            ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+            if max_end == tx1_end:
+                tx_name = tx1_name
+            else:
+                tx_name = tx2_name
+            ea_data.append([gene_id, tx1_name, tx2_name, f"{tx_name}", ef_name,
                             i.chrom, min_end, max_end, i.strand, 0, er_name, i.chrom, i.start,
                             max_end, i.strand])
         else:
@@ -582,8 +595,8 @@ def do_ea(tx_data):
     except ValueError:
         raise
     if len(bed_data) == 4:
-        ea_results, jct_catalog = do_ea_pair(bed_data)
-        return ea_results, jct_catalog
+        ea_results, jct_catalog, transcript_distance = do_ea_pair(bed_data)
+        return ea_results, jct_catalog, transcript_distance
     # full-gene, more transcripts than two
     else:
         ea_results, jct_catalog = do_ea_gene(bed_data)
@@ -601,21 +614,23 @@ def ea_pairwise(data, out_fhs, gene_id):
     transcript_pairs = list(itertools.combinations(tx_data.keys(), 2))
     ea_df = pd.DataFrame(columns=ea_df_cols)
     jct_df = pd.DataFrame(columns=jct_df_cols)
+    td_df = pd.DataFrame(columns=TD.td_df_cols)
     for tx_pair in transcript_pairs:
         # try:
         tx_df_1 = tx_data[tx_pair[0]]
         tx_df_2 = tx_data[tx_pair[1]]
         tx_pair_data = pd.concat([tx_df_1, tx_df_2])
         # try:
-        ea_data, jct_data = do_ea(tx_pair_data)
+        ea_data, jct_data, td_data = do_ea(tx_pair_data)
         ea_df = ea_df.append(ea_data)
         jct_df = jct_df.append(jct_data)
+        td_df = td_df.append(td_data)
         # except ValueError as e:
         #     logger.error(e)
         #     exit(1)
         #     #     # DEBUG, exit for now, just write to rejects later
         #     #     # continue
-    return ea_df, jct_df
+    return ea_df, jct_df, td_df
 
 
 def process_single_file(infile, ea_mode, outdir, outfiles):
@@ -647,9 +662,11 @@ def process_single_file(infile, ea_mode, outdir, outfiles):
                 logger.error(e)
                 continue
         else:
-            ea_data, jct_data = ea_pairwise(gene_df, out_fhs, gene)
+            out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
+            ea_data, jct_data, td_data = ea_pairwise(gene_df, out_fhs, gene)
             write_output(ea_data, out_fhs, 'ea_fh')
             write_output(jct_data, out_fhs, 'jc_fh')
+            write_output(td_data, out_fhs, 'td_fh')
 
 
 def add_suffix(value, suffix):
@@ -665,6 +682,7 @@ def ea_two_files(f1_data, f2_data, out_fhs, gene_id):
     logger.debug("Transcript combinations to process for {}: \n{}", gene_id, transcript_combos)
     ea_df = pd.DataFrame(columns=ea_df_cols)
     jct_df = pd.DataFrame(columns=jct_df_cols)
+    td_df = pd.DataFrame(columns=TD.td_df_cols)
     for pair in transcript_combos:
         # try:
         tx_df_1 = f1_data[f1_data['transcript_id'] == pair[0]]
@@ -673,9 +691,10 @@ def ea_two_files(f1_data, f2_data, out_fhs, gene_id):
         tx_df_2_s = tx_df_2.assign(transcript_id=lambda x: x.transcript_id + '_d2')
         tx_pair_data = pd.concat([tx_df_1_s, tx_df_2_s])
         try:
-            ea_data, jct_data = do_ea(tx_pair_data)
+            ea_data, jct_data, td_data = do_ea(tx_pair_data)
             ea_df = ea_df.append(ea_data)
             jct_df = jct_df.append(jct_data)
+            td_df = td_df.append(td_data)
         except ValueError:
             raise
         # except ValueError as e:
@@ -692,6 +711,7 @@ def process_two_files(infiles, outdir, outfiles):
     out_fhs = open_output_files(outdir, outfiles)
     out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
     out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
+    out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
     infile_1 = infiles[0]
     infile_2 = infiles[1]
     in_f1 = read_exon_data_from_file(infile_1)
@@ -724,12 +744,13 @@ def process_two_files(infiles, outdir, outfiles):
         logger.debug(f1_data.head())
         logger.debug(f2_data.head())
         try:
-            ea_data, jct_data = ea_two_files(f1_data, f2_data, out_fhs, gene)
+            ea_data, jct_data, td_data = ea_two_files(f1_data, f2_data, out_fhs, gene)
         except ValueError as e:
             logger.error(e)
             continue
         write_output(ea_data, out_fhs, 'ea_fh')
         write_output(jct_data, out_fhs, 'jc_fh')
+        write_output(td_data, out_fhs, 'td_fh')
 
 
 def main():
@@ -741,13 +762,16 @@ def main():
     outdir = handle_outdir(args)
     ea_mode = args.ea_mode
     if len(infiles) == 1:
-        logger.debug("Single file pairwise analysis")
+        logger.debug("Single file {} analysis", ea_mode)
         outfiles = common_outfiles
+        if ea_mode == "pairwise":
+            outfiles.update(pairwise_outfiles)
         process_single_file(infiles[0], ea_mode, outdir, outfiles)
     else:
         logger.debug("Two files pairwise analysis")
         outfiles = common_outfiles
         outfiles.update(two_gtfs_outfiles)
+        outfiles.update(pairwise_outfiles)
         process_two_files(infiles, outdir, outfiles)
     # The End
 
