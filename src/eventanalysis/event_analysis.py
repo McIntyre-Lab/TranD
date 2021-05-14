@@ -393,6 +393,8 @@ def do_ea_pair(data):
     tx1_name, tx2_name = tx_names[0], tx_names[1]
     tx1_bed_str = data[tx1_name]
     tx2_bed_str = data[tx2_name]
+    tx1_bed_df = pd.DataFrame(tx1_bed_str,columns=['chrom','start','end','name','score','strand'])
+    tx2_bed_df = pd.DataFrame(tx2_bed_str,columns=['chrom','start','end','name','score','strand'])
     logger.debug("Comparing {} vs {}", tx1_name, tx2_name)
     junction_data1 = create_junction_catalog_str(gene_id, tx1_name, tx1_bed_str)
     junction_data2 = create_junction_catalog_str(gene_id, tx2_name, tx2_bed_str)
@@ -404,32 +406,45 @@ def do_ea_pair(data):
     same_end = False
     is_fsm = False
     if junction_str1 == junction_str2:
-        is_fsm = True
-        # Check if start coordinates of the transcripts the same
-        if pd.DataFrame(tx1_bed_str)[1].min() == pd.DataFrame(tx2_bed_str)[1].min():
-            same_start = True
-        # Check if end coordinates of transcripts are also the same
-        if pd.DataFrame(tx1_bed_str)[2].max() == pd.DataFrame(tx2_bed_str)[2].max():
-            same_end = True
-        if same_start and same_end:
-            # Transcripts are identical
-            logger.info("Exons are identical for {}.", " / ".join(tx_names))
-            ea_data = format_fsm_pair_ea(tx1_bed_str, tx2_bed_str, tx1_name, tx2_name, gene_id, side_diff="none")
-        elif same_start and not same_end:
-            # Start coordinates and junctions are the same
-            logger.info("Junctions and start coordinates are identical for {}.", " / ".join(tx_names))
-            ea_data = format_fsm_pair_ea(tx1_bed_str, tx2_bed_str, tx1_name, tx2_name, gene_id, side_diff="end")
-            # !!! Add calculation of distances (will only need to calculate the difference of 3' ends
-        elif same_end and not same_start:
-            # End coordinates and junctions are the same
-            logger.info("Junctions and end coordinates are identical for {}.", " / ".join(tx_names))
-            ea_data = format_fsm_pair_ea(tx1_bed_str, tx2_bed_str, tx1_name, tx2_name, gene_id, side_diff="start")
-            # !!! Add calculation of distances (will only need to calculate the difference of 5' ends
+        # Check for non-overlapping mono-exon transcript pairs
+        if tx1_bed_df['start'].min() < tx2_bed_df['start'].min() and tx1_bed_df['end'].max() <= tx2_bed_df['start'].min():
+            # T1 completely upstream of T2
+            tx1_bed = BedTool(tx1_bed_str).saveas()
+            tx2_bed = BedTool(tx2_bed_str).saveas()
+            ea_data = er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
+        elif tx2_bed_df['start'].min() < tx1_bed_df['start'].min() and tx2_bed_df['end'].max() <= tx1_bed_df['start'].min():
+            # T2 completely upstream of T1
+            tx1_bed = BedTool(tx1_bed_str).saveas()
+            tx2_bed = BedTool(tx2_bed_str).saveas()
+            ea_data = er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
         else:
-            # Junctions are the same and ends are both different
-            logger.info("Junctions are identical for {}.", " / ".join(tx_names))
-            ea_data = format_fsm_pair_ea(tx1_bed_str, tx2_bed_str, tx1_name, tx2_name, gene_id, side_diff="both")
-            # !!! Add calculation of distances (will only need to calculate the difference of 5' and 3' ends)
+            # Some overlap present between transcripts
+            is_fsm = True
+            # Check if start coordinates of the transcripts the same
+            if tx1_bed_df['start'].min() == tx2_bed_df['start'].min():
+                same_start = True
+            # Check if end coordinates of transcripts are also the same
+            if tx1_bed_df['end'].max() == tx2_bed_df['end'].max():
+                same_end = True
+            if same_start and same_end:
+                # Transcripts are identical
+                logger.info("Exons are identical for {}.", " / ".join(tx_names))
+                ea_data = format_fsm_pair_ea(tx1_bed_df, tx2_bed_df, tx1_name, tx2_name, gene_id, side_diff="none")
+            elif same_start and not same_end:
+                # Start coordinates and junctions are the same
+                logger.info("Junctions and start coordinates are identical for {}.", " / ".join(tx_names))
+                ea_data = format_fsm_pair_ea(tx1_bed_df, tx2_bed_df, tx1_name, tx2_name, gene_id, side_diff="end")
+                # !!! Add calculation of distances (will only need to calculate the difference of 3' ends
+            elif same_end and not same_start:
+                # End coordinates and junctions are the same
+                logger.info("Junctions and end coordinates are identical for {}.", " / ".join(tx_names))
+                ea_data = format_fsm_pair_ea(tx1_bed_df, tx2_bed_df, tx1_name, tx2_name, gene_id, side_diff="start")
+                # !!! Add calculation of distances (will only need to calculate the difference of 5' ends
+            else:
+                # Junctions are the same and ends are both different
+                logger.info("Junctions are identical for {}.", " / ".join(tx_names))
+                ea_data = format_fsm_pair_ea(tx1_bed_df, tx2_bed_df, tx1_name, tx2_name, gene_id, side_diff="both")
+                # !!! Add calculation of distances (will only need to calculate the difference of 5' and 3' ends)
     else:
         # Junctions are not identical (there is some alternate donor/acceptor/exon)
         tx1_bed = BedTool(tx1_bed_str).saveas()
@@ -526,14 +541,12 @@ def format_identical_pair_ea(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id):
     return ea_df
 
 # !!! Below function potentially can replace format_identical_pair_ea (side = "none", or anything not "start", "end", or "both")
-def format_fsm_pair_ea(tx1_bed_str, tx2_bed_str, tx1_name, tx2_name, gene_id, side_diff):
+def format_fsm_pair_ea(tx1_bed_df, tx2_bed_df, tx1_name, tx2_name, gene_id, side_diff):
     ea_data = []
     er_id = 1
-    tx1_bed_df = pd.DataFrame(tx1_bed_str,columns=['chrom','start','end','name','score','strand'])
     tx1_bed_df['start'] = tx1_bed_df['start'].astype(int)
     tx1_bed_df['end'] = tx1_bed_df['end'].astype(int)
     tx1_bed_df = tx1_bed_df.sort_values('start')
-    tx2_bed_df = pd.DataFrame(tx2_bed_str,columns=['chrom','start','end','name','score','strand'])
     tx2_bed_df['start'] = tx2_bed_df['start'].astype(int)
     tx2_bed_df['end'] = tx2_bed_df['end'].astype(int)
     tx2_bed_df = tx2_bed_df.sort_values('start')
@@ -807,7 +820,7 @@ def ea_two_files(f1_data, f2_data, out_fhs, gene_id):
         #     exit(1)
         #     #     # DEBUG, exit for now, just write to rejects later
         #     #     # continue
-    return ea_df, jct_df
+    return ea_df, jct_df, td_df
 
 
 def process_two_files(infiles, outdir, outfiles):
