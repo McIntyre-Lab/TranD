@@ -542,7 +542,7 @@ def format_fsm_pair_ea(tx1_bed_str, tx2_bed_str, tx1_name, tx2_name, gene_id, si
         ef_id = 1
         # Check first ER
         if er_id == 1:
-            # Make EF and ER for monoexon transcript pairs (must both be monoexon since junctions are identical)
+            # Monoexon - Make EF and ER for monoexon transcript pairs (must both be monoexon since junctions are identical)
             if er_id == max_er_id:
                 # Check if which ends are different
                 if side_diff == "start":
@@ -608,8 +608,12 @@ def format_fsm_pair_ea(tx1_bed_str, tx2_bed_str, tx1_name, tx2_name, gene_id, si
                                     i.chrom, max_start, min_end, i.strand, 0, er_name, i.chrom, min_start,
                                     max_end, i.strand])
                     ef_id += 1
+                    if max_end == tx1_end:
+                        tx_name = tx1_name
+                    else:
+                        tx_name = tx2_name
                     ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
-                    ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+                    ea_data.append([gene_id, tx1_name, tx2_name, f"{tx_name}", ef_name,
                                     i.chrom, min_end, max_end, i.strand, 0, er_name, i.chrom, min_start,
                                     max_end, i.strand])
                 else:
