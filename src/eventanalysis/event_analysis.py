@@ -589,11 +589,15 @@ def format_fsm_pair_ea(tx1_bed_str, tx2_bed_str, tx1_name, tx2_name, gene_id, si
                                 max_end, i.strand])
                 ef_id += 1
             else:
-                er_name = f"{gene_id}:ER{er_id}"
-                ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
-                ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
-                                i.chrom, i.start, i.end, i.strand, 0, er_name, i.chrom, i.start,
-                                i.end, i.strand])
+                # Skip for monoexon transcripts
+                if er_id == 1:
+                    continue
+                else:
+                    er_name = f"{gene_id}:ER{er_id}"
+                    ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+                    ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+                                    i.chrom, i.start, i.end, i.strand, 0, er_name, i.chrom, i.start,
+                                    i.end, i.strand])
         if er_id != 1 and er_id != max_er_id:
             er_name = f"{gene_id}:ER{er_id}"
             ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
