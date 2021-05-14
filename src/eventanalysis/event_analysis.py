@@ -540,50 +540,58 @@ def format_fsm_pair_ea(tx1_bed_str, tx2_bed_str, tx1_name, tx2_name, gene_id, si
     max_er_id = len(tx1_bed_df)
     for index,i in tx1_bed_df.iterrows():
         ef_id = 1
-        if er_id == 1 and (side_diff == "start" or side_diff == "both"):
-            tx1_start = tx1_bed_df['start'].min()
-            tx2_start = tx2_bed_df['start'].min()
-            min_start = min(tx1_start,tx2_start)
-            max_start = max(tx1_start,tx2_start)
-            er_name = f"{gene_id}:ER{er_id}"
-            ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
-            if min_start == tx1_start:
-                tx_name = tx1_name
+        if er_id == 1:
+            if (side_diff == "start" or side_diff == "both"):
+                tx1_start = tx1_bed_df['start'].min()
+                tx2_start = tx2_bed_df['start'].min()
+                min_start = min(tx1_start,tx2_start)
+                max_start = max(tx1_start,tx2_start)
+                er_name = f"{gene_id}:ER{er_id}"
+                ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+                if min_start == tx1_start:
+                    tx_name = tx1_name
+                else:
+                    tx_name = tx2_name
+                ea_data.append([gene_id, tx1_name, tx2_name, f"{tx_name}", ef_name,
+                                i.chrom, min_start, max_start, i.strand, 0, er_name, i.chrom, min_start,
+                                i.end, i.strand])
+                ef_id += 1
+                ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+                ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+                                i.chrom, max_start, i.end, i.strand, 0, er_name, i.chrom, min_start,
+                                i.end, i.strand])
             else:
-                tx_name = tx2_name
-            ea_data.append([gene_id, tx1_name, tx2_name, f"{tx_name}", ef_name,
-                            i.chrom, min_start, max_start, i.strand, 0, er_name, i.chrom, min_start,
-                            i.end, i.strand])
-            ef_id += 1
-            ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
-            ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
-                            i.chrom, max_start, i.end, i.strand, 0, er_name, i.chrom, min_start,
-                            i.end, i.strand])
-        if er_id == max_er_id and (side_diff == "end" or side_diff == "both"):
-            tx1_end = tx1_bed_df['end'].max()
-            tx2_end = tx2_bed_df['end'].max()
-            min_end = min(tx1_end,tx2_end)
-            max_end = max(tx1_end,tx2_end)
-            er_name = f"{gene_id}:ER{er_id}"
-            ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
-            ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
-                            i.chrom, i.start, min_end, i.strand, 0, er_name, i.chrom, i.start,
-                            max_end, i.strand])
-            ef_id += 1
-            ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
-            if max_end == tx1_end:
-                tx_name = tx1_name
+                er_name = f"{gene_id}:ER{er_id}"
+                ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+                ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+                                i.chrom, i.start, i.end, i.strand, 0, er_name, i.chrom, i.start,
+                                i.end, i.strand])
+        if er_id == max_er_id:
+            if (side_diff == "end" or side_diff == "both"):
+                tx1_end = tx1_bed_df['end'].max()
+                tx2_end = tx2_bed_df['end'].max()
+                min_end = min(tx1_end,tx2_end)
+                max_end = max(tx1_end,tx2_end)
+                er_name = f"{gene_id}:ER{er_id}"
+                ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+                ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+                                i.chrom, i.start, min_end, i.strand, 0, er_name, i.chrom, i.start,
+                                max_end, i.strand])
+                ef_id += 1
+                ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+                if max_end == tx1_end:
+                    tx_name = tx1_name
+                else:
+                    tx_name = tx2_name
+                ea_data.append([gene_id, tx1_name, tx2_name, f"{tx_name}", ef_name,
+                                i.chrom, min_end, max_end, i.strand, 0, er_name, i.chrom, i.start,
+                                max_end, i.strand])
             else:
-                tx_name = tx2_name
-            ea_data.append([gene_id, tx1_name, tx2_name, f"{tx_name}", ef_name,
-                            i.chrom, min_end, max_end, i.strand, 0, er_name, i.chrom, i.start,
-                            max_end, i.strand])
-        if (er_id != 1 and er_id != max_er_id) or (side_diff not in ["start","end","both"]):
-            er_name = f"{gene_id}:ER{er_id}"
-            ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
-            ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
-                            i.chrom, i.start, i.end, i.strand, 0, er_name, i.chrom, i.start,
-                            i.end, i.strand])
+                er_name = f"{gene_id}:ER{er_id}"
+                ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+                ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+                                i.chrom, i.start, i.end, i.strand, 0, er_name, i.chrom, i.start,
+                                i.end, i.strand])
         er_id += 1
     ea_df = pd.DataFrame(ea_data, columns=ea_df_cols)
     return ea_df
