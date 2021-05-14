@@ -75,8 +75,14 @@ def get_junction_distance(singlePair,junction_df,tx1_name,tx2_name,fsm=False):
             singlePair['junction_shared'] = "|".join(junction_df[junction_df['transcript_id']==tx1_name]['coords'])
     # Transcript pair does not share all junctions
     else:
+        # Check if both transcripts are monoexon but do not overlap (not fsm)
+        if len(junction_df) == 0:
+            singlePair[['num_junction_T1_only','num_junction_T2_only','num_junction_shared']] = 0
+            singlePair['prop_junction_diff'] = 0
+            singlePair['prop_junction_similar'] = 1
+            singlePair[['junction_T1_only','junction_T2_only','junction_shared']] = ""            
         # Check if one of the transcripts is monoexon (only junctions from one transcript and not the other)
-        if junction_df['transcript_id'].nunique() == 1:
+        elif junction_df['transcript_id'].nunique() == 1:
         # Only T1 is monoexon
             if tx1_name in junction_df['transcript_id'].unique():
                 singlePair[['num_junction_T1_only','num_junction_shared']] = 0
