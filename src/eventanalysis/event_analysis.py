@@ -559,7 +559,7 @@ def format_fsm_pair_ea(tx1_bed_str, tx2_bed_str, tx1_name, tx2_name, gene_id, si
             ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
                             i.chrom, max_start, i.end, i.strand, 0, er_name, i.chrom, min_start,
                             i.end, i.strand])
-        elif er_id == max_er_id and (side_diff == "end" or side_diff == "both"):
+        if er_id == max_er_id and (side_diff == "end" or side_diff == "both"):
             tx1_end = tx1_bed_df['end'].max()
             tx2_end = tx2_bed_df['end'].max()
             min_end = min(tx1_end,tx2_end)
@@ -578,7 +578,7 @@ def format_fsm_pair_ea(tx1_bed_str, tx2_bed_str, tx1_name, tx2_name, gene_id, si
             ea_data.append([gene_id, tx1_name, tx2_name, f"{tx_name}", ef_name,
                             i.chrom, min_end, max_end, i.strand, 0, er_name, i.chrom, i.start,
                             max_end, i.strand])
-        else:
+        if (er_id != 1 and er_id != max_er_id) or (side_diff not in ["start","end","both"]):
             er_name = f"{gene_id}:ER{er_id}"
             ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
             ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
