@@ -394,7 +394,13 @@ def do_ea_pair(data):
     tx1_bed_str = data[tx1_name]
     tx2_bed_str = data[tx2_name]
     tx1_bed_df = pd.DataFrame(tx1_bed_str,columns=['chrom','start','end','name','score','strand'])
+    tx1_bed_df['start'] = tx1_bed_df['start'].astype(int)
+    tx1_bed_df['end'] = tx1_bed_df['end'].astype(int)
+    tx1_bed_df = tx1_bed_df.sort_values('start')
     tx2_bed_df = pd.DataFrame(tx2_bed_str,columns=['chrom','start','end','name','score','strand'])
+    tx2_bed_df['start'] = tx2_bed_df['start'].astype(int)
+    tx2_bed_df['end'] = tx2_bed_df['end'].astype(int)
+    tx2_bed_df = tx2_bed_df.sort_values('start')
     logger.debug("Comparing {} vs {}", tx1_name, tx2_name)
     junction_data1 = create_junction_catalog_str(gene_id, tx1_name, tx1_bed_str)
     junction_data2 = create_junction_catalog_str(gene_id, tx2_name, tx2_bed_str)
@@ -544,12 +550,6 @@ def format_identical_pair_ea(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id):
 def format_fsm_pair_ea(tx1_bed_df, tx2_bed_df, tx1_name, tx2_name, gene_id, side_diff):
     ea_data = []
     er_id = 1
-    tx1_bed_df['start'] = tx1_bed_df['start'].astype(int)
-    tx1_bed_df['end'] = tx1_bed_df['end'].astype(int)
-    tx1_bed_df = tx1_bed_df.sort_values('start')
-    tx2_bed_df['start'] = tx2_bed_df['start'].astype(int)
-    tx2_bed_df['end'] = tx2_bed_df['end'].astype(int)
-    tx2_bed_df = tx2_bed_df.sort_values('start')
     max_er_id = len(tx1_bed_df)
     for index,i in tx1_bed_df.iterrows():
         ef_id = 1
@@ -636,7 +636,7 @@ def format_fsm_pair_ea(tx1_bed_df, tx2_bed_df, tx1_name, tx2_name, gene_id, side
                     ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
                                     i.chrom, i.start, i.end, i.strand, 0, er_name, i.chrom, i.start,
                                     i.end, i.strand])
-            # Make EF for first ER in multiexon transcript pairs that have different starts
+            # Multiexon - Make EF for first ER in multiexon transcript pairs that have different starts
             elif (er_id != max_er_id) and (side_diff == "start" or side_diff == "both"):
                 tx1_start = tx1_bed_df['start'].min()
                 tx2_start = tx2_bed_df['start'].min()
