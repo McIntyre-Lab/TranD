@@ -52,6 +52,9 @@ def calculate_distance(out_df,junction_df,gene_id,tx1_name,tx2_name,fsm=False):
     # Set flags for different alternative splicing (AS) events
     singlePair = set_AS_flags(singlePair)
     
+    # Remove extra columns from out_df
+    out_df = out_df.drop(columns=['fragment_id','region_id','flag_shared','num_fragment_in_ER','flag_singleton','fragment_length'])
+    
     # Return distance of transcript pair
     return singlePair
 
