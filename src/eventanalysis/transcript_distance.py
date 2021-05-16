@@ -22,38 +22,41 @@ td_df_cols = ['gene_id','transcript_1','transcript_2','num_junction_T1_only','nu
              'num_nt_T2_only','total_nt','prop_nt_diff','prop_nt_similar','num_nt_T1_only_in_shared_ER',
              'num_nt_T2_only_in_shared_ER','num_nt_shared_in_shared_ER','total_nt_in_shared_ER',
              'prop_nt_diff_in_shared_ER','prop_nt_similar_in_shared_ER','num_nt_T1_only_in_unique_ER',
-             'num_nt_T2_only_in_unique_ER']
+             'num_nt_T2_only_in_unique_ER','flag_IR','flag_alt_donor_acceptor','flag_alt_exon']
 
 
 def calculate_distance(out_df,junction_df,gene_id,tx1_name,tx2_name,fsm=False):
+    # Set EF variable
+    ef_df = out_df.copy()
+    
     # Make empty Series to place distance values
     singlePair = pd.Series(index=td_df_cols,dtype=object)
     singlePair[['gene_id','transcript_1','transcript_2']] = gene_id,tx1_name,tx2_name
 
     # Set exon fragment and exon region ID values based on genomic coordinates
-    out_df['fragment_id'] = out_df['ef_chr'].map(str)+":"+out_df['ef_start'].map(str)+":"+out_df['ef_end'].map(str)+":"+out_df['ef_strand'].map(str)
-    out_df['region_id'] = out_df['er_chr'].map(str)+":"+out_df['er_start'].map(str)+":"+out_df['er_end'].map(str)+":"+out_df['er_strand'].map(str)
+    ef_df['fragment_id'] = ef_df['ef_chr'].map(str)+":"+ef_df['ef_start'].map(str)+":"+ef_df['ef_end'].map(str)+":"+ef_df['ef_strand'].map(str)
+    ef_df['region_id'] = ef_df['er_chr'].map(str)+":"+ef_df['er_start'].map(str)+":"+ef_df['er_end'].map(str)+":"+ef_df['er_strand'].map(str)
 
     # Flag shared fragments
-    out_df['flag_shared'] = np.where((out_df['transcript_id']==tx1_name+"|"+tx2_name)|(out_df['transcript_id']==tx2_name+"|"+tx1_name),1,0)
+    ef_df['flag_shared'] = np.where((ef_df['transcript_id']==tx1_name+"|"+tx2_name)|(ef_df['transcript_id']==tx2_name+"|"+tx1_name),1,0)
 
     # Flag singleton fragments (where the fragment is a full exon region)
-    out_df['num_fragment_in_ER'] = out_df.groupby('er_id')['ef_id'].transform('count')
-    out_df['flag_singleton'] = np.where(out_df['num_fragment_in_ER']==1,1,0)
+    ef_df['num_fragment_in_ER'] = ef_df.groupby('er_id')['ef_id'].transform('count')
+    ef_df['flag_singleton'] = np.where(ef_df['num_fragment_in_ER']==1,1,0)
     
     # Add fragment lengths (end - start)
-    out_df['fragment_length'] = out_df['ef_end'].map(int) - out_df['ef_start'].map(int)
+    ef_df['fragment_length'] = ef_df['ef_end'].map(int) - ef_df['ef_start'].map(int)
 
     # Get distance measures for junctions, exon regions (ER),and exon fragments (EF)
     singlePair = get_junction_distance(singlePair,junction_df,tx1_name,tx2_name,fsm=fsm)
-    singlePair, ERSharedSet = get_ER_distance(singlePair,out_df,tx1_name,tx2_name,fsm=fsm)
-    singlePair = get_EF_distance(singlePair,out_df,tx1_name,tx2_name,ERSharedSet)
+    singlePair, ERSharedSet = get_ER_distance(singlePair,ef_df,tx1_name,tx2_name,fsm=fsm)
+    singlePair = get_EF_distance(singlePair,ef_df,tx1_name,tx2_name,ERSharedSet)
     
     # Set flags for different alternative splicing (AS) events
     singlePair = set_AS_flags(singlePair)
     
     # Remove extra columns from out_df
-    out_df = out_df.drop(columns=['fragment_id','region_id','flag_shared','num_fragment_in_ER','flag_singleton','fragment_length'])
+#    out_df = out_df.drop(columns=['fragment_id','region_id','flag_shared','num_fragment_in_ER','flag_singleton','fragment_length'])
     
     # Return distance of transcript pair
     return singlePair
@@ -120,20 +123,20 @@ def get_junction_distance(singlePair,junction_df,tx1_name,tx2_name,fsm=False):
     return singlePair
 
 
-def get_ER_distance(singlePair,out_df,tx1_name,tx2_name,fsm=False):
+def get_ER_distance(singlePair,ef_df,tx1_name,tx2_name,fsm=False):
     # Check if transcript pair shares all junctions (FSM, full-splice match)
     if fsm:
         # All junctions are shared, therefore all ER are shared
         singlePair[['num_ER_T1_only','num_ER_T2_only']] = 0
-        singlePair['num_ER_shared'] = out_df['er_id'].nunique()
+        singlePair['num_ER_shared'] = ef_df['er_id'].nunique()
         singlePair['prop_ER_diff'] = 0
         singlePair['prop_ER_similar'] = 1
         singlePair[['ER_T1_only','ER_T2_only']] = ""
-        singlePair['ER_shared'] = "|".join(out_df['region_id'].unique())
-        ERSharedSet = out_df['region_id'].drop_duplicates()
+        singlePair['ER_shared'] = "|".join(ef_df['region_id'].unique())
+        ERSharedSet = ef_df['region_id'].drop_duplicates()
     else:
         # Check for shared and unique ER
-        ERall = out_df.groupby('region_id').agg({'transcript_id':(lambda x: max(x,key=len)),'flag_shared':'max'}).reset_index()
+        ERall = ef_df.groupby('region_id').agg({'transcript_id':(lambda x: max(x,key=len)),'flag_shared':'max'}).reset_index()
         ERSharedSet = ERall[ERall['flag_shared']==1]['region_id']
         ERT1Set = ERall[(ERall['flag_shared']==0)&(ERall['transcript_id']==tx1_name)]['region_id']
         ERT2Set = ERall[(ERall['flag_shared']==0)&(ERall['transcript_id']==tx2_name)]['region_id']
@@ -148,22 +151,22 @@ def get_ER_distance(singlePair,out_df,tx1_name,tx2_name,fsm=False):
     return singlePair, ERSharedSet
 
 
-def get_EF_distance(singlePair,out_df,tx1_name,tx2_name,ERSharedSet):
-    num_shared = out_df['flag_shared'].sum()
+def get_EF_distance(singlePair,ef_df,tx1_name,tx2_name,ERSharedSet):
+    num_shared = ef_df['flag_shared'].sum()
     # Check if all fragments are shared (transcripts are identical)
-    if num_shared == len(out_df):
+    if num_shared == len(ef_df):
         # All EF shared, transcripts are identical
         singlePair[['num_fragment_T1_only','num_fragment_T2_only']] = 0
-        singlePair['num_fragment_shared'] = len(out_df)
+        singlePair['num_fragment_shared'] = len(ef_df)
         singlePair['prop_fragment_diff'] = 0
         singlePair['prop_fragment_similar'] = 1
         singlePair[['fragment_T1_only','fragment_T2_only']] = ""
-        singlePair['fragment_shared'] = "|".join(out_df['fragment_id'])
+        singlePair['fragment_shared'] = "|".join(ef_df['fragment_id'])
         singlePair[['num_fragment_singletons_T1_only','num_fragment_singletons_T2_only']] = 0
         singlePair['num_fragment_singletons_shared'] = singlePair['num_fragment_shared']
         
         # Nucleotide differences are 0, all are shared and are in shared ER
-        singlePair[['total_nt','total_nt_in_shared_ER','num_nt_shared','num_nt_shared_in_shared_ER']] = out_df['fragment_length'].sum()
+        singlePair[['total_nt','total_nt_in_shared_ER','num_nt_shared','num_nt_shared_in_shared_ER']] = ef_df['fragment_length'].sum()
         singlePair[['num_nt_T1_only','num_nt_T1_only_in_shared_ER','num_nt_T1_only_in_unique_ER',
                     'num_nt_T2_only','num_nt_T2_only_in_shared_ER','num_nt_T2_only_in_unique_ER']] = 0
         singlePair[['prop_nt_diff','prop_nt_diff_in_shared_ER']] = 0
@@ -174,12 +177,12 @@ def get_EF_distance(singlePair,out_df,tx1_name,tx2_name,ERSharedSet):
         singlePair[['IR_fragment_T1','IR_fragment_T2']] = ""   
     else:
         # Not all EF shared
-        fragSharedSet = out_df[out_df['flag_shared']==1]
-        fragSharedSingSet = out_df[(out_df['flag_shared']==1)&(out_df['flag_singleton']==1)]
-        fragT1Set = out_df[(out_df['flag_shared']==0)&(out_df['transcript_id']==tx1_name)]
-        fragT1SingSet = out_df[(out_df['flag_shared']==0)&(out_df['transcript_id']==tx1_name)&(out_df['flag_singleton']==1)]
-        fragT2Set = out_df[(out_df['flag_shared']==0)&(out_df['transcript_id']==tx2_name)]
-        fragT2SingSet = out_df[(out_df['flag_shared']==0)&(out_df['transcript_id']==tx2_name)&(out_df['flag_singleton']==1)]
+        fragSharedSet = ef_df[ef_df['flag_shared']==1]
+        fragSharedSingSet = ef_df[(ef_df['flag_shared']==1)&(ef_df['flag_singleton']==1)]
+        fragT1Set = ef_df[(ef_df['flag_shared']==0)&(ef_df['transcript_id']==tx1_name)]
+        fragT1SingSet = ef_df[(ef_df['flag_shared']==0)&(ef_df['transcript_id']==tx1_name)&(ef_df['flag_singleton']==1)]
+        fragT2Set = ef_df[(ef_df['flag_shared']==0)&(ef_df['transcript_id']==tx2_name)]
+        fragT2SingSet = ef_df[(ef_df['flag_shared']==0)&(ef_df['transcript_id']==tx2_name)&(ef_df['flag_singleton']==1)]
         singlePair['num_fragment_T1_only'] = len(fragT1Set)
         singlePair['num_fragment_T2_only'] = len(fragT2Set)
         singlePair['num_fragment_shared'] = len(fragSharedSet)
