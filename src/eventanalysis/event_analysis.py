@@ -35,7 +35,8 @@ from collections import namedtuple
 from loguru import logger
 from numpy import nan
 from pathlib import Path
-from pybedtools import BedTool
+#from pybedtools import BedTool
+import pyranges as pr
 
 # Import transcript distance functions and variables
 import transcript_distance as TD
@@ -340,6 +341,25 @@ def create_junction_catalog_str(gene, tx, tx_data):
         left_end = int(e.end) - 10
     return junctions
 
+def get_intron_retention_efs_pr(ers_pr, efs_pr, common_efs):
+    """
+    Produce a list of exon fragments that participate in intron retention events.
+    In essence, retained introns are ER-internal transcript-specific exonic fragments.
+    So, they cannot be on the ER borders and cannot be shared between two transcripts.
+    For a tiny speedup check that we have more than two EFs in an ER.
+    """
+    ir_efs = []
+    for index,er in ers_pr.as_df().iterrows():
+        er_pr = pr.PyRanges(pd.DataFrame(er).T)
+        er_efs = efs_pr.intersect(er_pr)
+        if len(er_efs) >= 3:
+            for index,ef in er_efs.as_df().iterrows():
+                # Intron cannot be on the ER border by definition
+                if ef.Start != er.Start and ef.End != er.End:
+                    if ef.ef_name not in common_efs:
+                        ir_efs.append(ef.ef_name)
+    return ir_efs
+
 def get_intron_retention_efs(ers_bed, efs_bed, common_efs):
     """
     Produce a list of exon fragments that participate in intron retention events.
@@ -415,14 +435,14 @@ def do_ea_pair(data):
         # Check for non-overlapping mono-exon transcript pairs
         if tx1_bed_df['start'].min() < tx2_bed_df['start'].min() and tx1_bed_df['end'].max() <= tx2_bed_df['start'].min():
             # T1 completely upstream of T2
-            tx1_bed = BedTool(tx1_bed_str).saveas()
-            tx2_bed = BedTool(tx2_bed_str).saveas()
-            ea_data = er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
+            tx1_pr = pr.PyRanges(tx1_bed_df.rename(columns={'chrom':'Chromosome','start':'Start','end':'End','strand':'Strand'}))
+            tx2_pr = pr.PyRanges(tx2_bed_df.rename(columns={'chrom':'Chromosome','start':'Start','end':'End','strand':'Strand'}))
+            ea_data = er_ea_analysis_pyranges(tx1_pr, tx2_pr, tx1_name, tx2_name, gene_id)
         elif tx2_bed_df['start'].min() < tx1_bed_df['start'].min() and tx2_bed_df['end'].max() <= tx1_bed_df['start'].min():
             # T2 completely upstream of T1
-            tx1_bed = BedTool(tx1_bed_str).saveas()
-            tx2_bed = BedTool(tx2_bed_str).saveas()
-            ea_data = er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
+            tx1_pr = pr.PyRanges(tx1_bed_df.rename(columns={'chrom':'Chromosome','start':'Start','end':'End','strand':'Strand'}))
+            tx2_pr = pr.PyRanges(tx2_bed_df.rename(columns={'chrom':'Chromosome','start':'Start','end':'End','strand':'Strand'}))
+            ea_data = er_ea_analysis_pyranges(tx1_pr, tx2_pr, tx1_name, tx2_name, gene_id)
         else:
             # Some overlap present between transcripts
             is_fsm = True
@@ -453,13 +473,67 @@ def do_ea_pair(data):
                 # !!! Add calculation of distances (will only need to calculate the difference of 5' and 3' ends)
     else:
         # Junctions are not identical (there is some alternate donor/acceptor/exon)
-        tx1_bed = BedTool(tx1_bed_str).saveas()
-        tx2_bed = BedTool(tx2_bed_str).saveas()
-        ea_data = er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
+        tx1_pr = pr.PyRanges(tx1_bed_df.rename(columns={'chrom':'Chromosome','start':'Start','end':'End','strand':'Strand'}))
+        tx2_pr = pr.PyRanges(tx2_bed_df.rename(columns={'chrom':'Chromosome','start':'Start','end':'End','strand':'Strand'}))
+        ea_data = er_ea_analysis_pyranges(tx1_pr, tx2_pr, tx1_name, tx2_name, gene_id)
     out_df = pd.DataFrame(ea_data, columns=ea_df_cols)
     junction_df = pd.DataFrame(junction_data, columns=jct_df_cols)
     td_df = pd.DataFrame(TD.calculate_distance(out_df, junction_df, gene_id, tx1_name, tx2_name, fsm=is_fsm)).T
     return out_df, junction_df, td_df
+
+def er_ea_analysis_pyranges(tx1_pr, tx2_pr, tx1_name, tx2_name, gene_id):
+    """Convert ERs (Exonic Regions) into EFs (Exonic Fragments) and analyze all er events"""
+    ea_data = []
+    # logger.debug("TX1: {}: \n{}", tx1_name, tx1_bed)
+    # logger.debug("TX2: {}: \n{}", tx2_name, tx2_bed)
+    raw_ers_pr = pr.PyRanges(pd.concat([tx1_pr.as_df(),tx2_pr.as_df()],ignore_index=True)).merge()
+    raw_ers_pr = raw_ers_pr.insert(pd.Series(range(1,len(raw_ers_pr)+1),name='er_id'))
+    raw_ers_pr = raw_ers_pr.assign('er_name',lambda x: gene_id + ":ER" +x.er_id.astype(str)).drop('er_id')
+    ef_tx1_pr = tx1_pr.subtract(tx2_pr)
+    ef_tx2_pr = tx2_pr.subtract(tx1_pr)
+    ef_both_pr = tx1_pr.intersect(tx2_pr)
+    raw_efs_pr = pr.PyRanges(pd.concat([ef_tx1_pr.as_df(),ef_tx2_pr.as_df(),ef_both_pr.as_df()],ignore_index=True))
+    efs_er_pr = raw_ers_pr.intersect(raw_efs_pr)
+    ef_id = 1
+    er_name = ''
+    efs_df = pd.DataFrame(columns=efs_er_pr.as_df().columns)
+    for index,row in efs_er_pr.as_df().iterrows():
+        if row['er_name'] != er_name:
+            ef_id = 1
+        er_name = row['er_name']
+        row['ef_name'] = f"{er_name}:EF{ef_id}"
+        ef_id += 1
+        efs_df = efs_df.append(row,ignore_index=True)
+    efs_pr = pr.PyRanges(efs_df)
+    if len(ef_both_pr) > 0:
+        common_efs_set = set(efs_pr.intersect(ef_both_pr).ef_name)
+    else:
+        common_efs_set = set()
+    common_efs = list(common_efs_set)
+    tx1_efs = list(set(efs_pr.intersect(tx1_pr).ef_name).difference(common_efs_set))
+    tx2_efs = list(set(efs_pr.intersect(tx2_pr).ef_name).difference(common_efs_set))
+    ir_efs = get_intron_retention_efs_pr(raw_ers_pr, efs_pr, common_efs)
+    for index,ef in efs_pr.as_df().iterrows():
+        ir_flag = '0'
+        ef_name = ef.ef_name
+        er_name = ef.er_name
+        if ef_name in ir_efs:
+            ir_flag = '1'
+        if ef_name in common_efs:
+            tx_list = f"{tx1_name}|{tx2_name}"
+        elif ef_name in tx1_efs:
+            tx_list = f"{tx1_name}"
+        elif ef_name in tx2_efs:
+            tx_list = f"{tx2_name}"
+        else:
+            logger.error(f"Cannot find the fragment {ef_name} in any fragment lists, skipping")
+        ea_datum = [gene_id, tx1_name, tx2_name, tx_list, ef_name, ef.Chromosome, ef.Start, ef.End,
+                    ef.Strand, ir_flag, er_name, raw_ers_pr[raw_ers_pr.er_name == er_name].Chromosome.values[0],
+                    raw_ers_pr[raw_ers_pr.er_name == er_name].Start.values[0], raw_ers_pr[raw_ers_pr.er_name == er_name].End.values[0],
+                    raw_ers_pr[raw_ers_pr.er_name == er_name].Strand.values[0]]
+        ea_data.append(ea_datum)
+    logger.debug("Final EA data: \n{}", ea_data)
+    return ea_data
 
 
 def er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id):
