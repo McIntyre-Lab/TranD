@@ -37,6 +37,7 @@ from numpy import nan
 from pathlib import Path
 #from pybedtools import BedTool
 import pyranges as pr
+from multiprocessing import Pool
 
 # Import transcript distance functions and variables
 import transcript_distance as TD
@@ -106,6 +107,14 @@ def parse_args(print_help=False):
         choices=['pairwise', 'gene'],
         default='pairwise',
         help="Event analysis based on a pair of transcripts for TD or all gene isoforms without TD",
+    )
+    parser.add_argument(
+        "-n", "--cpu",
+        dest='cpu',
+        type=int,
+        default=1,
+        required=False,
+        help="Number of CPUs to use for parallelization (default: 1).",
     )
     parser.add_argument(
         "-f", "--force",
@@ -897,7 +906,25 @@ def ea_two_files(f1_data, f2_data, out_fhs, gene_id):
     return ea_df, jct_df, td_df
 
 
-def process_two_files(infiles, outdir, outfiles):
+def chunks(lst, n):
+    # Split list into n chunks and return list of lists
+    splitSize = (len(lst)//n) + ((len(lst)%n)>0)
+    list_of_lists = []
+    for element in range(0, len(lst), splitSize):
+        list_of_lists.append(lst[element:element + splitSize])
+    return list_of_lists
+
+ea_list = []
+jct_list = []
+td_list = []
+def callback_results(results):
+    # Callback function to append result to list of results
+    ea_data_cat, jct_data_cat, td_data_cat = results
+    ea_list.append(ea_data_cat)
+    jct_list.append(jct_data_cat)
+    td_list.append(td_data_cat)
+
+def process_two_files(infiles, outdir, outfiles, cpu):
     """Compare transcript pairs between two GTF files."""
     logger.info("Input files: {}", infiles)
     out_fhs = open_output_files(outdir, outfiles)
@@ -930,6 +957,40 @@ def process_two_files(infiles, outdir, outfiles):
                 infile_2)
     gene_list = list(set(valid_f1['gene_id']))
     logger.debug("Genes to process: \n{}", gene_list)
+    # If 1 cpu available
+    if cpu == 1:
+        ea_data, jct_data, td_data = loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs, cpu)
+        write_output(ea_data, out_fhs, 'ea_fh')
+        write_output(jct_data, out_fhs, 'jc_fh')
+        write_output(td_data, out_fhs, 'td_fh')
+    # If cpu > 1, parallelize
+    elif cpu > 1:
+        # Get lists for each process based on cpu value
+        geneLists = chunks(gene_list,cpu)
+        # Generate multiprocess Pool with specified number of cpus
+        #     to loop through genes and calculate distances
+        pool = Pool(cpu)
+        for genes in geneLists:
+            subset_f1 = valid_f1[valid_f1['gene_id'].isin(genes)]
+            subset_f2 = valid_f2[valid_f2['gene_id'].isin(genes)]
+            pool.apply_async(loop_over_genes, args=(genes, subset_f1, subset_f2, out_fhs, cpu), callback=callback_results)
+        pool.close()
+        pool.join()
+        ea_cat = pd.concat(ea_list)
+        jct_cat = pd.concat(jct_list)
+        td_cat = pd.concat(td_list)
+        write_output(ea_cat, out_fhs, 'ea_fh')
+        write_output(jct_cat, out_fhs, 'jc_fh')
+        write_output(td_cat, out_fhs, 'td_fh')
+    else:
+        logger.error("Invalid cpu parameter")
+
+
+def loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs, cpu):
+    ea_data_list = []
+    jct_data_list = []
+    td_data_list = []
+    # Loop over genes in provided gene list
     for gene in gene_list:
         f1_data = valid_f1[valid_f1['gene_id'] == gene]
         f2_data = valid_f2[valid_f2['gene_id'] == gene]
@@ -940,10 +1001,15 @@ def process_two_files(infiles, outdir, outfiles):
         except ValueError as e:
             logger.error(e)
             continue
-        write_output(ea_data, out_fhs, 'ea_fh')
-        write_output(jct_data, out_fhs, 'jc_fh')
-        write_output(td_data, out_fhs, 'td_fh')
-
+        # Append output to list
+        ea_data_list.append(ea_data)
+        jct_data_list.append(jct_data)
+        td_data_list.append(td_data)
+    # Concatenate outputs
+    ea_data_cat = pd.concat(ea_data_list)
+    jct_data_cat = pd.concat(jct_data_list)
+    td_data_cat = pd.concat(td_data_list)
+    return [ea_data_cat, jct_data_cat, td_data_cat]
 
 def main():
     """Main function"""
@@ -953,6 +1019,7 @@ def main():
     infiles = args.infiles
     outdir = handle_outdir(args)
     ea_mode = args.ea_mode
+    cpu = args.cpu
     if len(infiles) == 1:
         logger.debug("Single file {} analysis", ea_mode)
         outfiles = common_outfiles
@@ -964,7 +1031,7 @@ def main():
         outfiles = common_outfiles
         outfiles.update(two_gtfs_outfiles)
         outfiles.update(pairwise_outfiles)
-        process_two_files(infiles, outdir, outfiles)
+        process_two_files(infiles, outdir, outfiles, cpu)
     # The End
 
 
