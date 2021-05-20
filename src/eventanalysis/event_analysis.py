@@ -40,6 +40,7 @@ from multiprocessing import Pool
 
 # Import transcript distance functions and variables
 import transcript_distance as TD
+import minimum_distance as MD
 
 # DATA OUTPUT CONFIGURATION
 common_outfiles = {'ea_fh': 'event_analysis.csv', 'jc_fh': 'junction_catalog.csv'}
@@ -54,6 +55,7 @@ ea_df_gene_cols = ['gene_id', 'transcript_1', 'transcript_2', 'transcript_id', '
               'er_end', 'er_strand']
 
 pairwise_outfiles = {'td_fh':'pairwise_transcript_distance.csv'}
+
 # Later when TD has been added
 # common_outfiles = {'ea_er_fh': 'gene_ea_exonic_regions.csv', 'ea_ef_fh':
 #                    'gene_ea_exonic_fragments.csv', 'ea_fh': 'pairwise_ea.csv', 'td_fh':
@@ -274,7 +276,7 @@ def do_td(data):
     td_data = ""
     return td_data
 
-
+# !!! Need to add a write_gtf function that will output in correct GTF format
 def write_output(data, out_fhs, fh_name):
     """Write results of event analysis to output files."""
     data.to_csv(out_fhs[fh_name], mode='a', header=False, index=False)
@@ -789,7 +791,7 @@ def process_single_file(infile, ea_mode, outdir, outfiles):
                 logger.error(e)
                 continue
         else:
-            out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
+            out_fhs['td_fh'].write_text(",".join(MD.td_df_cols) + '\n')
             ea_data, jct_data, td_data = ea_pairwise(gene_df, out_fhs, gene)
             write_output(ea_data, out_fhs, 'ea_fh')
             write_output(jct_data, out_fhs, 'jc_fh')
@@ -855,7 +857,8 @@ def process_two_files(infiles, outdir, outfiles, cpu):
     out_fhs = open_output_files(outdir, outfiles)
     out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
     out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
-    out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
+#    out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
+    out_fhs['md_fh'].write_text(",".join(MD.td_df_cols) + '\n')
     infile_1 = infiles[0]
     infile_2 = infiles[1]
     in_f1 = read_exon_data_from_file(infile_1)
@@ -888,6 +891,9 @@ def process_two_files(infiles, outdir, outfiles, cpu):
         write_output(ea_data, out_fhs, 'ea_fh')
         write_output(jct_data, out_fhs, 'jc_fh')
         write_output(td_data, out_fhs, 'td_fh')
+        # Identify minimum pairs using transcript distances
+        md_data = MD.identify_min_pair(td_data)
+        write_output(md_data, out_fhs, 'md_fh')
     # If cpu > 1, parallelize
     elif cpu > 1:
         # Get lists for each process based on cpu value
@@ -906,7 +912,10 @@ def process_two_files(infiles, outdir, outfiles, cpu):
         td_cat = pd.concat(td_list)
         write_output(ea_cat, out_fhs, 'ea_fh')
         write_output(jct_cat, out_fhs, 'jc_fh')
-        write_output(td_cat, out_fhs, 'td_fh')
+#        write_output(td_cat, out_fhs, 'td_fh')
+        # Identify minimum pairs using transcript distances
+        md_data = MD.identify_min_pair(td_cat)
+        write_output(md_data, out_fhs, 'td_fh')
     else:
         logger.error("Invalid cpu parameter")
 

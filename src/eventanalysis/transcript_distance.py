@@ -19,10 +19,11 @@ td_df_cols = ['gene_id','transcript_1','transcript_2','num_junction_T1_only','nu
              'num_fragment_singletons_T1_only','num_fragment_singletons_T2_only',
              'num_fragment_singletons_shared','num_IR_fragment_T1','num_IR_fragment_T2',
              'IR_fragment_T1','IR_fragment_T2','num_nt_shared','num_nt_T1_only',
-             'num_nt_T2_only','total_nt','prop_nt_diff','prop_nt_similar','num_nt_T1_only_in_shared_ER',
+             'num_nt_T2_only','num_nt_diff','total_nt','prop_nt_diff','prop_nt_similar','num_nt_T1_only_in_shared_ER',
              'num_nt_T2_only_in_shared_ER','num_nt_shared_in_shared_ER','total_nt_in_shared_ER',
              'prop_nt_diff_in_shared_ER','prop_nt_similar_in_shared_ER','num_nt_T1_only_in_unique_ER',
-             'num_nt_T2_only_in_unique_ER','flag_IR','flag_alt_donor_acceptor','flag_alt_exon']
+             'num_nt_T2_only_in_unique_ER','flag_FSM','flag_IR','flag_5_variation',
+             'flag_3_variation','flag_alt_donor_acceptor','flag_alt_exon']
 
 
 def calculate_distance(out_df,junction_df,gene_id,tx1_name,tx2_name,fsm=False):
@@ -53,7 +54,7 @@ def calculate_distance(out_df,junction_df,gene_id,tx1_name,tx2_name,fsm=False):
     singlePair = get_EF_distance(singlePair,ef_df,tx1_name,tx2_name,ERSharedSet)
     
     # Set flags for different alternative splicing (AS) events
-    singlePair = set_AS_flags(singlePair)
+    singlePair = set_AS_flags(singlePair,ef_df,tx1_name,tx2_name)
     
     # Remove extra columns from out_df
 #    out_df = out_df.drop(columns=['fragment_id','region_id','flag_shared','num_fragment_in_ER','flag_singleton','fragment_length'])
@@ -199,6 +200,7 @@ def get_EF_distance(singlePair,ef_df,tx1_name,tx2_name,ERSharedSet):
         singlePair['num_nt_shared'] = fragSharedSet['fragment_length'].sum()
         singlePair['num_nt_T1_only'] = fragT1Set['fragment_length'].sum()
         singlePair['num_nt_T2_only'] = fragT2Set['fragment_length'].sum()
+        singlePair['num_nt_diff'] = singlePair['num_nt_T1_only'] + singlePair['num_nt_T2_only']
         singlePair['total_nt'] = singlePair['num_nt_shared'] + singlePair['num_nt_T1_only'] + singlePair['num_nt_T2_only']
         singlePair['prop_nt_diff'] = (singlePair['num_nt_T1_only'] + singlePair['num_nt_T2_only'])/(singlePair['total_nt'])
         singlePair['prop_nt_similar'] = 1 - singlePair['prop_nt_diff']
@@ -225,26 +227,41 @@ def get_EF_distance(singlePair,ef_df,tx1_name,tx2_name,ERSharedSet):
     return singlePair
 
 
-def set_AS_flags(singlePair):
+def set_AS_flags(singlePair,ef_df,tx1_name,tx2_name):
     # Flag alternative splicing events
-    # Alternate exons are when not all exon regions are shared
-    singlePair['flag_alt_exon'] = np.where(singlePair['prop_ER_diff']>0,1,0)
+
+    # Flag full-splice matches (FSM, share all junctions)
+    singlePair['flag_FSM'] = np.where(singlePair['prop_junction_diff']==0,1,0)
     
-    # Alternate 5'/3' ends are when the first/last exon regions are shared
-    #   and the difference to the TSS/TTS is > 0
-    # !!! Currently these are flagged as alt donor/acceptors
-    # !!! Add once num_nt_diff_TSS (number of nt different between the TSS of T1 and TSS of T2, always positive or 0 if the same)
-    # !!! Add once num_nt_diff_TTS (number of nt different between the TTS of T1 and TTS of T2, always positive or 0 if the same)
-    # !!! Add once flag_5prime_ER_shared (1 if the 5' most ER is shared betwen T1 and T2, else 0 - using the first ER if on + strand or last ER if on - strand)
-    # !!! Add once flag_3prime_ER_shared (1 if the 3' most ER is shared betwen T1 and T2, else 0 - using the last ER if on + strand or first ER if on - strand)
-
-    # Alternate donor/acceptors in shared ER
-    singlePair['flag_alt_donor_acceptor'] = np.where(singlePair['prop_nt_diff_in_shared_ER']>0,1,0)
-    # !!! Will need to fix so that this is not including transcripts that share all junctions once the 5'/3' end flag set up
-    # singlePair['flag_alt_donor_acceptor'] = np.where((singlePair['prop_nt_diff_in_shared_ER']>0)&(singlePair['prop_junction_diff']>0),1,0)
-    # !!! May also need to fix so that nt differences in shared ER that are IR are not counted somehow
-
+    # If a pair contains at least one IR event - 5' and 3' variation calculated
+    #   but flag_alt_exon and flag_alt_donor_acceptor set to 0
     # Intron retention 
     singlePair['flag_IR'] = np.where(singlePair['num_IR_fragment_T1']+singlePair['num_IR_fragment_T2']>0,1,0)
+    
+    # 5' and 3' end variation
+    t1_min_start = ef_df[ef_df['transcript_id'].str.contains(tx1_name)]['ef_start'].min()
+    t2_min_start = ef_df[ef_df['transcript_id'].str.contains(tx2_name)]['ef_start'].min()
+    t1_max_end = ef_df[ef_df['transcript_id'].str.contains(tx1_name)]['ef_end'].max()
+    t2_max_end = ef_df[ef_df['transcript_id'].str.contains(tx2_name)]['ef_end'].max()
+    ef_strand = ef_df['ef_strand'].unique()[0]
+    # 5' variation: where difference in start if + strand or difference in end if - strand
+    singlePair['flag_5_variation'] = np.where(((ef_strand == "+")&(t1_min_start != t2_min_start))|
+                                                ((ef_strand == "-")&(t1_max_end != t2_max_end)),1,0)
+    # 3' end variation: where difference in end if + strand or difference in start if - strand
+    singlePair['flag_3_variation'] = np.where(((ef_strand == "-")&(t1_min_start != t2_min_start))|
+                                                ((ef_strand == "+")&(t1_max_end != t2_max_end)),1,0)
+
+    # If a pair contains at least one IR event - 5' and 3' variation calculated
+    #   but flag_alt_exon and flag_alt_donor_acceptor set to 0
+    if singlePair['flag_IR'] == 1:
+        singlePair['flag_alt_exon'] = 0
+        singlePair['flag_alt_donor_acceptor'] = 0
+    else:
+        # Alternate exons are when not all exon regions are shared
+        singlePair['flag_alt_exon'] = np.where(singlePair['prop_ER_diff']>0,1,0)
+
+        # Alternate donor/acceptors in shared ER (where not all junctions are shared)
+        singlePair['flag_alt_donor_acceptor'] = np.where((singlePair['prop_nt_diff_in_shared_ER']>0)&
+                                                          (singlePair['flag_FSM']==0),1,0)
     
     return singlePair
