@@ -32,23 +32,31 @@ import logging
 import sys
 import pandas as pd
 from collections import namedtuple
+from dataclasses import dataclass
+# from itertools import chain
 from loguru import logger
 from numpy import nan
 from pathlib import Path
 from pybedtools import BedTool
+# from pybedtools import Interval
 
 
-# DATA OUTPUT CONFIGURATION
-common_outfiles = {'ea_fh': 'event_analysis.csv', 'jc_fh': 'junction_catalog.csv'}
+# CONFIGURATION
+common_outfiles = {'ea_fh': 'event_analysis.csv', 'jc_fh': 'junction_catalog.csv', 'er_fh':
+                   'event_analysis_er.csv', 'ef_fh': 'even_analysis_ef.csv'}
 
 ea_df_cols = ['gene_id', 'transcript_1', 'transcript_2', 'transcript_id', 'ef_id', 'ef_chr',
               'ef_start', 'ef_end', 'ef_strand', 'ef_ir_flag', 'er_id', 'er_chr', 'er_start',
               'er_end', 'er_strand']
 jct_df_cols = ['gene_id', 'transcript_id', 'coords']
 
-ea_df_gene_cols = ['gene_id', 'transcript_1', 'transcript_2', 'transcript_id', 'ef_id', 'ef_chr',
-              'ef_start', 'ef_end', 'ef_strand', 'ef_ir_flag', 'er_id', 'er_chr', 'er_start',
-              'er_end', 'er_strand']
+er_df_cols = ['gene_id', 'gene_transcript_ids', 'transcripts_per_gene', 'er_id', 'er_chr',
+              'er_start', 'er_end', 'er_strand', 'er_ir_flag', 'exons_per_er', 'er_exon_ids',
+              'transcripts_per_er', 'er_transcript_ids', 'er_annotation_frequency']
+
+ef_df_cols = ['gene_id', 'er_id', 'ef_id', 'ef_chr', 'ef_start', 'ef_end', 'ef_strand',
+              'ef_ir_flag', 'ef_exon_ids', 'exons_per_ef', 'transcripts_per_ef',
+              'ea_annotation_frequence']
 
 
 # Later when TD has been added
@@ -58,6 +66,8 @@ ea_df_gene_cols = ['gene_id', 'transcript_1', 'transcript_2', 'transcript_id', '
 
 two_gtfs_outfiles = {'gtf1_fh': 'gtf1_only.gtf', 'gtf2_fh': 'gtf2_only.gtf'}
 # , 'gtf_names_fh': 'gtf_metadata.csv'}
+
+KEEP_IR = False
 
 
 def parse_args(print_help=False):
@@ -105,6 +115,11 @@ def parse_args(print_help=False):
         help="Event analysis based on a pair of transcripts for TD or all gene isoforms without TD",
     )
     parser.add_argument(
+        "-k", "--keepir",
+        action="store_true",
+        help="Keep transcripts with Intron Retention events in full-gene EA. Default: remove",
+    )
+    parser.add_argument(
         "-f", "--force",
         action="store_true",
         help="Force overwrite existing output directory and files within.",
@@ -131,6 +146,38 @@ def parse_args(print_help=False):
         if len(args.infiles) > 1:
             logger.warning("EA 'gene' mode is ignored for two GTF files - only pairwise is done.")
     return args
+
+
+# Data structures for ERs and EFs. Use a mutable dataclass, so we could add transcript names and
+# counts during EA
+@dataclass
+class ER:
+    id: str
+    chrom: str
+    start: int
+    end: int
+    strand: str
+    ir_flag: int = 0
+    ex_num: int = 0
+    ex_names: str = ''
+    tx_num: int = 0
+    tx_names: str = ''
+    er_freq: str = ''
+
+
+@dataclass
+class EF:
+    id: str
+    chrom: str
+    start: int
+    end: int
+    strand: str
+    ir_flag: int = 0
+    ex_num: int = 0
+    ex_names: str = ''
+    tx_num: int = 0
+    tx_names: str = ''
+    er_freq: str = ''
 
 
 def handle_outdir(args):
@@ -341,27 +388,92 @@ def get_intron_retention_efs(ers_bed, efs_bed, common_efs):
     return ir_efs
 
 
+def remove_ir_transcripts(tx_data, introns):
+    """Remove transcripts that contain Intron Retention events i.e. an
+    intron is encompassed by an exon
+    """
+    to_remove = []
+    for e_tx in tx_data:
+        REMOVED = False
+        e_ints = [(int(x.start), int(x.end)) for x in tx_data[e_tx]]
+        e_ints.sort(key=lambda x: x[0])
+        for i in introns:
+            if REMOVED:
+                break
+            for e in e_ints:
+                # This is the exon this intron may overlap with
+                if i[0] >= e[0] and i[0] <= e[1]:
+                    # Intron is fully encompassed within the exon
+                    if i[1] <= e[1]:
+                        logger.debug("IR detected, removing {}", e_tx)
+                        # logger.debug("Exon: {}:{}, intron: {}:{}", e[0], e[1], i[0], i[1])
+                        to_remove.append(e_tx)
+                        REMOVED = True
+                        break
+                    else:
+                        # Stop processing this transcript's exons, move on to next intron
+                        continue
+    for ir_tx in to_remove:
+        del tx_data[ir_tx]
+    return tx_data
+
+
 def do_ea_gene(data):
     """
     Event Analysis on a pair of transcripts
     """
     gene_id = data['gene_id']
     logger.debug("Gene EA on {}", gene_id)
-    logger.debug(data)
+    # logger.debug(data)
     tx_names = data['transcript_list']
+    logger.debug("Transcripts in {}: {}", gene_id, tx_names)
     tx_data = {}
+    tx_coords = {}
+    all_introns = []
     for tx_name in tx_names:
         tx_bed_str = data[tx_name]
-        logger.debug("Gene EA Raw Tx: {}\n{}", tx_name, tx_bed_str)
-        tx_data[tx_name] = BedTool(tx_bed_str).saveas()
-    tx0 = tx_names[0]
-    junction_data = create_junction_catalog(gene_id, tx0, tx_data[tx0])
-    for tx_name in tx_names[1:]:
-        junction_data.extend(create_junction_catalog(gene_id, tx_name, tx_data[tx_name]))
+        starts = [int(x[1]) for x in tx_bed_str]
+        ends = [int(x[2]) for x in tx_bed_str]
+        chrom = data[tx_name][0][0]
+        strand = data[tx_name][0][5]
+        feature = f"{tx_name}_transcript"
+        left_edge = min(starts)
+        right_edge = max(ends)
+        tx_exons = BedTool(tx_bed_str).saveas()
+        tx_data[tx_name] = tx_exons
+        tx_coords[tx_name] = [left_edge, right_edge]
+        if not KEEP_IR:
+            tx_full = BedTool(f"{chrom} {left_edge} {right_edge} {feature} 0 {strand}",
+                              from_string=True)
+            tx_introns = tx_full.subtract(tx_exons)
+            i_coords = [(int(x.start), int(x.end)) for x in tx_introns]
+            all_introns.extend(i_coords)
+        # logger.debug("Gene EA Raw Tx: {}\n{}", tx_name, tx_bed_str)
+    intron_data = list(set(all_introns))
+    intron_data.sort(key=lambda x: x[0])
+    # Removal of IR containing transcripts
+    if not KEEP_IR:
+        tx_data = remove_ir_transcripts(tx_data, intron_data)
+        old_tx_names = tx_names
+        tx_names = tx_data.keys()
+        tx_coords_delete = [k for k in old_tx_names if k not in tx_names]
+        for k in tx_coords_delete:
+            del tx_coords[k]
+    else:
+        logger.info("Not attempting to remove IR-containing transcripts")
+    # Junction Catalog creation
+    junction_data = []
+    for tx_name in tx_names:
+        tx_jc_data = create_junction_catalog(gene_id, tx_name, tx_data[tx_name])
+        junction_data.extend(tx_jc_data)
+        for jc in tx_jc_data:
+            tx_coords[tx_name].append(jc[2])
     junction_df = pd.DataFrame(junction_data, columns=jct_df_cols)
-    logger.debug(tx_data)
-    ea_df = pd.DataFrame(columns=ea_df_gene_cols)
-    return ea_df, junction_df
+    # Event Analysis
+    er_data, ef_data = ea_analysis(gene_id, tx_data, tx_coords)
+    er_df = pd.DataFrame(er_data, columns=er_df_cols)
+    ef_df = pd.DataFrame(ef_data, columns=ef_df_cols)
+    return er_df, ef_df, junction_df
 
 
 def do_ea_pair(data):
@@ -401,7 +513,10 @@ def do_ea_pair(data):
 
 
 def er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id):
-    """Convert ERs (Exonic Regions) into EFs (Exonic Fragments) and analyze all er events"""
+    """
+    Generate ERs (Exonic Regions) and EFs (Exonic Fragments) and analyze events in a pair of
+    transcripts.
+    """
     ea_data = []
     strand = list(set([x.strand for x in tx1_bed]))[0]
     # logger.debug("TX1: {}: \n{}", tx1_name, tx1_bed)
@@ -485,6 +600,195 @@ def format_identical_pair_ea(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id):
     return ea_df
 
 
+def ea_analysis(gene_id, tx_data, tx_coords):
+    """
+    Generate ERs (Exonic Regions) and EFs (Exonic Fragments) and analyze events in transcripts.
+    Generalize to do both full-gene and transcript pairs to replace er_ea_analysis.
+
+    Required outputs:
+    gene_id
+    gene_transcript_ids
+    transcripts_per_gene
+    er_id
+    er_chr
+    er_start
+    er_end
+    er_strand
+    er_flag_ir ( zero if IRs were removed)
+    exons_per_er
+    er_exon_ids = Piped ("|") list of exon IDs that are contained within the exon region
+    transcripts_per_er
+    er_transcript_ids = Piped ("|") list of transcript IDs the exon region is present in
+    er_annotation_frequency = “unique”, “common”, “constitutive” (one, many, all) per txs
+    ef_id
+    ef_chr
+    ef_start
+    ef_end
+    ef_strand
+    ef_flag_ir (zero if IRs were removed)
+    ef_exon_ids
+    exons_per_ef
+    transcripts_per_ef
+    ef_transcript_ids = Piped ("|") list of transcript IDs the exon fragment is present in
+    ef_annotation_frequency = “unique”, “common”, “constitutive” (one, many, all) per txs
+    """
+    # Use the junction catalog and transcripts start/end to check for identical transcripts
+    logger.debug("Performing EA analysis for {} gene", gene_id)
+    logger.debug("TX Names: {}", list(tx_data.keys()))
+    # logger.debug("TX Coords: {}", tx_coords)
+    gene_transcript_ids = list(tx_data.keys())
+    tx_ident_check = {}
+    for i in tx_coords:
+        tx_structure_str_list = [str(x) for x in tx_coords[i]]
+        tx_structure = ",".join(tx_structure_str_list)
+        if tx_structure in tx_ident_check:
+            tx_ident_check[tx_structure].append(i)
+        else:
+            tx_ident_check[tx_structure] = [i]
+    identical_tx_list = [x for x in tx_ident_check.values() if len(x) > 1]
+    identical_transcripts = {x[0]: x[1:] for x in identical_tx_list}
+    logger.debug("Identical records: {}", identical_transcripts)
+    # Stash names for EA output, but remove duplicate data
+    duplicate_txs = [x[1:] for x in identical_tx_list]
+    logger.debug("Duplicate records: {}", duplicate_txs)
+    for dupe_list in duplicate_txs:
+        for item in dupe_list:
+            del tx_data[item]
+    logger.debug("Unique TX Data: {}", list(tx_data.keys()))
+    # Combine transcripts and generate ERs
+    strands = []
+    all_tx = None
+    for i in tx_data:
+        tx = tx_data[i]
+        if not all_tx:
+            all_tx = tx
+        else:
+            all_tx = all_tx.cat(tx, postmerge=True)
+        strand = list(set([x.strand for x in tx]))[0]
+        strands.append(strand)
+    strand = list(set(strands))[0]
+    # Is this a valid check?
+    if len(strand) > 1:
+        raise ValueError("Multiple strands detected when there should be one")
+    logger.debug("Strand: '{}'", strand)
+    # logger.debug("Combined TX: \n'{}'", all_tx)
+    raw_ers_list = [str(x).split() for x in all_tx]
+    er_id = 1
+    ers_list = []
+    for i in raw_ers_list:
+        i.extend([f"{gene_id}:ER{er_id}", '0', strand])
+        ers_list.append("\t".join(i))
+        er_id += 1
+    ers_str = "\n".join(ers_list)
+    # logger.debug("ERs:\n{}", ers_str)
+    ers_bed = BedTool(ers_str, from_string=True)
+    er_data = {}
+    # Coordinates of ER ends to check when creating EFs
+    er_ends = []
+    er_range_sets = {}
+    for er in ers_bed:
+        er_data[er.name] = ER(id=er.name, chrom=er.chrom, start=er.start, end=er.end,
+                              strand=er.strand)
+        er_ends.append(er.end)
+        er_range_sets[er.name] = set(range(er.start, er.end + 1))
+    # logger.debug("ERs:\n{}", er_data)
+    # logger.debug("ER range sets:\n{}", er_range_sets)
+    # logger.debug("ER ends: {} for {} ERs", er_ends, len(er_ends))
+    # Generate EFs
+    # Catalog starting and ending points (0-coordinate as we go from left side only)
+    sts_ends = []
+    tx_ranges = {}
+    for i in tx_data:
+        tx = tx_data[i]
+        for ex in tx:
+            # logger.debug(f"{ex.name}: {ex.start}/{ex.end}")
+            # There are many ways to check if exon start is in ER, pick one at random
+            if i in tx_ranges:
+                tx_ranges[ex.name].append(ex.start, ex.end, i)
+            else:
+                tx_ranges[ex.name] = (ex.start, ex.end, i)
+            if ex.start not in sts_ends:
+                sts_ends.append(ex.start)
+            if (ex.end) not in sts_ends:
+                sts_ends.append(ex.end)
+    sts_ends.sort()
+    tx_range_sets = {}
+    tx_exon_map = {}
+    # logger.debug(tx_ranges)
+    for i in tx_ranges:
+        # logger.debug("TX exon range for {}: \n{}", i, tx_ranges[i])
+        tx = tx_ranges[i]
+        tx_range_set = set(range(tx[0], tx[1] + 1))
+        tx_range_sets[i] = tx_range_set
+        tx_exon_map[i] = tx[2]
+        # Big dump of integers, beware
+        # logger.debug("TX range set for {}: \n{}", i, tx_range_set)
+    # logger.debug("TX exon ranges: \n{}", tx_ranges)
+    # logger.debug("TX/exon map: \n{}", tx_exon_map)
+    # logger.debug("All Start/End coords of EFs: \n{}", sts_ends)
+    # Define EFs
+    ef_list = []
+    ef_start = sts_ends[0]
+    ef_end = None
+    for i in sts_ends[1:]:
+        # Start of an ER
+        if not ef_start and not ef_end:
+            ef_start = i
+            continue
+        ef_end = i
+        ef_list.append((ef_start, ef_end))
+        if ef_end in er_ends:
+            # Skip the intron
+            ef_start = None
+            ef_end = None
+            continue
+        else:
+            ef_start = ef_end
+    # logger.debug('TX exon ranges: \n{}', tx_ranges)
+    # logger.debug('EF ranges: \n{}, EF number: {}', ef_list, len(ef_list))
+    # Process all ERs and EFs vs transcript exons/transcripts to generate requested EA output
+    # Sets are in 'er_range_sets' and 'tx_range_sets'
+    for er in er_data:
+        ex_per_er, tx_per_er = 0, 0
+        er_tx_ids = []
+        er_ex_ids = []
+        for exon in tx_exon_map:
+            exon_data = tx_ranges[exon]
+            # Check if exon start is in the ER
+            if exon_data[0] in er_range_sets[er]:
+                er_ex_ids.append(exon)
+                tx_id = exon_data[2]
+                if tx_id not in er_tx_ids:
+                    er_tx_ids.append(tx_id)
+                    if tx_id in identical_transcripts:
+                        duplicate_tx_list = identical_transcripts[tx_id]
+                        for duplicate_tx in duplicate_tx_list:
+                            er_tx_ids.append(duplicate_tx)
+                            ex_number = exon.split('_exon_')[1]
+                            ex_name = f"{duplicate_tx}_exon_{ex_number}"
+                            er_ex_ids.append(ex_name)
+
+        tx_per_er = len(er_tx_ids)
+        ex_per_er = len(er_ex_ids)
+        er_data[er].ex_num = ex_per_er
+        er_data[er].ex_names = "|".join(er_ex_ids)
+        er_data[er].tx_num = tx_per_er
+        er_data[er].tx_names = "|".join(er_tx_ids)
+        total_number_of_transcripts = len(gene_transcript_ids)
+        if tx_per_er == 1:
+            er_data[er].er_freq = 'unique'
+        elif tx_per_er == total_number_of_transcripts:
+            er_data[er].er_freq = 'constitutive'
+        else:
+            er_data[er].er_freq = 'common'
+    # logger.debug("ER Out Data: {}", er_data)
+
+    ef_data = {}
+    # Do the same enumeration for EFs vs Exons as done for ERs vs Exons
+    exit("DEBUG")
+    return er_data, ef_data
+
+
 def do_ea(tx_data):
     """Perform even analysis using pybedtools on bed string data"""
     try:
@@ -496,8 +800,8 @@ def do_ea(tx_data):
         return ea_results, jct_catalog
     # full-gene, more transcripts than two
     else:
-        ea_results, jct_catalog = do_ea_gene(bed_data)
-        return ea_results, jct_catalog
+        er_df, ef_df, jct_catalog = do_ea_gene(bed_data)
+        return er_df, ef_df, jct_catalog
 
 
 def ea_pairwise(data, out_fhs, gene_id):
@@ -550,8 +854,9 @@ def process_single_file(infile, ea_mode, outdir, outfiles):
             continue
         if ea_mode == 'gene':
             try:
-                ea_data, jct_data = do_ea(gene_df)
-                write_output(ea_data, out_fhs, 'ea_fh')
+                er_data, ef_data, jct_data = do_ea(gene_df)
+                write_output(er_data, out_fhs, 'er_fh')
+                write_output(ef_data, out_fhs, 'ef_fh')
                 write_output(jct_data, out_fhs, 'jc_fh')
             except ValueError as e:
                 logger.error(e)
@@ -560,11 +865,6 @@ def process_single_file(infile, ea_mode, outdir, outfiles):
             ea_data, jct_data = ea_pairwise(gene_df, out_fhs, gene)
             write_output(ea_data, out_fhs, 'ea_fh')
             write_output(jct_data, out_fhs, 'jc_fh')
-
-
-def add_suffix(value, suffix):
-    """Add a column value suffix"""
-    return value + suffix
 
 
 def ea_two_files(f1_data, f2_data, out_fhs, gene_id):
@@ -653,6 +953,9 @@ def main():
     if len(infiles) == 1:
         logger.debug("Single file pairwise analysis")
         outfiles = common_outfiles
+        if args.keepir:
+            global KEEP_IR
+            KEEP_IR = True
         process_single_file(infiles[0], ea_mode, outdir, outfiles)
     else:
         logger.debug("Two files pairwise analysis")
