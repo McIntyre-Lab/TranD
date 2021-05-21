@@ -110,6 +110,12 @@ def parse_args(print_help=False):
         help="Event analysis based on a pair of transcripts for TD or all gene isoforms without TD",
     )
     parser.add_argument(
+        "-a","--allPairs",
+        dest='all_pairs',
+        action='store_true',
+        help="Output pairwise distance values for all transcript pairs in 2 GTF comparison (default: Output only minimum pair for each transcript)"
+    )
+    parser.add_argument(
         "-n", "--cpu",
         dest='cpu',
         type=int,
@@ -851,7 +857,7 @@ def callback_results(results):
     jct_list.append(jct_data_cat)
     td_list.append(td_data_cat)
 
-def process_two_files(infiles, outdir, outfiles, cpu):
+def process_two_files(infiles, outdir, outfiles, cpu, all_pairs):
     """Compare transcript pairs between two GTF files."""
     logger.info("Input files: {}", infiles)
     out_fhs = open_output_files(outdir, outfiles)
@@ -892,7 +898,7 @@ def process_two_files(infiles, outdir, outfiles, cpu):
         write_output(jct_data, out_fhs, 'jc_fh')
         write_output(td_data, out_fhs, 'td_fh')
         # Identify minimum pairs using transcript distances
-        md_data = MD.identify_min_pair(td_data)
+        md_data = MD.identify_min_pair(td_data, all_pairs)
         write_output(md_data, out_fhs, 'md_fh')
     # If cpu > 1, parallelize
     elif cpu > 1:
@@ -914,7 +920,7 @@ def process_two_files(infiles, outdir, outfiles, cpu):
         write_output(jct_cat, out_fhs, 'jc_fh')
 #        write_output(td_cat, out_fhs, 'td_fh')
         # Identify minimum pairs using transcript distances
-        md_data = MD.identify_min_pair(td_cat)
+        md_data = MD.identify_min_pair(td_cat, all_pairs)
         write_output(md_data, out_fhs, 'td_fh')
     else:
         logger.error("Invalid cpu parameter")
@@ -955,6 +961,7 @@ def main():
     infiles = args.infiles
     outdir = handle_outdir(args)
     ea_mode = args.ea_mode
+    all_pairs = args.all_pairs
     cpu = args.cpu
     if len(infiles) == 1:
         logger.debug("Single file {} analysis", ea_mode)
@@ -967,7 +974,7 @@ def main():
         outfiles = common_outfiles
         outfiles.update(two_gtfs_outfiles)
         outfiles.update(pairwise_outfiles)
-        process_two_files(infiles, outdir, outfiles, cpu)
+        process_two_files(infiles, outdir, outfiles, cpu, all_pairs)
     # The End
 
 
