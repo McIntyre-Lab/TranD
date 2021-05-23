@@ -46,8 +46,7 @@ import transcript_distance as TD
 import minimum_distance as MD
 
 # CONFIGURATION
-common_outfiles = {'ea_fh': 'event_analysis.csv', 'jc_fh': 'junction_catalog.csv', 'er_fh':
-                   'event_analysis_er.csv', 'ef_fh': 'even_analysis_ef.csv'}
+common_outfiles = {'ea_fh': 'event_analysis.csv', 'jc_fh': 'junction_catalog.csv'}
 
 ea_df_cols = ['gene_id', 'transcript_1', 'transcript_2', 'transcript_id', 'ef_id', 'ef_chr',
               'ef_start', 'ef_end', 'ef_strand', 'ef_ir_flag', 'er_id', 'er_chr', 'er_start',
@@ -62,15 +61,12 @@ ef_df_cols = ['gene_id', 'er_id', 'ef_id', 'ef_chr', 'ef_start', 'ef_end', 'ef_s
               'ef_ir_flag', 'ef_exon_ids', 'exons_per_ef', 'transcripts_per_ef',
               'ea_annotation_frequence']
 
-pairwise_outfiles = {'td_fh':'pairwise_transcript_distance.csv'}
+pairwise_outfiles = {'td_fh':'pairwise_transcript_distance.csv',
+                     'md_fh':'minimum_pairwise_transcript_distance.csv'}
 
-# Later when TD has been added
-# common_outfiles = {'ea_er_fh': 'gene_ea_exonic_regions.csv', 'ea_ef_fh':
-#                    'gene_ea_exonic_fragments.csv', 'ea_fh': 'pairwise_ea.csv', 'td_fh':
-#                    'transcript_distances.csv'}
+gene_outfiles = {'er_fh':'event_analysis_er.csv', 'ef_fh': 'event_analysis_ef.csv'}
 
 two_gtfs_outfiles = {'gtf1_fh': 'gtf1_only.gtf', 'gtf2_fh': 'gtf2_only.gtf'}
-# , 'gtf_names_fh': 'gtf_metadata.csv'}
 
 KEEP_IR = False
 
@@ -1102,7 +1098,7 @@ def process_single_file(infile, ea_mode, outdir, outfiles):
                 logger.error(e)
                 continue
         else:
-            out_fhs['td_fh'].write_text(",".join(MD.td_df_cols) + '\n')
+            out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
             ea_data, jct_data, td_data = ea_pairwise(gene_df, out_fhs, gene)
             write_output(ea_data, out_fhs, 'ea_fh')
             write_output(jct_data, out_fhs, 'jc_fh')
@@ -1164,7 +1160,7 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs):
     out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
     out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
 #    out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
-    out_fhs['md_fh'].write_text(",".join(MD.td_df_cols) + '\n')
+    out_fhs['md_fh'].write_text(",".join(TD.td_df_cols) + '\n')
     infile_1 = infiles[0]
     infile_2 = infiles[1]
     in_f1 = read_exon_data_from_file(infile_1)
@@ -1271,6 +1267,8 @@ def main():
             KEEP_IR = True
         if ea_mode == "pairwise":
             outfiles.update(pairwise_outfiles)
+        else:
+            outfiles.update(gene_outfiles)
         process_single_file(infiles[0], ea_mode, outdir, outfiles)
     else:
         logger.debug("Two files pairwise analysis")
