@@ -1156,11 +1156,19 @@ def callback_results(results):
 def process_two_files(infiles, outdir, outfiles, cpu, all_pairs):
     """Compare transcript pairs between two GTF files."""
     logger.info("Input files: {}", infiles)
+    if not all_pairs:
+        # Do not create full transcript distance output
+        del(outfiles['td_fh'])
+    else:
+        # Do not create subset minimum distance output
+        del(outfiles['md_fh'])
     out_fhs = open_output_files(outdir, outfiles)
     out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
     out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
-#    out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
-    out_fhs['md_fh'].write_text(",".join(TD.td_df_cols) + '\n')
+    if not all_pairs:
+        out_fhs['md_fh'].write_text(",".join(MD.md_df_cols) + '\n')
+    else:
+        out_fhs['td_fh'].write_text(",".join(MD.md_df_cols) + '\n')
     infile_1 = infiles[0]
     infile_2 = infiles[1]
     in_f1 = read_exon_data_from_file(infile_1)
@@ -1192,10 +1200,12 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs):
         ea_data, jct_data, td_data = loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs, cpu)
         write_output(ea_data, out_fhs, 'ea_fh')
         write_output(jct_data, out_fhs, 'jc_fh')
-        write_output(td_data, out_fhs, 'td_fh')
         # Identify minimum pairs using transcript distances
         md_data = MD.identify_min_pair(td_data, all_pairs)
-        write_output(md_data, out_fhs, 'md_fh')
+        if not all_pairs:
+            write_output(md_data, out_fhs, 'md_fh')
+        else:
+            write_output(md_data, out_fhs, 'td_fh')
     # If cpu > 1, parallelize
     elif cpu > 1:
         # Get lists for each process based on cpu value
@@ -1214,10 +1224,12 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs):
         td_cat = pd.concat(td_list)
         write_output(ea_cat, out_fhs, 'ea_fh')
         write_output(jct_cat, out_fhs, 'jc_fh')
-#        write_output(td_cat, out_fhs, 'td_fh')
         # Identify minimum pairs using transcript distances
         md_data = MD.identify_min_pair(td_cat, all_pairs)
-        write_output(md_data, out_fhs, 'td_fh')
+        if not all_pairs:
+            write_output(md_data, out_fhs, 'md_fh')
+        else:
+            write_output(md_data, out_fhs, 'td_fh')
     else:
         logger.error("Invalid cpu parameter")
 
