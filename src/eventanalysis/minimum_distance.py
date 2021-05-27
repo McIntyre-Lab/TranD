@@ -35,7 +35,8 @@ md_df_cols = ['gene_id','transcript_1','transcript_2','num_junction_T1_only','nu
              'prop_FSM_recip_min_match_in_gene','prop_ERM_recip_min_match_in_gene',
              'prop_ERM_noIR_recip_min_match_in_gene','prop_ERM_withIR_recip_min_match_in_gene',
              'flag_alt_exon_recip_min_match','flag_alt_donor_acceptor_recip_min_match',
-             'flag_IR_recip_min_match','flag_5_3_variation_recip_min_match','recip_min_pair_in_gene']
+             'flag_IR_recip_min_match','flag_5_variation_recip_min_match','flag_3_variation_recip_min_match',
+             'recip_min_pair_in_gene']
 
 def identify_min_pair(td_data, all_pairs):
     # Set names of input data
@@ -106,9 +107,10 @@ def identify_min_pair(td_data, all_pairs):
                                                   (td_data['flag_alt_donor_acceptor']==1),1,0)
     td_data['flag_IR_recip_min_match'] = np.where((td_data['flag_recip_min_match']==1)&
                                                   (td_data['flag_IR']==1),1,0)
-    td_data['flag_5_3_variation_recip_min_match'] = np.where((td_data['flag_recip_min_match']==1)&
-                                                             (td_data['flag_IR']==1),1,0)
-
+    td_data['flag_5_variation_recip_min_match'] = np.where((td_data['flag_recip_min_match']==1)&
+                                                             (td_data['flag_5_variation']==1),1,0)
+    td_data['flag_3_variation_recip_min_match'] = np.where((td_data['flag_recip_min_match']==1)&
+                                                             (td_data['flag_3_variation']==1),1,0)
     # Get reciprocal minimum match gene category
     conditionsRecip = [(td_data['transcript_in_gene']==name1+"_greater")&(td_data['num_recip_min_match_in_gene']==0),
                        (td_data['transcript_in_gene']==name1+"_greater")&(td_data['num_recip_min_match_in_gene']>0)&(td_data['num_recip_min_match_in_gene']<td_data['num_transcript_in_gene_'+name2]),
