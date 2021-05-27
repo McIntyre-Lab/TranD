@@ -464,7 +464,7 @@ def remove_ir_transcripts(tx_data, introns):
 
 def do_ea_gene(data):
     """
-    Event Analysis on a pair of transcripts
+    Event Analysis on a full gene
     """
     gene_id = data['gene_id']
     logger.debug("Gene EA on {}", gene_id)
@@ -492,7 +492,6 @@ def do_ea_gene(data):
             tx_introns = tx_full.subtract(tx_exons)
             i_coords = [(int(x.start), int(x.end)) for x in tx_introns]
             all_introns.extend(i_coords)
-        # logger.debug("Gene EA Raw Tx: {}\n{}", tx_name, tx_bed_str)
     intron_data = list(set(all_introns))
     intron_data.sort(key=lambda x: x[0])
     # Removal of IR containing transcripts
@@ -914,10 +913,12 @@ def ea_analysis(gene_id, tx_data, tx_coords):
             tx_ident_check[tx_structure] = [i]
     identical_tx_list = [x for x in tx_ident_check.values() if len(x) > 1]
     identical_transcripts = {x[0]: x[1:] for x in identical_tx_list}
-    logger.debug("Identical records: {}", identical_transcripts)
+    if identical_transcripts:
+        logger.debug("Identical records: {}", identical_transcripts)
     # Stash names for EA output, but remove duplicate data
     duplicate_txs = [x[1:] for x in identical_tx_list]
-    logger.debug("Duplicate records: {}", duplicate_txs)
+    if duplicate_txs:
+        logger.debug("Duplicate records: {}", duplicate_txs)
     for dupe_list in duplicate_txs:
         for item in dupe_list:
             del tx_data[item]
@@ -1108,23 +1109,25 @@ def ea_analysis(gene_id, tx_data, tx_coords):
     return er_out_data, ef_out_data
 
 
-def do_ea(tx_data):
+def do_ea(tx_data, mode='pairwise'):
     """Perform event analysis using pybedtools on bed string data"""
     try:
         bed_data = prep_bed_for_ea(tx_data)
     except ValueError:
         raise
-    if len(bed_data) == 4:
+    if mode == 'pairwise':
         ea_results, jct_catalog, transcript_distance = do_ea_pair(bed_data)
         return ea_results, jct_catalog, transcript_distance
     # full-gene, more transcripts than two
-    else:
+    elif mode == 'gene':
         # full-gene, all transcripts
         er_df, ef_df, jct_catalog = do_ea_gene(bed_data)
         return er_df, ef_df, jct_catalog
+    else:
+        raise ValueError("Wrong EA mode")
 
 
-def ea_pairwise(data, out_fhs, gene_id):
+def ea_pairwise(data):
     "Do EA (Event Analysis) for a pair transcripts."
     transcripts = data.groupby("transcript_id")
     transcript_groups = transcripts.groups
@@ -1142,7 +1145,7 @@ def ea_pairwise(data, out_fhs, gene_id):
         tx_df_2 = tx_data[tx_pair[1]]
         tx_pair_data = pd.concat([tx_df_1, tx_df_2])
         # try:
-        ea_data, jct_data, td_data = do_ea(tx_pair_data)
+        ea_data, jct_data, td_data = do_ea(tx_pair_data, mode='pairwise')
         ea_df = ea_df.append(ea_data)
         jct_df = jct_df.append(jct_data)
         td_df = td_df.append(td_data)
@@ -1157,8 +1160,17 @@ def ea_pairwise(data, out_fhs, gene_id):
 def process_single_file(infile, ea_mode, outdir, outfiles):
     """Compare all transcript pairs in a single GTF file."""
     logger.info("Input file: {}", infile)
+    if ea_mode == 'gene':
+        del outfiles['ea_fh']
     logger.debug("Output files: {}", outfiles)
     out_fhs = open_output_files(outdir, outfiles)
+    # Write out csv file headers
+    if ea_mode == 'gene':
+        out_fhs['er_fh'].write_text(",".join(er_df_cols) + '\n')
+        out_fhs['ef_fh'].write_text(",".join(ef_df_cols) + '\n')
+    else:
+        out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
+        out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
     out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
     data = read_exon_data_from_file(infile)
     genes = data.groupby("gene_id")
@@ -1175,22 +1187,15 @@ def process_single_file(infile, ea_mode, outdir, outfiles):
             continue
         if ea_mode == 'gene':
             try:
-                out_fhs['ea_fh'].unlink(missing_ok=True)
-                er_data, ef_data, jct_data = do_ea(gene_df)
-                logger.debug("Writing data out to dis: {}", out_fhs)
-                out_fhs['er_fh'].write_text(",".join(er_df_cols) + '\n')
-                out_fhs['ef_fh'].write_text(",".join(ef_df_cols) + '\n')
+                er_data, ef_data, jct_data = do_ea(gene_df, mode='gene')
                 write_output(er_data, out_fhs, 'er_fh')
                 write_output(ef_data, out_fhs, 'ef_fh')
                 write_output(jct_data, out_fhs, 'jc_fh')
-                exit("DEBUG")
             except ValueError as e:
                 logger.error(e)
                 continue
         else:
-            out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
-            out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
-            ea_data, jct_data, td_data = ea_pairwise(gene_df, out_fhs, gene)
+            ea_data, jct_data, td_data = ea_pairwise(gene_df)
             write_output(ea_data, out_fhs, 'ea_fh')
             write_output(jct_data, out_fhs, 'jc_fh')
             write_output(td_data, out_fhs, 'td_fh')
@@ -1213,7 +1218,7 @@ def ea_two_files(f1_data, f2_data, out_fhs, gene_id):
         tx_df_2_s = tx_df_2.assign(transcript_id=lambda x: x.transcript_id + '_d2')
         tx_pair_data = pd.concat([tx_df_1_s, tx_df_2_s])
         try:
-            ea_data, jct_data, td_data = do_ea(tx_pair_data)
+            ea_data, jct_data, td_data = do_ea(tx_pair_data, mode='pairwise')
             ea_df = ea_df.append(ea_data)
             jct_df = jct_df.append(jct_data)
             td_df = td_df.append(td_data)
@@ -1339,8 +1344,6 @@ def loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs, cpu):
     for gene in gene_list:
         f1_data = valid_f1[valid_f1['gene_id'] == gene]
         f2_data = valid_f2[valid_f2['gene_id'] == gene]
-        logger.debug(f1_data.head())
-        logger.debug(f2_data.head())
         try:
             ea_data, jct_data, td_data = ea_two_files(f1_data, f2_data, out_fhs, gene)
         except ValueError as e:
