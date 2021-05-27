@@ -39,15 +39,27 @@ from numpy import nan
 from pathlib import Path
 from pybedtools import BedTool
 # from pybedtools import Interval
+from multiprocessing import Pool
 
+# Import transcript distance functions and variables
+import transcript_distance as TD
+import minimum_distance as MD
 
 # CONFIGURATION
 common_outfiles = {'ea_fh': 'event_analysis.csv', 'jc_fh': 'junction_catalog.csv', 'er_fh':
                    'event_analysis_er.csv', 'ef_fh': 'event_analysis_ef.csv'}
 
+pairwise_outfiles = {'td_fh': 'pairwise_transcript_distance.csv',
+                     'md_fh': 'minimum_pairwise_transcript_distance.csv'}
+
+gene_outfiles = {'er_fh': 'event_analysis_er.csv', 'ef_fh': 'event_analysis_ef.csv'}
+
+two_gtfs_outfiles = {'gtf1_fh': 'gtf1_only.gtf', 'gtf2_fh': 'gtf2_only.gtf'}
+
 ea_df_cols = ['gene_id', 'transcript_1', 'transcript_2', 'transcript_id', 'ef_id', 'ef_chr',
               'ef_start', 'ef_end', 'ef_strand', 'ef_ir_flag', 'er_id', 'er_chr', 'er_start',
               'er_end', 'er_strand']
+
 jct_df_cols = ['gene_id', 'transcript_id', 'coords']
 
 er_df_cols = ['gene_id', 'er_id', 'er_chr', 'er_start', 'er_end', 'er_strand', 'er_exon_ids',
@@ -57,15 +69,6 @@ er_df_cols = ['gene_id', 'er_id', 'er_chr', 'er_start', 'er_end', 'er_strand', '
 ef_df_cols = ['gene_id', 'er_id', 'ef_id', 'ef_chr', 'ef_start', 'ef_end', 'ef_strand',
               'ef_exon_ids', 'ef_transcript_ids', 'exons_per_ef', 'transcripts_per_ef',
               'ef_ir_flag', 'ea_annotation_frequency']
-
-
-# Later when TD has been added
-# common_outfiles = {'ea_er_fh': 'gene_ea_exonic_regions.csv', 'ea_ef_fh':
-#                    'gene_ea_exonic_fragments.csv', 'ea_fh': 'pairwise_ea.csv', 'td_fh':
-#                    'transcript_distances.csv'}
-
-two_gtfs_outfiles = {'gtf1_fh': 'gtf1_only.gtf', 'gtf2_fh': 'gtf2_only.gtf'}
-# , 'gtf_names_fh': 'gtf_metadata.csv'}
 
 KEEP_IR = False
 
@@ -118,6 +121,21 @@ def parse_args(print_help=False):
         "-k", "--keepir",
         action="store_true",
         help="Keep transcripts with Intron Retention events in full-gene EA. Default: remove",
+    )
+    parser.add_argument(
+        "-a", "--allPairs",
+        dest='all_pairs',
+        action='store_true',
+        help="""Output pairwise distance values for all transcript pairs in 2 GTF comparison
+                (default: Output only minimum pair for each transcript)"""
+    )
+    parser.add_argument(
+        "-n", "--cpu",
+        dest='cpu',
+        type=int,
+        default=1,
+        required=False,
+        help="Number of CPUs to use for parallelization (default: 1).",
     )
     parser.add_argument(
         "-f", "--force",
@@ -316,6 +334,7 @@ def do_td(data):
     return td_data
 
 
+# !!! Need to add a write_gtf function that will output in correct GTF format
 def write_output(data, out_fhs, fh_name):
     """Write results of event analysis to output files."""
     data.to_csv(out_fhs[fh_name], mode='a', header=False, index=False)
@@ -361,6 +380,26 @@ def create_junction_catalog(gene, tx, tx_data):
     junctions = []
     id = 0
     for e in tx_data:
+        id += 1
+        if id == 1:
+            left_end = int(e.end) - 10
+            continue
+        right_start = int(e.start + 10)
+        jct_coords = f"{e.chrom}:{left_end}:{right_start}:{e.strand}"
+        junctions.append([gene, tx, jct_coords])
+        left_end = int(e.end) - 10
+    return junctions
+
+
+def create_junction_catalog_str(gene, tx, tx_data):
+    """Create a junction catalog for a transcript"""
+    junctions = []
+    id = 0
+    tx_data_df = pd.DataFrame(tx_data, columns=['chrom', 'start', 'end', 'name', 'score', 'strand'])
+    tx_data_df['start'] = tx_data_df['start'].astype(int)
+    tx_data_df['end'] = tx_data_df['end'].astype(int)
+    tx_data_df = tx_data_df.sort_values('start')
+    for index, e in tx_data_df.iterrows():
         id += 1
         if id == 1:
             left_end = int(e.end) - 10
@@ -489,32 +528,91 @@ def do_ea_pair(data):
     tx_names = data['transcript_list']
     tx1_name, tx2_name = tx_names[0], tx_names[1]
     tx1_bed_str = data[tx1_name]
-    tx1_bed = BedTool(tx1_bed_str).saveas()
     tx2_bed_str = data[tx2_name]
-    tx2_bed = BedTool(tx2_bed_str).saveas()
+    tx1_bed_df = pd.DataFrame(tx1_bed_str, columns=['chrom', 'start', 'end', 'name', 'score',
+                                                    'strand'])
+    tx1_bed_df['start'] = tx1_bed_df['start'].astype(int)
+    tx1_bed_df['end'] = tx1_bed_df['end'].astype(int)
+    tx1_bed_df = tx1_bed_df.sort_values('start')
+    tx2_bed_df = pd.DataFrame(tx2_bed_str, columns=['chrom', 'start', 'end', 'name', 'score',
+                                                    'strand'])
+    tx2_bed_df['start'] = tx2_bed_df['start'].astype(int)
+    tx2_bed_df['end'] = tx2_bed_df['end'].astype(int)
+    tx2_bed_df = tx2_bed_df.sort_values('start')
     logger.debug("Comparing {} vs {}", tx1_name, tx2_name)
-    junction_data = create_junction_catalog(gene_id, tx1_name, tx1_bed)
-    junction_data.extend(create_junction_catalog(gene_id, tx2_name, tx2_bed))
-    # Check if identical - enumerate EFs from tx1 if true and return
-    t2_t1_v_intersect = tx2_bed.intersect(tx1_bed, v=True)
-    t1_t2_v_intersect = tx1_bed.intersect(tx2_bed, v=True)
-    # Double step verification to get a bit more performance
-    if t1_t2_v_intersect == t2_t1_v_intersect:
-        sub_2_from_1 = tx2_bed.subtract(tx1_bed)
-        sub_1_from_2 = tx1_bed.subtract(tx2_bed)
-        if sub_2_from_1 == sub_1_from_2:
-            # Transcripts are identical
-            logger.info("ERs are identical for {}.", " / ".join(tx_names))
-            ea_data = format_identical_pair_ea(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
-        else:
-            # Transcripts are not identical
+    junction_data1 = create_junction_catalog_str(gene_id, tx1_name, tx1_bed_str)
+    junction_data2 = create_junction_catalog_str(gene_id, tx2_name, tx2_bed_str)
+    junction_str1 = "|".join(pd.DataFrame(junction_data1, columns=['gene_id', 'transcript_id',
+                                                                   'junction_id'])['junction_id'])
+    junction_str2 = "|".join(pd.DataFrame(junction_data2, columns=['gene_id', 'transcript_id',
+                                                                   'junction_id'])['junction_id'])
+    junction_data = junction_data1 + junction_data2
+    # Check if transcripts are full-splice match (all junctions are the same)
+    same_start = False
+    same_end = False
+    is_fsm = False
+    if junction_str1 == junction_str2:
+        tx1_min = tx1_bed_df['start'].min()
+        tx2_min = tx2_bed_df['start'].min()
+        tx1_max = tx1_bed_df['end'].max()
+        tx2_max = tx2_bed_df['end'].max()
+        # Check for non-overlapping mono-exon transcript pairs
+        if tx1_min < tx2_min and tx1_max <= tx2_min:
+            # T1 completely upstream of T2
+            tx1_bed = BedTool(tx1_bed_str).saveas()
+            tx2_bed = BedTool(tx2_bed_str).saveas()
             ea_data = er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
-    # Transcripts are not identical
+        elif tx2_min < tx1_min and tx2_max <= tx1_min:
+            # T2 completely upstream of T1
+            tx1_bed = BedTool(tx1_bed_str).saveas()
+            tx2_bed = BedTool(tx2_bed_str).saveas()
+            ea_data = er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
+        else:
+            # Some overlap present between transcripts
+            is_fsm = True
+            # Check if start coordinates of the transcripts the same
+            if tx1_bed_df['start'].min() == tx2_bed_df['start'].min():
+                same_start = True
+            # Check if end coordinates of transcripts are also the same
+            if tx1_bed_df['end'].max() == tx2_bed_df['end'].max():
+                same_end = True
+            tx_names_str = " / ".join(tx_names)
+            if same_start and same_end:
+                # Transcripts are identical
+                logger.info("Exons are identical for {}.", tx_names_str)
+                ea_data = format_fsm_pair_ea(tx1_bed_df, tx2_bed_df, tx1_name, tx2_name, gene_id,
+                                             side_diff="none")
+            elif same_start and not same_end:
+                # Start coordinates and junctions are the same
+                logger.info("Junctions and start coordinates are identical for {}.", tx_names_str)
+                ea_data = format_fsm_pair_ea(tx1_bed_df, tx2_bed_df, tx1_name, tx2_name, gene_id,
+                                             side_diff="end")
+                # !!! Add calculation of distances (will only need to calculate the difference of 3'
+                # ends
+            elif same_end and not same_start:
+                # End coordinates and junctions are the same
+                logger.info("Junctions and end coordinates are identical for {}.", tx_names_str)
+                ea_data = format_fsm_pair_ea(tx1_bed_df, tx2_bed_df, tx1_name, tx2_name, gene_id,
+                                             side_diff="start")
+                # !!! Add calculation of distances (will only need to calculate the difference of 5'
+                # ends
+            else:
+                # Junctions are the same and ends are both different
+                logger.info("Junctions are identical for {}.", " / ".join(tx_names))
+                ea_data = format_fsm_pair_ea(tx1_bed_df, tx2_bed_df, tx1_name, tx2_name, gene_id,
+                                             side_diff="both")
+                # !!! Add calculation of distances (will only need to calculate the difference of 5'
+                # and 3' ends)
     else:
+        # Junctions are not identical (there is some alternate donor/acceptor/exon)
+        tx1_bed = BedTool(tx1_bed_str).saveas()
+        tx2_bed = BedTool(tx2_bed_str).saveas()
         ea_data = er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
     out_df = pd.DataFrame(ea_data, columns=ea_df_cols)
     junction_df = pd.DataFrame(junction_data, columns=jct_df_cols)
-    return out_df, junction_df
+    td_df = pd.DataFrame(TD.calculate_distance(out_df, junction_df, gene_id, tx1_name, tx2_name,
+                                               fsm=is_fsm)).T
+    return out_df, junction_df, td_df
 
 
 def er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id):
@@ -600,6 +698,169 @@ def format_identical_pair_ea(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id):
         ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
                         i.chrom, i.start, i.end, i.strand, 0, er_name, i.chrom, i.start,
                         i.end, i.strand])
+        er_id += 1
+    ea_df = pd.DataFrame(ea_data, columns=ea_df_cols)
+    return ea_df
+
+
+# !!! Below function potentially can replace format_identical_pair_ea (side = "none", or anything
+# not "start", "end", or "both")
+def format_fsm_pair_ea(tx1_bed_df, tx2_bed_df, tx1_name, tx2_name, gene_id, side_diff):
+    ea_data = []
+    er_id = 1
+    max_er_id = len(tx1_bed_df)
+    for index, i in tx1_bed_df.iterrows():
+        ef_id = 1
+        # Check first ER
+        if er_id == 1:
+            # Monoexon - Make EF and ER for monoexon transcript pairs (must both be monoexon since
+            # junctions are identical)
+            if er_id == max_er_id:
+                # Check if which ends are different
+                if side_diff == "start":
+                    tx1_start = tx1_bed_df['start'].min()
+                    tx2_start = tx2_bed_df['start'].min()
+                    min_start = min(tx1_start, tx2_start)
+                    max_start = max(tx1_start, tx2_start)
+                    er_name = f"{gene_id}:ER{er_id}"
+                    ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+                    if min_start == tx1_start:
+                        tx_name = tx1_name
+                    else:
+                        tx_name = tx2_name
+                    ea_data.append([gene_id, tx1_name, tx2_name, f"{tx_name}", ef_name,
+                                    i.chrom, min_start, max_start, i.strand, 0, er_name, i.chrom,
+                                    min_start, i.end, i.strand])
+                    ef_id += 1
+                    ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+                    ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+                                    i.chrom, max_start, i.end, i.strand, 0, er_name, i.chrom,
+                                    min_start, i.end, i.strand])
+                    ef_id += 1
+                elif side_diff == "end":
+                    tx1_end = tx1_bed_df['end'].max()
+                    tx2_end = tx2_bed_df['end'].max()
+                    min_end = min(tx1_end, tx2_end)
+                    max_end = max(tx1_end, tx2_end)
+                    er_name = f"{gene_id}:ER{er_id}"
+                    ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+                    ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+                                    i.chrom, i.start, min_end, i.strand, 0, er_name, i.chrom,
+                                    i.start, max_end, i.strand])
+                    ef_id += 1
+                    ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+                    if max_end == tx1_end:
+                        tx_name = tx1_name
+                    else:
+                        tx_name = tx2_name
+                    ea_data.append([gene_id, tx1_name, tx2_name, f"{tx_name}", ef_name,
+                                    i.chrom, min_end, max_end, i.strand, 0, er_name, i.chrom,
+                                    i.start, max_end, i.strand])
+                elif side_diff == "both":
+                    tx1_start = tx1_bed_df['start'].min()
+                    tx2_start = tx2_bed_df['start'].min()
+                    min_start = min(tx1_start, tx2_start)
+                    max_start = max(tx1_start, tx2_start)
+                    tx1_end = tx1_bed_df['end'].max()
+                    tx2_end = tx2_bed_df['end'].max()
+                    min_end = min(tx1_end, tx2_end)
+                    max_end = max(tx1_end, tx2_end)
+                    er_name = f"{gene_id}:ER{er_id}"
+                    ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+                    if min_start == tx1_start:
+                        tx_name = tx1_name
+                    else:
+                        tx_name = tx2_name
+                    ea_data.append([gene_id, tx1_name, tx2_name, f"{tx_name}", ef_name, i.chrom,
+                                    min_start, max_start, i.strand, 0, er_name, i.chrom, min_start,
+                                    max_end, i.strand])
+                    ef_id += 1
+                    ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+                    ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+                                    i.chrom, max_start, min_end, i.strand, 0, er_name, i.chrom,
+                                    min_start, max_end, i.strand])
+                    ef_id += 1
+                    if max_end == tx1_end:
+                        tx_name = tx1_name
+                    else:
+                        tx_name = tx2_name
+                    ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+                    ea_data.append([gene_id, tx1_name, tx2_name, f"{tx_name}", ef_name, i.chrom,
+                                    min_end, max_end, i.strand, 0, er_name, i.chrom, min_start,
+                                    max_end, i.strand])
+                else:
+                    # No difference on ends so monoexon are identical
+                    er_name = f"{gene_id}:ER{er_id}"
+                    ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+                    ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+                                    i.chrom, i.start, i.end, i.strand, 0, er_name, i.chrom, i.start,
+                                    i.end, i.strand])
+            # Multiexon - Make EF for first ER in multiexon tx pairs that have different starts
+            elif (er_id != max_er_id) and (side_diff == "start" or side_diff == "both"):
+                tx1_start = tx1_bed_df['start'].min()
+                tx2_start = tx2_bed_df['start'].min()
+                min_start = min(tx1_start, tx2_start)
+                max_start = max(tx1_start, tx2_start)
+                er_name = f"{gene_id}:ER{er_id}"
+                ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+                if min_start == tx1_start:
+                    tx_name = tx1_name
+                else:
+                    tx_name = tx2_name
+                ea_data.append([gene_id, tx1_name, tx2_name, f"{tx_name}", ef_name, i.chrom,
+                                min_start, max_start, i.strand, 0, er_name, i.chrom, min_start,
+                                i.end, i.strand])
+                ef_id += 1
+                ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+                ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+                                i.chrom, max_start, i.end, i.strand, 0, er_name, i.chrom, min_start,
+                                i.end, i.strand])
+                ef_id += 1
+            # Make single EF in ER in multiexon transcript pairs that have no difference in starts
+            else:
+                er_name = f"{gene_id}:ER{er_id}"
+                ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+                ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+                                i.chrom, i.start, i.end, i.strand, 0, er_name, i.chrom, i.start,
+                                i.end, i.strand])
+        # Make one EF for middle ER (since all junctions are shared, all internal ER are identical)
+        if er_id != 1 and er_id != max_er_id:
+            er_name = f"{gene_id}:ER{er_id}"
+            ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+            ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+                            i.chrom, i.start, i.end, i.strand, 0, er_name, i.chrom, i.start,
+                            i.end, i.strand])
+        # Check last ER (for multiexon only)
+        if er_id == max_er_id and er_id != 1:
+            # Make EF for last ER in multiexon transcript pairs that have different ends
+            if (side_diff == "end" or side_diff == "both"):
+                tx1_end = tx1_bed_df['end'].max()
+                tx2_end = tx2_bed_df['end'].max()
+                min_end = min(tx1_end, tx2_end)
+                max_end = max(tx1_end, tx2_end)
+                er_name = f"{gene_id}:ER{er_id}"
+                ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+                ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+                                i.chrom, i.start, min_end, i.strand, 0, er_name, i.chrom, i.start,
+                                max_end, i.strand])
+                ef_id += 1
+                ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+                if max_end == tx1_end:
+                    tx_name = tx1_name
+                else:
+                    tx_name = tx2_name
+                ea_data.append([gene_id, tx1_name, tx2_name, f"{tx_name}", ef_name,
+                                i.chrom, min_end, max_end, i.strand, 0, er_name, i.chrom, i.start,
+                                max_end, i.strand])
+                ef_id += 1
+            # Make single EF in ER in multiexon transcript pairs that have no difference in ends
+            else:
+                er_name = f"{gene_id}:ER{er_id}"
+                ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+                ea_data.append([gene_id, tx1_name, tx2_name, f"{tx1_name}|{tx2_name}", ef_name,
+                                i.chrom, i.start, i.end, i.strand, 0, er_name, i.chrom, i.start,
+                                i.end, i.strand])
+
         er_id += 1
     ea_df = pd.DataFrame(ea_data, columns=ea_df_cols)
     return ea_df
@@ -848,14 +1109,15 @@ def ea_analysis(gene_id, tx_data, tx_coords):
 
 
 def do_ea(tx_data):
-    """Perform even analysis using pybedtools on bed string data"""
+    """Perform event analysis using pybedtools on bed string data"""
     try:
         bed_data = prep_bed_for_ea(tx_data)
     except ValueError:
         raise
     if len(bed_data) == 4:
-        ea_results, jct_catalog = do_ea_pair(bed_data)
-        return ea_results, jct_catalog
+        ea_results, jct_catalog, transcript_distance = do_ea_pair(bed_data)
+        return ea_results, jct_catalog, transcript_distance
+    # full-gene, more transcripts than two
     else:
         # full-gene, all transcripts
         er_df, ef_df, jct_catalog = do_ea_gene(bed_data)
@@ -873,21 +1135,23 @@ def ea_pairwise(data, out_fhs, gene_id):
     transcript_pairs = list(itertools.combinations(tx_data.keys(), 2))
     ea_df = pd.DataFrame(columns=ea_df_cols)
     jct_df = pd.DataFrame(columns=jct_df_cols)
+    td_df = pd.DataFrame(columns=TD.td_df_cols)
     for tx_pair in transcript_pairs:
         # try:
         tx_df_1 = tx_data[tx_pair[0]]
         tx_df_2 = tx_data[tx_pair[1]]
         tx_pair_data = pd.concat([tx_df_1, tx_df_2])
         # try:
-        ea_data, jct_data = do_ea(tx_pair_data)
+        ea_data, jct_data, td_data = do_ea(tx_pair_data)
         ea_df = ea_df.append(ea_data)
         jct_df = jct_df.append(jct_data)
+        td_df = td_df.append(td_data)
         # except ValueError as e:
         #     logger.error(e)
         #     exit(1)
         #     #     # DEBUG, exit for now, just write to rejects later
         #     #     # continue
-    return ea_df, jct_df
+    return ea_df, jct_df, td_df
 
 
 def process_single_file(infile, ea_mode, outdir, outfiles):
@@ -925,9 +1189,11 @@ def process_single_file(infile, ea_mode, outdir, outfiles):
                 continue
         else:
             out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
-            ea_data, jct_data = ea_pairwise(gene_df, out_fhs, gene)
+            out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
+            ea_data, jct_data, td_data = ea_pairwise(gene_df, out_fhs, gene)
             write_output(ea_data, out_fhs, 'ea_fh')
             write_output(jct_data, out_fhs, 'jc_fh')
+            write_output(td_data, out_fhs, 'td_fh')
 
 
 def ea_two_files(f1_data, f2_data, out_fhs, gene_id):
@@ -938,6 +1204,7 @@ def ea_two_files(f1_data, f2_data, out_fhs, gene_id):
     logger.debug("Transcript combinations to process for {}: \n{}", gene_id, transcript_combos)
     ea_df = pd.DataFrame(columns=ea_df_cols)
     jct_df = pd.DataFrame(columns=jct_df_cols)
+    td_df = pd.DataFrame(columns=TD.td_df_cols)
     for pair in transcript_combos:
         # try:
         tx_df_1 = f1_data[f1_data['transcript_id'] == pair[0]]
@@ -946,9 +1213,10 @@ def ea_two_files(f1_data, f2_data, out_fhs, gene_id):
         tx_df_2_s = tx_df_2.assign(transcript_id=lambda x: x.transcript_id + '_d2')
         tx_pair_data = pd.concat([tx_df_1_s, tx_df_2_s])
         try:
-            ea_data, jct_data = do_ea(tx_pair_data)
+            ea_data, jct_data, td_data = do_ea(tx_pair_data)
             ea_df = ea_df.append(ea_data)
             jct_df = jct_df.append(jct_data)
+            td_df = td_df.append(td_data)
         except ValueError:
             raise
         # except ValueError as e:
@@ -956,15 +1224,47 @@ def ea_two_files(f1_data, f2_data, out_fhs, gene_id):
         #     exit(1)
         #     #     # DEBUG, exit for now, just write to rejects later
         #     #     # continue
-    return ea_df, jct_df
+    return ea_df, jct_df, td_df
 
 
-def process_two_files(infiles, outdir, outfiles):
+def chunks(lst, n):
+    # Split list into n chunks and return list of lists
+    splitSize = (len(lst)//n) + ((len(lst) % n) > 0)
+    list_of_lists = []
+    for element in range(0, len(lst), splitSize):
+        list_of_lists.append(lst[element:element + splitSize])
+    return list_of_lists
+
+
+ea_list = []
+jct_list = []
+td_list = []
+
+
+def callback_results(results):
+    # Callback function to append result to list of results
+    ea_data_cat, jct_data_cat, td_data_cat = results
+    ea_list.append(ea_data_cat)
+    jct_list.append(jct_data_cat)
+    td_list.append(td_data_cat)
+
+
+def process_two_files(infiles, outdir, outfiles, cpu, all_pairs):
     """Compare transcript pairs between two GTF files."""
     logger.info("Input files: {}", infiles)
+    if not all_pairs:
+        # Do not create full transcript distance output
+        del(outfiles['td_fh'])
+    else:
+        # Do not create subset minimum distance output
+        del(outfiles['md_fh'])
     out_fhs = open_output_files(outdir, outfiles)
     out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
     out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
+    if not all_pairs:
+        out_fhs['md_fh'].write_text(",".join(MD.md_df_cols) + '\n')
+    else:
+        out_fhs['td_fh'].write_text(",".join(MD.md_df_cols) + '\n')
     infile_1 = infiles[0]
     infile_2 = infiles[1]
     in_f1 = read_exon_data_from_file(infile_1)
@@ -991,18 +1291,70 @@ def process_two_files(infiles, outdir, outfiles):
                 infile_2)
     gene_list = list(set(valid_f1['gene_id']))
     logger.debug("Genes to process: \n{}", gene_list)
+    # If 1 cpu available
+    if cpu == 1:
+        ea_data, jct_data, td_data = loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs, cpu)
+        write_output(ea_data, out_fhs, 'ea_fh')
+        write_output(jct_data, out_fhs, 'jc_fh')
+        # Identify minimum pairs using transcript distances
+        md_data = MD.identify_min_pair(td_data, all_pairs)
+        if not all_pairs:
+            write_output(md_data, out_fhs, 'md_fh')
+        else:
+            write_output(md_data, out_fhs, 'td_fh')
+    # If cpu > 1, parallelize
+    elif cpu > 1:
+        # Get lists for each process based on cpu value
+        geneLists = chunks(gene_list, cpu)
+        # Generate multiprocess Pool with specified number of cpus
+        #     to loop through genes and calculate distances
+        pool = Pool(cpu)
+        for genes in geneLists:
+            subset_f1 = valid_f1[valid_f1['gene_id'].isin(genes)]
+            subset_f2 = valid_f2[valid_f2['gene_id'].isin(genes)]
+            pool.apply_async(loop_over_genes, args=(genes, subset_f1, subset_f2, out_fhs, cpu),
+                             callback=callback_results)
+        pool.close()
+        pool.join()
+        ea_cat = pd.concat(ea_list)
+        jct_cat = pd.concat(jct_list)
+        td_cat = pd.concat(td_list)
+        write_output(ea_cat, out_fhs, 'ea_fh')
+        write_output(jct_cat, out_fhs, 'jc_fh')
+        # Identify minimum pairs using transcript distances
+        md_data = MD.identify_min_pair(td_cat, all_pairs)
+        if not all_pairs:
+            write_output(md_data, out_fhs, 'md_fh')
+        else:
+            write_output(md_data, out_fhs, 'td_fh')
+    else:
+        logger.error("Invalid cpu parameter")
+
+
+def loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs, cpu):
+    ea_data_list = []
+    jct_data_list = []
+    td_data_list = []
+    # Loop over genes in provided gene list
     for gene in gene_list:
         f1_data = valid_f1[valid_f1['gene_id'] == gene]
         f2_data = valid_f2[valid_f2['gene_id'] == gene]
         logger.debug(f1_data.head())
         logger.debug(f2_data.head())
         try:
-            ea_data, jct_data = ea_two_files(f1_data, f2_data, out_fhs, gene)
+            ea_data, jct_data, td_data = ea_two_files(f1_data, f2_data, out_fhs, gene)
         except ValueError as e:
             logger.error(e)
             continue
-        write_output(ea_data, out_fhs, 'ea_fh')
-        write_output(jct_data, out_fhs, 'jc_fh')
+        # Append output to list
+        ea_data_list.append(ea_data)
+        jct_data_list.append(jct_data)
+        td_data_list.append(td_data)
+    # Concatenate outputs
+    ea_data_cat = pd.concat(ea_data_list)
+    jct_data_cat = pd.concat(jct_data_list)
+    td_data_cat = pd.concat(td_data_list)
+    return [ea_data_cat, jct_data_cat, td_data_cat]
 
 
 def main():
@@ -1013,18 +1365,25 @@ def main():
     infiles = args.infiles
     outdir = handle_outdir(args)
     ea_mode = args.ea_mode
+    all_pairs = args.all_pairs
+    cpu = args.cpu
     if len(infiles) == 1:
-        logger.debug("Single file pairwise analysis")
+        logger.debug("Single file {} analysis", ea_mode)
         outfiles = common_outfiles
         if args.keepir:
             global KEEP_IR
             KEEP_IR = True
+        if ea_mode == "pairwise":
+            outfiles.update(pairwise_outfiles)
+        else:
+            outfiles.update(gene_outfiles)
         process_single_file(infiles[0], ea_mode, outdir, outfiles)
     else:
         logger.debug("Two files pairwise analysis")
         outfiles = common_outfiles
         outfiles.update(two_gtfs_outfiles)
-        process_two_files(infiles, outdir, outfiles)
+        outfiles.update(pairwise_outfiles)
+        process_two_files(infiles, outdir, outfiles, cpu, all_pairs)
     # The End
 
 
