@@ -513,6 +513,9 @@ def do_ea_gene(data):
             tx_coords[tx_name].append(jc[2])
     junction_df = pd.DataFrame(junction_data, columns=jct_df_cols)
     # Event Analysis
+    if not tx_data:
+        logger.warning("Missing transcript data for {} gene, skipping", gene_id)
+        return None, None, None
     er_data, ef_data = ea_analysis(gene_id, tx_data, tx_coords)
     er_df = pd.DataFrame(er_data, columns=er_df_cols)
     ef_df = pd.DataFrame(ef_data, columns=ef_df_cols)
@@ -1188,6 +1191,8 @@ def process_single_file(infile, ea_mode, outdir, outfiles):
         if ea_mode == 'gene':
             try:
                 er_data, ef_data, jct_data = do_ea(gene_df, mode='gene')
+                if er_data is None:
+                    continue
                 write_output(er_data, out_fhs, 'er_fh')
                 write_output(ef_data, out_fhs, 'ef_fh')
                 write_output(jct_data, out_fhs, 'jc_fh')
