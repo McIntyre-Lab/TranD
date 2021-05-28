@@ -169,7 +169,7 @@ def get_EF_distance(singlePair,ef_df,tx1_name,tx2_name,ERSharedSet):
         # Nucleotide differences are 0, all are shared and are in shared ER
         singlePair[['total_nt','total_nt_in_shared_ER','num_nt_shared','num_nt_shared_in_shared_ER']] = ef_df['fragment_length'].sum()
         singlePair[['num_nt_T1_only','num_nt_T1_only_in_shared_ER','num_nt_T1_only_in_unique_ER',
-                    'num_nt_T2_only','num_nt_T2_only_in_shared_ER','num_nt_T2_only_in_unique_ER']] = 0
+                    'num_nt_T2_only','num_nt_T2_only_in_shared_ER','num_nt_T2_only_in_unique_ER','num_nt_diff']] = 0
         singlePair[['prop_nt_diff','prop_nt_diff_in_shared_ER']] = 0
         singlePair[['prop_nt_similar','prop_nt_similar_in_shared_ER']] = 1
         
