@@ -23,7 +23,7 @@ md_df_cols = ['gene_id','transcript_1','transcript_2','num_junction_T1_only','nu
              'num_nt_T2_only_in_shared_ER','num_nt_shared_in_shared_ER','total_nt_in_shared_ER',
              'prop_nt_diff_in_shared_ER','prop_nt_similar_in_shared_ER','num_nt_T1_only_in_unique_ER',
              'num_nt_T2_only_in_unique_ER','flag_FSM','flag_IR','flag_5_variation',
-             'flag_3_variation','flag_alt_donor_acceptor','flag_alt_exon','num_transcript_in_gene_d1',
+             'flag_3_variation','flag_alt_donor_acceptor','flag_alt_exon','flag_nonoverlapping','num_transcript_in_gene_d1',
              'num_transcript_in_gene_d2','flag_d1_greater','flag_d2_greater','flag_equal',
              'transcript_in_gene','min_match_d1','flag_min_match_d1','min_match_d2',
              'flag_min_match_d2','flag_recip_min_match','num_recip_min_match_in_gene',
