@@ -1268,6 +1268,9 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs):
     else:
         # Do not create subset minimum distance output
         del(outfiles['md_fh'])
+    # Do not make gene mode files (remove from outfiles)
+    del(outfiles['er_fh'])
+    del(outfiles['ef_fh'])
     out_fhs = open_output_files(outdir, outfiles)
     out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
     out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
