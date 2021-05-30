@@ -252,13 +252,7 @@ def set_AS_flags(singlePair,ef_df,tx1_name,tx2_name):
                                                 ((ef_strand == "-")&(t1_max_end != t2_max_end)),1,0)
     # 3' end variation: where difference in end if + strand or difference in start if - strand
     singlePair['flag_3_variation'] = np.where(((ef_strand == "-")&(t1_min_start != t2_min_start))|
-                                                ((ef_strand == "+")&(t1_max_end != t2_max_end)),1,0)
-
-    # If transcripts are nonoverlapping then 5'/3' variation and alt exon flags set to 0
-    if singlePair['flag_nonoverlapping']==1:
-        singlePair['flag_alt_exon'] = 0
-        singlePair['flag_5_variation'] = 0
-        singlePair['flag_3_variation'] = 0        
+                                                ((ef_strand == "+")&(t1_max_end != t2_max_end)),1,0)      
 
     # If a pair contains at least one IR event - 5' and 3' variation calculated
     #   but flag_alt_exon and flag_alt_donor_acceptor set to 0
@@ -272,5 +266,11 @@ def set_AS_flags(singlePair,ef_df,tx1_name,tx2_name):
         # Alternate donor/acceptors in shared ER (where not all junctions are shared)
         singlePair['flag_alt_donor_acceptor'] = np.where((singlePair['prop_nt_diff_in_shared_ER']>0)&
                                                           (singlePair['flag_FSM']==0),1,0)
+
+    # If transcripts are nonoverlapping then 5'/3' variation and alt exon flags set to 0
+    if singlePair['flag_nonoverlapping']==1:
+        singlePair['flag_alt_exon'] = 0
+        singlePair['flag_5_variation'] = 0
+        singlePair['flag_3_variation'] = 0
     
     return singlePair
