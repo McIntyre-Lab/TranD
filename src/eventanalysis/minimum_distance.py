@@ -34,7 +34,7 @@ md_df_cols = ['gene_id','transcript_1','transcript_2','num_junction_T1_only','nu
              'num_ERM_withIR_recip_min_match_in_gene','prop_identical_recip_min_match_in_gene',
              'prop_FSM_recip_min_match_in_gene','prop_ERM_recip_min_match_in_gene',
              'prop_ERM_noIR_recip_min_match_in_gene','prop_ERM_withIR_recip_min_match_in_gene',
-             'flag_alt_exon_recip_min_match','flag_alt_donor_acceptor_recip_min_match',
+             'flag_nonoverlapping_recip_min_match','flag_alt_exon_recip_min_match','flag_alt_donor_acceptor_recip_min_match',
              'flag_IR_recip_min_match','flag_5_variation_recip_min_match','flag_3_variation_recip_min_match',
              'recip_min_pair_in_gene']
 
@@ -101,6 +101,8 @@ def identify_min_pair(td_data, all_pairs):
     
     # Flag different types of splicing differences in min matches
     #   (alt exon, alt donor/acceptors, IR)
+    td_data['flag_nonoverlapping_recip_min_match'] = np.where((td_data['flag_recip_min_match']==1)&
+                                                               (td_data['flag_overlapping']==1))
     td_data['flag_alt_exon_recip_min_match'] = np.where((td_data['flag_recip_min_match']==1)&
                                                   (td_data['flag_alt_exon']==1),1,0)
     td_data['flag_alt_donor_acceptor_recip_min_match'] = np.where((td_data['flag_recip_min_match']==1)&
