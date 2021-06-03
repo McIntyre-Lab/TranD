@@ -70,8 +70,6 @@ ef_df_cols = ['gene_id', 'er_id', 'ef_id', 'ef_chr', 'ef_start', 'ef_end', 'ef_s
               'ef_exon_ids', 'ef_transcript_ids', 'exons_per_ef', 'transcripts_per_ef',
               'ef_ir_flag', 'ea_annotation_frequency']
 
-KEEP_IR = False
-
 
 def parse_args(print_help=False):
     """Parse command-line arguments"""
@@ -462,7 +460,7 @@ def remove_ir_transcripts(tx_data, introns):
     return tx_data
 
 
-def do_ea_gene(data):
+def do_ea_gene(data, keep_ir):
     """
     Event Analysis on a full gene
     """
@@ -486,7 +484,7 @@ def do_ea_gene(data):
         tx_exons = BedTool(tx_bed_str).saveas()
         tx_data[tx_name] = tx_exons
         tx_coords[tx_name] = [left_edge, right_edge]
-        if not KEEP_IR:
+        if not keep_ir:
             tx_full = BedTool(f"{chrom} {left_edge} {right_edge} {feature} 0 {strand}",
                               from_string=True)
             tx_introns = tx_full.subtract(tx_exons)
@@ -495,7 +493,7 @@ def do_ea_gene(data):
     intron_data = list(set(all_introns))
     intron_data.sort(key=lambda x: x[0])
     # Removal of IR containing transcripts
-    if not KEEP_IR:
+    if not keep_ir:
         tx_data = remove_ir_transcripts(tx_data, intron_data)
         old_tx_names = tx_names
         tx_names = tx_data.keys()
@@ -1112,7 +1110,7 @@ def ea_analysis(gene_id, tx_data, tx_coords):
     return er_out_data, ef_out_data
 
 
-def do_ea(tx_data, mode='pairwise'):
+def do_ea(tx_data, mode='pairwise', keep_ir=False):
     """Perform event analysis using pybedtools on bed string data"""
     try:
         bed_data = prep_bed_for_ea(tx_data)
@@ -1124,7 +1122,7 @@ def do_ea(tx_data, mode='pairwise'):
     # full-gene, more transcripts than two
     elif mode == 'gene':
         # full-gene, all transcripts
-        er_df, ef_df, jct_catalog = do_ea_gene(bed_data)
+        er_df, ef_df, jct_catalog = do_ea_gene(bed_data, keep_ir)
         return er_df, ef_df, jct_catalog
     else:
         raise ValueError("Wrong EA mode")
@@ -1160,7 +1158,7 @@ def ea_pairwise(data):
     return ea_df, jct_df, td_df
 
 
-def process_single_file(infile, ea_mode, outdir, outfiles):
+def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles):
     """Compare all transcript pairs in a single GTF file."""
     logger.info("Input file: {}", infile)
     if ea_mode == 'gene':
@@ -1190,7 +1188,7 @@ def process_single_file(infile, ea_mode, outdir, outfiles):
             continue
         if ea_mode == 'gene':
             try:
-                er_data, ef_data, jct_data = do_ea(gene_df, mode='gene')
+                er_data, ef_data, jct_data = do_ea(gene_df, mode='gene', keep_ir=keep_ir)
                 if er_data is None:
                     continue
                 write_output(er_data, out_fhs, 'er_fh')
@@ -1381,14 +1379,12 @@ def main():
     if len(infiles) == 1:
         logger.debug("Single file {} analysis", ea_mode)
         outfiles = common_outfiles
-        if args.keepir:
-            global KEEP_IR
-            KEEP_IR = True
+        keep_ir = args.keepir
         if ea_mode == "pairwise":
             outfiles.update(pairwise_outfiles)
         else:
             outfiles.update(gene_outfiles)
-        process_single_file(infiles[0], ea_mode, outdir, outfiles)
+        process_single_file(infiles[0], ea_mode, keep_ir, outdir, outfiles)
     else:
         logger.debug("Two files pairwise analysis")
         outfiles = common_outfiles
