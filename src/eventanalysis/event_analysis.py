@@ -45,6 +45,9 @@ from multiprocessing import Pool
 import transcript_distance as TD
 import minimum_distance as MD
 
+# Import plotting functions
+import plot_two_gtf_pairwise as P2GP
+
 # CONFIGURATION
 common_outfiles = {'ea_fh': 'event_analysis.csv', 'jc_fh': 'junction_catalog.csv', 'er_fh':
                    'event_analysis_er.csv', 'ef_fh': 'event_analysis_ef.csv'}
@@ -1313,6 +1316,8 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs):
             write_output(md_data, out_fhs, 'md_fh')
         else:
             write_output(md_data, out_fhs, 'td_fh')
+        # Generate 2 GTF pairwise plots
+        P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1="d1", name2="d2")
     # If cpu > 1, parallelize
     elif cpu > 1:
         # Get lists for each process based on cpu value
@@ -1338,6 +1343,8 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs):
             write_output(md_data, out_fhs, 'md_fh')
         else:
             write_output(md_data, out_fhs, 'td_fh')
+        # Generate 2 GTF pairwise plots
+        P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1="d1", name2="d2")
     else:
         logger.error("Invalid cpu parameter")
 
