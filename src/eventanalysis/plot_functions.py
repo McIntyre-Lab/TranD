@@ -176,6 +176,9 @@ def plot_gene_AS_upset_nt_box(md_data,name1,name2):
                             'flag_3_variation_recip_min_match','flag_nonoverlapping_recip_min_match',
                             'num_recip_min_match_in_gene','num_transcript_in_gene_'+name1,
                             'num_transcript_in_gene_'+name2,'num_nt_diff','prop_nt_diff']].copy()
+    # Ensure number of nt different are int and float values
+    recipMinPairAS['num_nt_diff'] = recipMinPairAS['num_nt_diff'].astype(int)
+    recipMinPairAS['prop_nt_diff'] = recipMinPairAS['num_nt_diff'].astype(float)
     geneRecipMatchAS = recipMinPairAS.groupby('gene_id').agg({'flag_alt_exon_recip_min_match':'max',
                                                               'flag_alt_donor_acceptor_recip_min_match':'max',
                                                               'flag_IR_recip_min_match':'max',
