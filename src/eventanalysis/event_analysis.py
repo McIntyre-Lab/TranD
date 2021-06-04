@@ -263,6 +263,9 @@ def read_exon_data_from_file(infile):
         gtf_cols = all_gtf_columns[:len(file_cols)]
     data.columns = gtf_cols
     drop_cols = [x for x in drop_columns if x in gtf_cols]
+    data['seqname'] = data['seqname'].astype(str)
+    data['start'] = data['start'].astype(int)
+    data['end'] = data['end'].astype(int)
     logger.debug("Raw data rows: {}", data.shape[0])
     data = data[data['feature'] == 'exon']
     data = data.drop(labels=drop_cols, axis=1)
