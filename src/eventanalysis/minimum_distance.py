@@ -24,7 +24,7 @@ md_df_cols = ['gene_id','transcript_1','transcript_2','num_junction_T1_only','nu
              'prop_nt_diff_in_shared_ER','prop_nt_similar_in_shared_ER','num_nt_T1_only_in_unique_ER',
              'num_nt_T2_only_in_unique_ER','flag_FSM','flag_IR','flag_5_variation',
              'flag_3_variation','flag_alt_donor_acceptor','flag_alt_exon','flag_nonoverlapping','num_transcript_in_gene_d1',
-             'num_transcript_in_gene_d2','flag_d1_greater','flag_d2_greater','flag_equal',
+             'num_transcript_in_gene_d2','flag_d1_greater','flag_d2_greater','flag_match',
              'transcript_in_gene','min_match_d1','flag_min_match_d1','min_match_d2',
              'flag_min_match_d2','flag_recip_min_match','num_recip_min_match_in_gene',
              'flag_d1_tie','flag_d2_tie','flag_identical_recip_min_match','flag_FSM_recip_min_match',
@@ -52,9 +52,9 @@ def identify_min_pair(td_data, all_pairs):
                                                  (td_data['num_transcript_in_gene_'+name1]>0)&(td_data['num_transcript_in_gene_'+name2]>0),1,0)
     td_data['flag_'+name2+'_greater'] = np.where((td_data['num_transcript_in_gene_'+name1]<td_data['num_transcript_in_gene_'+name2])&
                                                  (td_data['num_transcript_in_gene_'+name1]>0)&(td_data['num_transcript_in_gene_'+name2]>0),1,0)
-    td_data['flag_equal'] = np.where((td_data['num_transcript_in_gene_'+name1]==td_data['num_transcript_in_gene_'+name2]),1,0)
-    conditionsGene = [td_data['flag_'+name1+'_greater']==1,td_data['flag_'+name2+'_greater']==1,td_data['flag_equal']==1]
-    choicesGene = [name1+"_greater",name2+"_greater","equal"]
+    td_data['flag_match'] = np.where((td_data['num_transcript_in_gene_'+name1]==td_data['num_transcript_in_gene_'+name2]),1,0)
+    conditionsGene = [td_data['flag_'+name1+'_greater']==1,td_data['flag_'+name2+'_greater']==1,td_data['flag_match']==1]
+    choicesGene = [name1+"_greater",name2+"_greater","match"]
     td_data['transcript_in_gene'] = np.select(conditionsGene,choicesGene,'missing')
     if len(td_data[td_data['transcript_in_gene']=="missing"]) > 0:
         logger.error("Unexpected variable assignment for gene transcript count comparison")
@@ -120,10 +120,10 @@ def identify_min_pair(td_data, all_pairs):
                        (td_data['transcript_in_gene']==name2+"_greater")&(td_data['num_recip_min_match_in_gene']==0),
                        (td_data['transcript_in_gene']==name2+"_greater")&(td_data['num_recip_min_match_in_gene']>0)&(td_data['num_recip_min_match_in_gene']<td_data['num_transcript_in_gene_'+name1]),
                        (td_data['transcript_in_gene']==name2+"_greater")&(td_data['num_recip_min_match_in_gene']>0)&(td_data['num_recip_min_match_in_gene']==td_data['num_transcript_in_gene_'+name1]),
-                       (td_data['transcript_in_gene']=="equal")&(td_data['num_recip_min_match_in_gene']==0),
-                       (td_data['transcript_in_gene']=="equal")&(td_data['num_recip_min_match_in_gene']>0)&(td_data['num_recip_min_match_in_gene']<td_data['num_transcript_in_gene_'+name1]),
-                       (td_data['transcript_in_gene']=="equal")&(td_data['num_recip_min_match_in_gene']>0)&(td_data['num_recip_min_match_in_gene']==td_data['num_transcript_in_gene_'+name1])]
-    choicesRecrip = ["no_subset","partial_subset","subset","no_subset","partial_subset","subset","no_match","partial_match","match"]
+                       (td_data['transcript_in_gene']=="match")&(td_data['num_recip_min_match_in_gene']==0),
+                       (td_data['transcript_in_gene']=="match")&(td_data['num_recip_min_match_in_gene']>0)&(td_data['num_recip_min_match_in_gene']<td_data['num_transcript_in_gene_'+name1]),
+                       (td_data['transcript_in_gene']=="match")&(td_data['num_recip_min_match_in_gene']>0)&(td_data['num_recip_min_match_in_gene']==td_data['num_transcript_in_gene_'+name1])]
+    choicesRecrip = ["no_reciprocal_pairs","partial_reciprocal_pairs","reciprocal_pairs","no_reciprocal_pairs","partial_reciprocal_pairs","reciprocal_pairs","no_reciprocal_pairs","partial_reciprocal_pairs","reciprocal_pairs"]
     td_data['recip_min_pair_in_gene'] = np.select(conditionsRecip,choicesRecrip,"missing")
     if len(td_data[td_data['recip_min_pair_in_gene']=="missing"]) > 0:
         logger.error("Unexpected variable assignment for gene reciprocal minimum pair comparison")
