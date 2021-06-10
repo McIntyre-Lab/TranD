@@ -172,16 +172,16 @@ def plot_recip_min_pair_AS_upset(md_data,name1,name2,legendOut):
     recipMinPairAS = md_data[md_data['flag_recip_min_match']==1][['transcript_1','transcript_2',
                             'flag_alt_exon_recip_min_match','flag_alt_donor_acceptor_recip_min_match',
                             'flag_IR_recip_min_match','flag_5_variation_recip_min_match',
-                            'flag_3_variation_recip_min_match','flag_nonoverlapping_recip_min_match']].copy()
+                            'flag_3_variation_recip_min_match','flag_no_shared_nt_recip_min_match']].copy()
     recipMinPairAS = recipMinPairAS.rename(columns={'flag_alt_exon_recip_min_match':'Alt. Exon',
                                                     'flag_alt_donor_acceptor_recip_min_match':'Alt. Donor/Acceptor',
                                                     'flag_IR_recip_min_match':'Intron Retention',
                                                     'flag_5_variation_recip_min_match':'5\' Variation',
                                                     'flag_3_variation_recip_min_match':'3\' Variation',
-                                                    'flag_nonoverlapping_recip_min_match':'Nonoverlapping'})
+                                                    'flag_no_shared_nt_recip_min_match':'No Shared Nucleotides'})
     plot_upset(recipMinPairAS.set_index([c for c in recipMinPairAS.columns if "transcript" not in c]),
                "Number of Reciprocal Minimum Pairs with AS Categories")
-    legendText = "Number of reciprocal minimum pairs with the specified types of alternative splicing between {} and {} indicated by the black dots below the histogram of pair counts (n = {} total pairs). Nonoverlapping pairs are transcript pairs that are in the same genes but coordinates do not overlap.".format(name1,name2,len(recipMinPairAS))
+    legendText = "Number of reciprocal minimum pairs with the specified types of alternative splicing between {} and {} indicated by the black dots below the histogram of pair counts (n = {} total pairs). Pairs with no shared nucleotides are in the same genes but the coordinates do not overlap.".format(name1,name2,len(recipMinPairAS))
 #    plt.text(0.5*len(recipMinPairAS.groupby([c for c in recipMinPairAS.columns if "transcript" not in c])['transcript_1'].count()),-0.2*recipMinPairAS.groupby([c for c in recipMinPairAS.columns if "transcript" not in c])['transcript_1'].count().max()*len([c for c in recipMinPairAS.columns if "transcript" not in c]),legendText,ha="center",va="top",wrap=True)
     with open(legendOut,'w') as outFile:
         start_rtf(outFile)
@@ -193,19 +193,19 @@ def plot_recip_min_pair_AS_upset_nt_box(md_data,name1,name2,legendOut):
     recipMinPairAS = md_data[md_data['flag_recip_min_match']==1][['transcript_1','transcript_2',
                             'flag_alt_exon_recip_min_match','flag_alt_donor_acceptor_recip_min_match',
                             'flag_IR_recip_min_match','flag_5_variation_recip_min_match',
-                            'flag_3_variation_recip_min_match','flag_nonoverlapping_recip_min_match',
+                            'flag_3_variation_recip_min_match','flag_no_shared_nt_recip_min_match',
                             'num_nt_diff','prop_nt_diff']].copy()
     recipMinPairAS = recipMinPairAS.rename(columns={'flag_alt_exon_recip_min_match':'Alt. Exon',
                                                     'flag_alt_donor_acceptor_recip_min_match':'Alt. Donor/Acceptor',
                                                     'flag_IR_recip_min_match':'Intron Retention',
                                                     'flag_5_variation_recip_min_match':'5\' Variation',
                                                     'flag_3_variation_recip_min_match':'3\' Variation',
-                                                    'flag_nonoverlapping_recip_min_match':'Nonoverlapping',
+                                                    'flag_no_shared_nt_recip_min_match':'No Shared Nucleotides',
                                                     'num_nt_diff':'Number NT Different',
                                                     'prop_nt_diff':'Proportion NT Different'})
     plot_upset(recipMinPairAS.set_index([c for c in recipMinPairAS.columns if ("transcript" not in c) and ("NT" not in c)]),
                "Number of Reciprocal Minimum Pairs with AS Categories",['Number NT Different','Proportion NT Different'])
-    legendText = "Number of reciprocal minimum pairs with the specified types of alternative splicing between {} and {} indicated by the black dots below the histogram of pair counts (n = {} total pairs). Nonoverlapping pairs are transcript pairs in the same genes but with nonoverlapping coordinates. Box plots of the number (blue) and proportion (orange) of nucleotide (NT) differences between the pairs represented in the histogram.".format(name1,name2,len(recipMinPairAS))
+    legendText = "Number of reciprocal minimum pairs with the specified types of alternative splicing between {} and {} indicated by the black dots below the histogram of pair counts (n = {} total pairs). Pairs with no shared nucleotides are in the same genes but with nonoverlapping coordinates. Box plots of the number (blue) and proportion (orange) of nucleotide (NT) differences between the pairs represented in the histogram.".format(name1,name2,len(recipMinPairAS))
 #    plt.text(0.5*len(recipMinPairAS.groupby([c for c in recipMinPairAS.columns if ("transcript" not in c) and ("NT" not in c)])['transcript_1'].count()),-5.25,legendText,ha="center",va="top",wrap=True)
     with open(legendOut,'w') as outFile:
         start_rtf(outFile)
@@ -217,16 +217,16 @@ def plot_gene_AS_upset(md_data,name1,name2,legendOut):
     geneRecipMatchAS = md_data.groupby('gene_id')[['flag_alt_exon_recip_min_match','flag_alt_donor_acceptor_recip_min_match',
                                                    'flag_IR_recip_min_match','flag_5_variation_recip_min_match',
                                                    'flag_3_variation_recip_min_match',
-                                                   'flag_nonoverlapping_recip_min_match']].max().astype(bool).reset_index()
+                                                   'flag_no_shared_nt_recip_min_match']].max().astype(bool).reset_index()
     geneRecipMatchAS = geneRecipMatchAS.rename(columns={'flag_alt_exon_recip_min_match':'Alt. Exon',
                                                         'flag_alt_donor_acceptor_recip_min_match':'Alt. Donor/Acceptor',
                                                         'flag_IR_recip_min_match':'Intron Retention',
                                                         'flag_5_variation_recip_min_match':'5\' Variation',
                                                         'flag_3_variation_recip_min_match':'3\' Variation',
-                                                        'flag_nonoverlapping_recip_min_match':'Nonoverlapping'})
+                                                        'flag_no_shared_nt_recip_min_match':'No Shared Nucleotides'})
     plot_upset(geneRecipMatchAS.set_index([c for c in geneRecipMatchAS.columns if c != "gene_id"]),
                "Number of Genes with AS Categories in Reciprocal Minimum Pairs")
-    legendText = "Number of genes with the specified types of alternative splicing in only reciprocal minimum pairs between {} and {} indicated by the black dots below the histogram of gene counts (n = {} genes with {} reciprocal minimum pairs). Genes with \"Nonoverlapping\" have a pair of transcripts with nonoverlapping coordinates.".format(name1,name2,len(geneRecipMatchAS),len(md_data[md_data['flag_recip_min_match']==1]))
+    legendText = "Number of genes with the specified types of alternative splicing in only reciprocal minimum pairs between {} and {} indicated by the black dots below the histogram of gene counts (n = {} genes with {} reciprocal minimum pairs). Genes with \"No Shared Nucleotides\" have a pair of transcripts with nonoverlapping coordinates.".format(name1,name2,len(geneRecipMatchAS),len(md_data[md_data['flag_recip_min_match']==1]))
 #    plt.text(0.5*len(geneRecipMatchAS.groupby([c for c in geneRecipMatchAS.columns if c != "gene_id"])['gene_id'].count()),-0.2*geneRecipMatchAS.groupby([c for c in geneRecipMatchAS.columns if c != "gene_id"])['gene_id'].count().max()*len([c for c in geneRecipMatchAS.columns if c != "gene_id"]),legendText,ha="center",va="top",wrap=True)
     with open(legendOut,'w') as outFile:
         start_rtf(outFile)
@@ -238,7 +238,7 @@ def plot_gene_AS_upset_nt_box(md_data,name1,name2,legendOut):
     recipMinPairAS = md_data[md_data['flag_recip_min_match']==1][['gene_id',
                             'flag_alt_exon_recip_min_match','flag_alt_donor_acceptor_recip_min_match',
                             'flag_IR_recip_min_match','flag_5_variation_recip_min_match',
-                            'flag_3_variation_recip_min_match','flag_nonoverlapping_recip_min_match',
+                            'flag_3_variation_recip_min_match','flag_no_shared_nt_recip_min_match',
                             'num_recip_min_match_in_gene','num_transcript_in_gene_'+name1,
                             'num_transcript_in_gene_'+name2,'num_nt_diff','prop_nt_diff']].copy()
     # Ensure number of nt different are int and float values
@@ -249,7 +249,7 @@ def plot_gene_AS_upset_nt_box(md_data,name1,name2,legendOut):
                                                               'flag_IR_recip_min_match':'max',
                                                               'flag_5_variation_recip_min_match':'max',
                                                               'flag_3_variation_recip_min_match':'max',
-                                                              'flag_nonoverlapping_recip_min_match':'max',
+                                                              'flag_no_shared_nt_recip_min_match':'max',
                                                               'num_recip_min_match_in_gene':'max',
                                                               'num_transcript_in_gene_'+name1:'max',
                                                               'num_transcript_in_gene_'+name2:'max',
@@ -257,14 +257,14 @@ def plot_gene_AS_upset_nt_box(md_data,name1,name2,legendOut):
                                                               'prop_nt_diff':'mean'}).reset_index()
     geneFlagCols = ['flag_alt_exon_recip_min_match','flag_alt_donor_acceptor_recip_min_match',
                     'flag_IR_recip_min_match','flag_5_variation_recip_min_match',
-                    'flag_3_variation_recip_min_match','flag_nonoverlapping_recip_min_match']
+                    'flag_3_variation_recip_min_match','flag_no_shared_nt_recip_min_match']
     geneRecipMatchAS[geneFlagCols] = geneRecipMatchAS[geneFlagCols].astype(bool)
     geneRecipMatchAS = geneRecipMatchAS.rename(columns={'flag_alt_exon_recip_min_match':'Alt. Exon',
                                                         'flag_alt_donor_acceptor_recip_min_match':'Alt. Donor/Acceptor',
                                                         'flag_IR_recip_min_match':'Intron Retention',
                                                         'flag_5_variation_recip_min_match':'5\' Variation',
                                                         'flag_3_variation_recip_min_match':'3\' Variation',
-                                                        'flag_nonoverlapping_recip_min_match':'Nonoverlapping',
+                                                        'flag_no_shared_nt_recip_min_match':'No Shared Nucleotides',
                                                         'num_recip_min_match_in_gene':'# Recip. Min.\nMatch Transcripts',
                                                         'num_transcript_in_gene_'+name1:'# Transcripts\nin '+name1,
                                                         'num_transcript_in_gene_'+name2:'# Transcripts\nin '+name2,
@@ -272,7 +272,7 @@ def plot_gene_AS_upset_nt_box(md_data,name1,name2,legendOut):
                                                         'prop_nt_diff':'Avg Proportion\nNT Different'})
     plot_upset(geneRecipMatchAS.set_index([c for c in geneRecipMatchAS.columns if ("gene" not in c) and ("NT" not in c) and ("Transcripts" not in c) ]),
                "",['# Recip. Min.\nMatch Transcripts','# Transcripts\nin '+name1,'# Transcripts\nin '+name2,'Avg #\nNT Different','Avg Proportion\nNT Different'])
-    legendText = "Number of genes with the specified types of alternative splicing in only reciprocal minimum pairs between {} and {} indicated by the black dots below the histogram of gene counts (n = {} genes with {} reciprocal minimum pairs). Box plots represent the number of reciprocal minimum pairs (blue), number of transcripts in {} (orange) and {} (green), and the average number (brown) and proportion (purple) of nucleotides different between the pairs. Genes with \"Nonoverlapping\" have a pair of transcripts with nonoverlapping coordinates.".format(name1,name2,len(geneRecipMatchAS),len(md_data[md_data['flag_recip_min_match']==1]),name1,name2)
+    legendText = "Number of genes with the specified types of alternative splicing in only reciprocal minimum pairs between {} and {} indicated by the black dots below the histogram of gene counts (n = {} genes with {} reciprocal minimum pairs). Box plots represent the number of reciprocal minimum pairs (blue), number of transcripts in {} (orange) and {} (green), and the average number (brown) and proportion (purple) of nucleotides different between the pairs. Genes with \"No Shared Nucleotides\" have a pair of transcripts with nonoverlapping coordinates.".format(name1,name2,len(geneRecipMatchAS),len(md_data[md_data['flag_recip_min_match']==1]),name1,name2)
 #    plt.text(0.5*len(geneRecipMatchAS.groupby([c for c in geneRecipMatchAS.columns if ("gene" not in c) and ("NT" not in c) and ("Transcripts" not in c) ])['gene_id'].count()),-8.25*geneRecipMatchAS.groupby([c for c in geneRecipMatchAS.columns if ("gene" not in c) and ("NT" not in c) and ("Transcripts" not in c) ])['Avg Proportion\nNT Different'].max().max(),legendText,ha="center",va="top",wrap=True)
     with open(legendOut,'w') as outFile:
         start_rtf(outFile)

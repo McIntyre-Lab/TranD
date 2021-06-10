@@ -23,7 +23,7 @@ td_df_cols = ['gene_id','transcript_1','transcript_2','num_junction_T1_only','nu
              'num_nt_T2_only_in_shared_ER','num_nt_shared_in_shared_ER','total_nt_in_shared_ER',
              'prop_nt_diff_in_shared_ER','prop_nt_similar_in_shared_ER','num_nt_T1_only_in_unique_ER',
              'num_nt_T2_only_in_unique_ER','flag_FSM','flag_IR','flag_5_variation',
-             'flag_3_variation','flag_alt_donor_acceptor','flag_alt_exon','flag_nonoverlapping']
+             'flag_3_variation','flag_alt_donor_acceptor','flag_alt_exon','flag_no_shared_nt']
 
 
 def calculate_distance(out_df,junction_df,gene_id,tx1_name,tx2_name,fsm=False):
@@ -230,8 +230,8 @@ def get_EF_distance(singlePair,ef_df,tx1_name,tx2_name,ERSharedSet):
 def set_AS_flags(singlePair,ef_df,tx1_name,tx2_name):
     # Flag alternative splicing events
 
-    # Flag nonoverlapping transcripts
-    singlePair['flag_nonoverlapping'] = np.where(singlePair['prop_nt_diff']==1,1,0)
+    # Flag transcripts with no shared nucleotides (nonoverlapping)
+    singlePair['flag_no_shared_nt'] = np.where(singlePair['prop_nt_diff']==1,1,0)
 
     # Flag full-splice matches (FSM, share all junctions)
     singlePair['flag_FSM'] = np.where(singlePair['prop_junction_diff']==0,1,0)
@@ -268,7 +268,7 @@ def set_AS_flags(singlePair,ef_df,tx1_name,tx2_name):
                                                           (singlePair['flag_FSM']==0),1,0)
 
     # If transcripts are nonoverlapping then 5'/3' variation and alt exon flags set to 0
-    if singlePair['flag_nonoverlapping']==1:
+    if singlePair['flag_no_shared_nt']==1:
         singlePair['flag_alt_exon'] = 0
         singlePair['flag_5_variation'] = 0
         singlePair['flag_3_variation'] = 0
