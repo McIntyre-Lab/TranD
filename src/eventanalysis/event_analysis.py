@@ -1080,7 +1080,7 @@ def ea_analysis(gene_id, tx_data, tx_coords, ir_exons):
         for ef_start in er_ef_map[er_id]:
             ef_id = f"{er_id}:EF{ef_id_ord}"
             ef_id_ord += 1
-            ef_data[ef_id] = EF(gene_id=gene_id, er_id=er, ef_id=ef_id, chrom=er_data[er_id].chrom,
+            ef_data[ef_id] = EF(gene_id=gene_id, er_id=er_id, ef_id=ef_id, chrom=er_data[er_id].chrom,
                                 start=ef_start, end=ef_start_end_map[ef_start],
                                 strand=er_data[er_id].strand, ex_ids=[], tx_ids=[])
     # Match against exons
