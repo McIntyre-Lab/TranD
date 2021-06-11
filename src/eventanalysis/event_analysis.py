@@ -48,6 +48,9 @@ import minimum_distance as MD
 # Import plotting functions
 import plot_two_gtf_pairwise as P2GP
 
+# Import complexity calculation function
+import calculate_complexity as COMP
+
 # CONFIGURATION
 common_outfiles = {'ea_fh': 'event_analysis.csv', 'jc_fh': 'junction_catalog.csv', 'er_fh':
                    'event_analysis_er.csv', 'ef_fh': 'event_analysis_ef.csv'}
@@ -1242,6 +1245,7 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles):
             write_output(ea_data, out_fhs, 'ea_fh')
             write_output(jct_data, out_fhs, 'jc_fh')
             write_output(td_data, out_fhs, 'td_fh')
+    COMP.calculate_complexity(outdir,data)
 
 
 def ea_two_files(f1_data, f2_data, out_fhs, gene_id):
@@ -1355,6 +1359,9 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs):
             write_output(md_data, out_fhs, 'td_fh')
         # Generate 2 GTF pairwise plots
         P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1="d1", name2="d2")
+        # Calculate complexity of individual transcriptomes
+        COMP.calculate_complexity(outdir,in_f1,"d1")
+        COMP.calculate_complexity(outdir,in_f2,"d2")
     # If cpu > 1, parallelize
     elif cpu > 1:
         # Get lists for each process based on cpu value
@@ -1382,6 +1389,9 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs):
             write_output(md_data, out_fhs, 'td_fh')
         # Generate 2 GTF pairwise plots
         P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1="d1", name2="d2")
+        # Calculate complexity of individual transcriptomes
+        COMP.calculate_complexity(outdir,in_f1,"d1")
+        COMP.calculate_complexity(outdir,in_f2,"d2")
     else:
         logger.error("Invalid cpu parameter")
 
