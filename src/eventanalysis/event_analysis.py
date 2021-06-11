@@ -52,12 +52,12 @@ import plot_two_gtf_pairwise as P2GP
 common_outfiles = {'ea_fh': 'event_analysis.csv', 'jc_fh': 'junction_catalog.csv', 'er_fh':
                    'event_analysis_er.csv', 'ef_fh': 'event_analysis_ef.csv'}
 
-pairwise_outfiles = {'td_fh': 'pairwise_transcript_distance.csv',
-                     'md_fh': 'minimum_pairwise_transcript_distance.csv'}
+pairwise_outfiles = {'td_fh': 'pairwise_transcript_distance.csv'}
 
 gene_outfiles = {'er_fh': 'event_analysis_er.csv', 'ef_fh': 'event_analysis_ef.csv'}
 
-two_gtfs_outfiles = {'gtf1_fh': 'gtf1_only.gtf', 'gtf2_fh': 'gtf2_only.gtf'}
+two_gtfs_outfiles = {'gtf1_fh': 'gtf1_only.gtf', 'gtf2_fh': 'gtf2_only.gtf',
+                     'md_fh': 'minimum_pairwise_transcript_distance.csv'}
 
 ea_df_cols = ['gene_id', 'transcript_1', 'transcript_2', 'transcript_id', 'ef_id', 'ef_chr',
               'ef_start', 'ef_end', 'ef_strand', 'ef_ir_flag', 'er_id', 'er_chr', 'er_start',
@@ -465,6 +465,27 @@ def remove_ir_transcripts(tx_data, introns):
         del tx_data[ir_tx]
     return tx_data
 
+def list_ir_exon(tx_data, introns):
+    """List exons that contain Intron Retention events i.e. an
+    intron is encompassed by an exon
+    """
+    ir_exon_list = []
+    for e_tx in tx_data:
+        e_ints = [(int(x.start), int(x.end), x.name) for x in tx_data[e_tx]]
+        e_ints.sort(key=lambda x: x[0])
+        for i in introns:
+            for e in e_ints:
+                # Check if exon has already been added to list
+                if e[2] in ir_exon_list:
+                    continue
+                else:
+                    # This is the exon this intron may overlap with
+                    if i[0] >= e[0] and i[0] <= e[1]:
+                        # Intron is fully encompassed within the exon
+                        if i[1] <= e[1]:
+                            logger.debug("IR detected, {}", e)
+                            ir_exon_list.append(e[2])
+    return ir_exon_list
 
 def do_ea_gene(data, keep_ir):
     """
@@ -490,12 +511,11 @@ def do_ea_gene(data, keep_ir):
         tx_exons = BedTool(tx_bed_str).saveas()
         tx_data[tx_name] = tx_exons
         tx_coords[tx_name] = [left_edge, right_edge]
-        if not keep_ir:
-            tx_full = BedTool(f"{chrom} {left_edge} {right_edge} {feature} 0 {strand}",
-                              from_string=True)
-            tx_introns = tx_full.subtract(tx_exons)
-            i_coords = [(int(x.start), int(x.end)) for x in tx_introns]
-            all_introns.extend(i_coords)
+        tx_full = BedTool(f"{chrom} {left_edge} {right_edge} {feature} 0 {strand}",
+                          from_string=True)
+        tx_introns = tx_full.subtract(tx_exons)
+        i_coords = [(int(x.start), int(x.end)) for x in tx_introns]
+        all_introns.extend(i_coords)
     intron_data = list(set(all_introns))
     intron_data.sort(key=lambda x: x[0])
     # Removal of IR containing transcripts
@@ -507,6 +527,7 @@ def do_ea_gene(data, keep_ir):
         for k in tx_coords_delete:
             del tx_coords[k]
     else:
+        ir_exons = list_ir_exon(tx_data, intron_data)
         logger.info("Not attempting to remove IR-containing transcripts")
     # Junction Catalog creation
     junction_data = []
@@ -520,7 +541,7 @@ def do_ea_gene(data, keep_ir):
     if not tx_data:
         logger.warning("Missing transcript data for {} gene, skipping", gene_id)
         return None, None, None
-    er_data, ef_data = ea_analysis(gene_id, tx_data, tx_coords)
+    er_data, ef_data = ea_analysis(gene_id, tx_data, tx_coords, ir_exons)
     er_df = pd.DataFrame(er_data, columns=er_df_cols)
     ef_df = pd.DataFrame(ef_data, columns=ef_df_cols)
     return er_df, ef_df, junction_df
@@ -872,7 +893,7 @@ def format_fsm_pair_ea(tx1_bed_df, tx2_bed_df, tx1_name, tx2_name, gene_id, side
     return ea_df
 
 
-def ea_analysis(gene_id, tx_data, tx_coords):
+def ea_analysis(gene_id, tx_data, tx_coords, ir_exons):
     """
     Generate ERs (Exonic Regions) and EFs (Exonic Fragments) and analyze events in transcripts.
     Generalize to do both full-gene and transcript pairs to replace er_ea_analysis.
@@ -1101,6 +1122,11 @@ def ea_analysis(gene_id, tx_data, tx_coords):
     er_out_data = []
     for er in er_data:
         i = er_data[er]
+        # Flag exon regions that contain IR exons
+        if len(set(i.ex_ids).intersection(set(ir_exons))) > 0:
+            i.ir_flag = 1
+        else:
+            i.ir_flag = 0
         er_out_data.append([i.gene_id, i.id, i.chrom, i.start, i.end, i.strand, "|".join(i.ex_ids),
                             "|".join(i.tx_ids), "|".join(i.gene_tx_ids), i.ex_num, i.tx_num,
                             i.gene_tx_num, i.ir_flag, i.er_freq])
@@ -1110,6 +1136,11 @@ def ea_analysis(gene_id, tx_data, tx_coords):
     ef_out_data = []
     for ef in ef_data:
         i = ef_data[ef]
+        # Flag exon fragments that contain IR exons
+        if len(set(i.ex_ids).intersection(set(ir_exons))) > 0:
+            i.ir_flag = 1
+        else:
+            i.ir_flag = 0
         ef_out_data.append([i.gene_id, i.er_id, i.ef_id, i.chrom, i.start, i.end, i.strand,
                             "|".join(i.ex_ids), "|".join(i.tx_ids), i.ex_num, i.tx_num, i.ir_flag,
                             i.ef_freq])
@@ -1169,6 +1200,9 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles):
     logger.info("Input file: {}", infile)
     if ea_mode == 'gene':
         del outfiles['ea_fh']
+    else :
+        del(outfiles['er_fh'])
+        del(outfiles['ef_fh'])
     logger.debug("Output files: {}", outfiles)
     out_fhs = open_output_files(outdir, outfiles)
     # Write out csv file headers
