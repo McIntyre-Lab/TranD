@@ -9,6 +9,9 @@ Created on Fri Jun 11 16:46:40 2021
 import pandas as pd
 import matplotlib.pyplot as plt
 
+# Import plot functions
+import plot_functions as PF
+
 def calculate_complexity(outdir,gtf_df,prefix=None):
     """
     Calculate complexity measures from gtf dataframe:
@@ -71,57 +74,14 @@ def calculate_complexity(outdir,gtf_df,prefix=None):
     counts.loc[0,'std_exonPerTranscript'] = transcriptDF['num_exon'].std()
     counts.loc[0,'std_exonPerGene'] = geneDF['num_uniq_exon'].std()
     
-    # Plot boxplots of complexity measures
-    plot_complexity(geneDF,transcriptDF,outdir,prefix)
-    
-    # Output counts to file
+    # Plot boxplots of complexity measures and output counts to file
     if prefix is None:
+        PF.plot_complexity_box(geneDF,transcriptDF,outdir,"{}/complexity_plots.rtf".format(outdir))
+        plt.savefig("{}/complexity_plots.png".format(outdir),dpi=600,format="png")
         counts.to_csv("{}/transcriptome_complexity_counts.csv".format(outdir),index=False)
     else:
-        counts.to_csv("{}/{}_transcriptome_complexity_counts.csv".format(outdir,prefix),index=False)
-
-def plot_complexity(geneDF,transcriptDF,outdir,prefix):
-    """
-    Plot box plots of complexity measures:
-        1) Transcripts per gene
-        2) Unique exons per gene
-        3) Exons per transcript
-    """
-#    fig = plt.figure(figsize=(6,12))
-    fig = plt.figure(figsize=(12,5))
-#    axTop = plt.subplot2grid((3,1),(0,0),fig=fig)
-    axTop = plt.subplot2grid((1,3),(0,0),fig=fig)
-    axTop.set_xlabel("")
-#    axTop.set_ylabel("Number of Transcripts Per Gene")
-    axTop.set_title("Number of Transcripts Per Gene")
-    axTop.set_ylabel("")
-#    axMid = plt.subplot2grid((3,1),(1,0),fig=fig)
-    axMid = plt.subplot2grid((1,3),(0,1),fig=fig)
-    axMid.set_xlabel("")
-#    axMid.set_ylabel("Number of Unique Exons Per Gene")
-    axMid.set_title("Number of Unique Exons Per Gene")
-    axMid.set_ylabel("")
-#    axBottom = plt.subplot2grid((3,1),(2,0),fig=fig)
-    axBottom = plt.subplot2grid((1,3),(0,2),fig=fig)
-    axBottom.set_xlabel("")
-#    axBottom.set_ylabel("Number of Exons Per Transcript")
-    axBottom.set_title("Number of Exons Per Transcript")
-    axBottom.set_ylabel("")
-    bplotTop = geneDF.set_index('gene_id')[['num_transcript']].boxplot(ax=axTop,notch=True,patch_artist=True,return_type='dict')
-    axTop.set_xticks([])
-    bplotMid = geneDF.set_index('gene_id')[['num_uniq_exon']].boxplot(ax=axMid,notch=True,patch_artist=True,return_type='dict')
-    axMid.set_xticks([])
-    bplotBottom = transcriptDF.set_index('transcript_id')[['num_exon']].boxplot(ax=axBottom,notch=True,patch_artist=True,return_type='dict')
-    axBottom.set_xticks([])
-    for bplot in (bplotTop,bplotMid,bplotBottom):
-        for patch in bplot['boxes']:
-            patch.set_facecolor('turquoise')
-            patch.set_edgecolor('black')
-        for median in bplot['medians']:
-            median.set(color='red')
-        for whisker in bplot['whiskers']:
-            whisker.set(color='black')
-    if prefix is None:
-        plt.savefig("{}/complexity_plots.png".format(outdir),dpi=600,format="png")
-    else:
+        PF.plot_complexity_box(geneDF,transcriptDF,outdir,"{}/{}_complexity_plots.rtf".format(outdir,prefix))
         plt.savefig("{}/{}_complexity_plots.png".format(outdir,prefix),dpi=600,format="png")
+        counts.to_csv("{}/{}_transcriptome_complexity_counts.csv".format(outdir,prefix),index=False)
+    plt.clf()
+

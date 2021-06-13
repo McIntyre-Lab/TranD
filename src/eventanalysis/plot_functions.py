@@ -175,7 +175,7 @@ def plot_recip_min_pair_AS_upset_nt_box(md_data,name1,name2,legendOut):
                                                     'flag_IR_recip_min_match':'Intron Retention',
                                                     'flag_5_variation_recip_min_match':'5\' Variation',
                                                     'flag_3_variation_recip_min_match':'3\' Variation',
-                                                    'flag_no_shared_nt_recip_min_match':'No Shared Nucleotides',
+                                                    'flag_no_shared_nt_recip_min_match':'No Shared NT',
                                                     'num_nt_diff':'Number NT Different',
                                                     'prop_nt_diff':'Proportion NT Different'})
     plot_upset(recipMinPairAS.set_index([c for c in recipMinPairAS.columns if ("transcript" not in c) and ("NT" not in c)]),
@@ -187,7 +187,7 @@ def plot_recip_min_pair_AS_upset_nt_box(md_data,name1,name2,legendOut):
         outFile.write(r' \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github.')
         end_rtf(outFile)
         
-def plot_gene_AS_upset_nt_box(md_data,name1,name2,legendOut):
+def plot_gene_recip_min_AS_upset_nt_box(md_data,name1,name2,legendOut):
     """
     Upset plot for number of genes with each kind of AS when comparing the
             reciprocally min match pairs of the two datasets with added box plots
@@ -224,20 +224,68 @@ def plot_gene_AS_upset_nt_box(md_data,name1,name2,legendOut):
                                                         'flag_IR_recip_min_match':'Intron Retention',
                                                         'flag_5_variation_recip_min_match':'5\' Variation',
                                                         'flag_3_variation_recip_min_match':'3\' Variation',
-                                                        'flag_no_shared_nt_recip_min_match':'No Shared Nucleotides',
+                                                        'flag_no_shared_nt_recip_min_match':'No Shared NT',
                                                         'num_recip_min_match_in_gene':'# Recip. Min.\nMatch Transcripts',
                                                         'num_transcript_in_gene_'+name1:'# Transcripts\nin '+name1,
                                                         'num_transcript_in_gene_'+name2:'# Transcripts\nin '+name2,
                                                         'num_nt_diff':'Avg #\nNT Different',
                                                         'prop_nt_diff':'Avg Proportion\nNT Different'})
-    plot_upset(geneRecipMatchAS.set_index([c for c in geneRecipMatchAS.columns if ("gene" not in c) and ("NT" not in c) and ("Transcripts" not in c) ]),
+    plot_upset(geneRecipMatchAS.set_index([c for c in geneRecipMatchAS.columns if ("gene" not in c) and ("Different" not in c) and ("Transcripts" not in c) ]),
                "",['# Recip. Min.\nMatch Transcripts','# Transcripts\nin '+name1,'# Transcripts\nin '+name2,'Avg #\nNT Different','Avg Proportion\nNT Different'])
-    legendText = "Number of genes with the specified types of alternative splicing in only reciprocal minimum pairs between {} and {} indicated by the black dots below the histogram of gene counts (n = {} genes with {} reciprocal minimum pairs). Box plots represent the number of reciprocal minimum pairs (blue), number of transcripts in {} (orange) and {} (green), and the average number (brown) and proportion (purple) of nucleotides different between the pairs. Genes with \"No Shared Nucleotides\" have a pair of transcripts with nonoverlapping coordinates.".format(name1,name2,len(geneRecipMatchAS),len(md_data[md_data['flag_recip_min_match']==1]),name1,name2)
+    legendText = "Number of genes with the specified types of alternative splicing in only reciprocal minimum pairs between {} and {} indicated by the black dots below the histogram of gene counts (n = {} genes with {} reciprocal minimum pairs). Box plots represent the number of reciprocal minimum pairs (blue), number of transcripts in {} (orange) and {} (green), and the average number (brown) and proportion (purple) of nucleotides different between the pairs. Genes with \"No Shared NT\" have a pair of transcripts with nonoverlapping coordinates.".format(name1,name2,len(geneRecipMatchAS),len(md_data[md_data['flag_recip_min_match']==1]),name1,name2)
     with open(legendOut,'w') as outFile:
         start_rtf(outFile)
         outFile.write(r'\b Figure. Alternative splicing in reciprocal minimum pairs of genes \b0 \line {} Transcriptome comparisons performed by TranD [1].'.format(legendText))
         outFile.write(r' \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github.')
         end_rtf(outFile)
+
+def plot_gene_AS_upset_nt_box(td_data,legendOut):
+    """
+    Upset plot for number of genes with each kind of AS when comparing all
+            transcript pairs within each gene of a single transcriptome with added box plots
+            of the number transcripts per gene, the average number of nt different,
+            and the average proportion of nt different
+    """
+    pairAS = td_data[['gene_id','transcript_1','transcript_2','flag_alt_exon',
+                      'flag_alt_donor_acceptor','flag_IR','flag_5_variation',
+                      'flag_3_variation','flag_no_shared_nt','num_nt_diff',
+                      'prop_nt_diff']].copy()
+    # Ensure number of nt different are int and float values
+    pairAS['num_nt_diff'] = pairAS['num_nt_diff'].astype(int)
+    pairAS['prop_nt_diff'] = pairAS['num_nt_diff'].astype(float)
+    geneAS = pairAS.groupby('gene_id').agg({'flag_alt_exon':'max',
+                                            'flag_alt_donor_acceptor':'max',
+                                            'flag_IR':'max',
+                                            'flag_5_variation':'max',
+                                            'flag_3_variation':'max',
+                                            'flag_no_shared_nt':'max',
+                                            'num_nt_diff':'mean',
+                                            'prop_nt_diff':'mean'}).reset_index()
+    transcriptPerGene = pd.concat([pairAS[['gene_id','transcript_1']].rename(columns={'transcript_1':'transcript_id'}),
+                                   pairAS[['gene_id','transcript_2']].rename(columns={'transcript_2':'transcript_id'})
+                                   ]).groupby('gene_id')['transcript_id'].nunique().reset_index().rename(columns={'transcript_id':'num_transcript_per_gene'})
+    mergeASxcrptPerGene = pd.merge(geneAS,transcriptPerGene,how='outer',on='gene_id',indicator='merge_check')
+    geneFlagCols = ['gene_id','flag_alt_exon','flag_alt_donor_acceptor','flag_IR',
+                    'flag_5_variation','flag_3_variation','flag_no_shared_nt']
+    mergeASxcrptPerGene[geneFlagCols] = mergeASxcrptPerGene[geneFlagCols].astype(bool)
+    mergeASxcrptPerGene = mergeASxcrptPerGene.rename(columns={'flag_alt_exon':'Alt. Exon',
+                                                              'flag_alt_donor_acceptor':'Alt. Donor/Acceptor',
+                                                              'flag_IR':'Intron Retention',
+                                                              'flag_5_variation':'5\' Variation',
+                                                              'flag_3_variation':'3\' Variation',
+                                                              'flag_no_shared_nt':'No Shared NT',
+                                                              'num_transcript_per_gene':'# Transcripts\nPer Gene',
+                                                              'num_nt_diff':'Avg #\nNT Different',
+                                                              'prop_nt_diff':'Avg Proportion\nNT Different'})
+    plot_upset(mergeASxcrptPerGene.set_index([c for c in mergeASxcrptPerGene.columns if ("gene" not in c) and ("Different" not in c) and ("Transcripts" not in c) and ('merge' not in c)]),
+               "",['# Transcripts\nPer Gene','Avg #\nNT Different','Avg Proportion\nNT Different'])
+    legendText = "Number of genes with the specified types of alternative splicing indicated by the black dots below the histogram of gene counts (n = {} multi-transcrirpt genes). Box plots represent the number of transcripts per gene (blue)  and the average number (orange) and proportion (green) of nucleotides different between the pair of transcripts within the gene. Genes with \"No Shared NT\" have a pair of transcripts with nonoverlapping coordinates.".format(len(mergeASxcrptPerGene))
+    with open(legendOut,'w') as outFile:
+        start_rtf(outFile)
+        outFile.write(r'\b Figure. Alternative splicing in genes \b0 \line {} Transcriptome comparisons performed by TranD [1].'.format(legendText))
+        outFile.write(r' \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github.')
+        end_rtf(outFile)
+
         
 def plot_upset(df,title,boxCols=None):
     """
@@ -314,6 +362,55 @@ def plot_gene_avg_nt_diff_pairs(md_data,name1,name2,legendOut,zoomMean=False):
         outFile.write(r'\b Figure. Number of nucleotides different between reciprocal and nonreciprocal minimum pairs \b0 \line {} Transcriptome comparisons performed by TranD [1].'.format(legendText))
         outFile.write(r' \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github.')
         end_rtf(outFile)
+
+def plot_complexity_box(geneDF,transcriptDF,outdir,legendOut):
+    """
+    Plot box plots of complexity measures:
+        1) Transcripts per gene
+        2) Unique exons per gene
+        3) Exons per transcript
+    """
+#    fig = plt.figure(figsize=(6,12))
+    fig = plt.figure(figsize=(12,5))
+#    axTop = plt.subplot2grid((3,1),(0,0),fig=fig)
+    axTop = plt.subplot2grid((1,3),(0,0),fig=fig)
+    axTop.set_xlabel("")
+#    axTop.set_ylabel("Number of Transcripts Per Gene")
+    axTop.set_title("Number of Transcripts Per Gene")
+    axTop.set_ylabel("")
+#    axMid = plt.subplot2grid((3,1),(1,0),fig=fig)
+    axMid = plt.subplot2grid((1,3),(0,1),fig=fig)
+    axMid.set_xlabel("")
+#    axMid.set_ylabel("Number of Unique Exons Per Gene")
+    axMid.set_title("Number of Unique Exons Per Gene")
+    axMid.set_ylabel("")
+#    axBottom = plt.subplot2grid((3,1),(2,0),fig=fig)
+    axBottom = plt.subplot2grid((1,3),(0,2),fig=fig)
+    axBottom.set_xlabel("")
+#    axBottom.set_ylabel("Number of Exons Per Transcript")
+    axBottom.set_title("Number of Exons Per Transcript")
+    axBottom.set_ylabel("")
+    bplotTop = geneDF.set_index('gene_id')[['num_transcript']].boxplot(ax=axTop,notch=True,patch_artist=True,return_type='dict')
+    axTop.set_xticks([])
+    bplotMid = geneDF.set_index('gene_id')[['num_uniq_exon']].boxplot(ax=axMid,notch=True,patch_artist=True,return_type='dict')
+    axMid.set_xticks([])
+    bplotBottom = transcriptDF.set_index('transcript_id')[['num_exon']].boxplot(ax=axBottom,notch=True,patch_artist=True,return_type='dict')
+    axBottom.set_xticks([])
+    for bplot in (bplotTop,bplotMid,bplotBottom):
+        for patch in bplot['boxes']:
+            patch.set_facecolor('turquoise')
+            patch.set_edgecolor('black')
+        for median in bplot['medians']:
+            median.set(color='red')
+        for whisker in bplot['whiskers']:
+            whisker.set(color='black')
+    legendText = "Distributions of transcriptome complexity measures including transcripts per gene (median = {}, mean = {}), unique exons per gene (median = {}, mean = {}), and exons per transcript (median = {}, mean = {}). Total genes described = {}.".format(geneDF['num_transcript'].median(),geneDF['num_transcript'].mean(),geneDF['num_uniq_exon'].median(),geneDF['num_uniq_exon'].mean(),transcriptDF['num_exon'].median(),transcriptDF['num_exon'].mean(),len(geneDF))
+    with open(legendOut,'w') as outFile:
+        start_rtf(outFile)
+        outFile.write(r'\b Figure. Transcriptome complexity \b0 \line {} Transcriptome analyses performed by TranD [1].'.format(legendText))
+        outFile.write(r' \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github.')
+        end_rtf(outFile)
+
         
 def start_rtf(outFile):
     """

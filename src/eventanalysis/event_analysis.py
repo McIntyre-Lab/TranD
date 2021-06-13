@@ -47,6 +47,7 @@ import minimum_distance as MD
 
 # Import plotting functions
 import plot_two_gtf_pairwise as P2GP
+import plot_one_gtf_pairwise as P1GP
 
 # Import complexity calculation function
 import calculate_complexity as COMP
@@ -1221,6 +1222,9 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles):
     transcripts = data.groupby(["gene_id", "transcript_id"])
     logger.info("Found {} genes and {} transcripts", len(genes), len(transcripts))
 
+    # Initialize concatenated pairwise transcript distance dataframe
+    if ea_mode == "pairwise":
+        td_data_cat = pd.DataFrame()
     for gene in genes.groups:
         gene_df = data[data['gene_id'] == gene]
         transcripts = gene_df.groupby("transcript_id")
@@ -1242,11 +1246,13 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles):
                 continue
         else:
             ea_data, jct_data, td_data = ea_pairwise(gene_df)
+            td_data_cat = pd.concat([td_data_cat,td_data],ignore_index=True)
             write_output(ea_data, out_fhs, 'ea_fh')
             write_output(jct_data, out_fhs, 'jc_fh')
             write_output(td_data, out_fhs, 'td_fh')
     COMP.calculate_complexity(outdir,data)
-
+    if ea_mode == 'pairwise':
+        P1GP.plot_one_gtf_pairwise(outdir,td_data_cat)
 
 def ea_two_files(f1_data, f2_data, out_fhs, gene_id):
     "Do EA (Event Analysis) for pairs of transcripts from two files for a gene."

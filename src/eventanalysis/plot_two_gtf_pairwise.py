@@ -94,7 +94,7 @@ def plot_two_gtf_pairwise(outdir,md_data,f1_odds,f2_odds,name1,name2):
     #   of the number of min match pairs present in the gene,
     #   the number of transcripts in each dataset, the avg number of nt different,
     #   and the avg proportion of nt different
-    PF.plot_gene_AS_upset_nt_box(md_data,name1,name2,"{}/xcrpt_gene_AS_upset_nt_box.rtf".format(outdir))
+    PF.plot_gene_recip_min_AS_upset_nt_box(md_data,name1,name2,"{}/xcrpt_gene_AS_upset_nt_box.rtf".format(outdir))
     plt.savefig("{}/xcrpt_gene_AS_upset_nt_box.png".format(outdir),dpi=600,format="png")
     plt.clf()
     
