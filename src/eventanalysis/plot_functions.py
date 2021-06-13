@@ -203,7 +203,7 @@ def plot_gene_recip_min_AS_upset_nt_box(md_data,name1,name2,legendOut):
                             'num_transcript_in_gene_'+name2,'num_nt_diff','prop_nt_diff']].copy()
     # Ensure number of nt different are int and float values
     recipMinPairAS['num_nt_diff'] = recipMinPairAS['num_nt_diff'].astype(int)
-    recipMinPairAS['prop_nt_diff'] = recipMinPairAS['num_nt_diff'].astype(float)
+    recipMinPairAS['prop_nt_diff'] = recipMinPairAS['prop_nt_diff'].astype(float)
     geneRecipMatchAS = recipMinPairAS.groupby('gene_id').agg({'flag_alt_exon_recip_min_match':'max',
                                                               'flag_alt_donor_acceptor_recip_min_match':'max',
                                                               'flag_IR_recip_min_match':'max',
@@ -252,7 +252,7 @@ def plot_gene_AS_upset_nt_box(td_data,legendOut):
                       'prop_nt_diff']].copy()
     # Ensure number of nt different are int and float values
     pairAS['num_nt_diff'] = pairAS['num_nt_diff'].astype(int)
-    pairAS['prop_nt_diff'] = pairAS['num_nt_diff'].astype(float)
+    pairAS['prop_nt_diff'] = pairAS['prop_nt_diff'].astype(float)
     geneAS = pairAS.groupby('gene_id').agg({'flag_alt_exon':'max',
                                             'flag_alt_donor_acceptor':'max',
                                             'flag_IR':'max',
