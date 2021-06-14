@@ -99,12 +99,13 @@ def plot_gene_stack(md_data,name1,name2,legendOut,useProp=False):
                                     index={name1+'_greater':name1+" Greater",
                                            name2+'_greater':name2+" Greater",
                                            "match":"Match"})
+    genePairPallete = ['#FAC748','#1D2F6F','#8390FA']
     if useProp:
         legendText = "Within genes with equal numbers of transcript in {} and {} (Match), the proportion of genes where all transcripts have reciprocal minimum matches (Match:Reciprocal Pairs, n = {}), at least one but not all transcript pairs are reciprocal minimum matches (Match:Partial Reciprocal Pairs, n = {}), and no pairs are recirpocal minimum matches (Match:No Reciprocal Pairs, n = {}).".format(
                 name1,name2,int(genePairDF.loc['Match','Reciprocal Pairs']),int(genePairDF.loc['Match','Partial Reciprocal Pairs']),int(genePairDF.loc['Match','No Reciprocal Pairs']))
-        legendText = legendText + "Within genes with more transcripts in {} compared to {} ({} Greater), the proportion of genes where all transcripts in {} have reciprocal minimum matches to a subset of {} ({} Greater:Reciprocal Pairs, n = {}), at least one but not all transcript pairs are reciprocal minimum matches ({} Greater:Partial Reciprocal Pairs, n = {}), and no pairs are recirpocal minimum matches ({} Greater:No Reciprocal Pairs, n = {}).".format(
+        legendText = legendText + " Within genes with more transcripts in {} compared to {} ({} Greater), the proportion of genes where all transcripts in {} have reciprocal minimum matches to a subset of {} ({} Greater:Reciprocal Pairs, n = {}), at least one but not all transcript pairs are reciprocal minimum matches ({} Greater:Partial Reciprocal Pairs, n = {}), and no pairs are recirpocal minimum matches ({} Greater:No Reciprocal Pairs, n = {}).".format(
                 name1,name2,name1,name2,name1,name1,int(genePairDF.loc[name1+" Greater",'Reciprocal Pairs']),name1,int(genePairDF.loc[name1+" Greater",'Partial Reciprocal Pairs']),name1,int(genePairDF.loc[name1+" Greater",'No Reciprocal Pairs']))
-        legendText = legendText + "Within genes with more transcripts in {} compared to {} ({} Greater), the proportion of genes where all transcripts in {} have reciprocal minimum matches to a subset of {} ({} Greater:Reciprocal Pairs, n = {}), at least one but not all transcript pairs are reciprocal minimum matches ({} Greater:Partial Reciprocal Pairs, n = {}), and no pairs are recirpocal minimum matches ({} Greater:No Reciprocal Pairs, n = {}).".format(
+        legendText = legendText + " Within genes with more transcripts in {} compared to {} ({} Greater), the proportion of genes where all transcripts in {} have reciprocal minimum matches to a subset of {} ({} Greater:Reciprocal Pairs, n = {}), at least one but not all transcript pairs are reciprocal minimum matches ({} Greater:Partial Reciprocal Pairs, n = {}), and no pairs are recirpocal minimum matches ({} Greater:No Reciprocal Pairs, n = {}).".format(
                 name2,name1,name2,name1,name2,name2,int(genePairDF.loc[name2+" Greater",'Reciprocal Pairs']),name2,int(genePairDF.loc[name2+" Greater",'Partial Reciprocal Pairs']),name2,int(genePairDF.loc[name2+" Greater",'No Reciprocal Pairs']))
         genePairDF = genePairDF.div(genePairDF.sum(axis=1), axis=0)
         title = "Proportion of Genes"
@@ -116,7 +117,7 @@ def plot_gene_stack(md_data,name1,name2,legendOut,useProp=False):
         legendText = legendText + " Within genes with more transcripts in {} compared to {} ({} Greater), the number of genes where all transcripts in {} have reciprocal minimum matches to a subset of {} ({} Greater:Reciprocal Pairs, n = {}), at least one but not all transcript pairs are reciprocal minimum matches ({} Greater:Partial Reciprocal Pairs, n = {}), and no pairs are recirpocal minimum matches ({} Greater:No Reciprocal Pairs, n = {}).".format(
                 name2,name1,name2,name1,name2,name2,int(genePairDF.loc[name2+" Greater",'Reciprocal Pairs']),name2,int(genePairDF.loc[name2+" Greater",'Partial Reciprocal Pairs']),name2,int(genePairDF.loc[name2+" Greater",'No Reciprocal Pairs']))
         title = "Number of Genes"
-    genePairDF.plot(kind='bar',figsize=(10,10),stacked=True,rot=45,colormap=ListedColormap(sns.color_palette('colorblind').as_hex()))
+    genePairDF.plot(kind='bar',figsize=(8,6),stacked=True,rot=45,colormap=ListedColormap(genePairPallete))
     plt.ylabel(title)
     plt.xlabel("")
     plt.legend(bbox_to_anchor=(1.04,1), loc="upper left")
@@ -346,7 +347,7 @@ def plot_gene_avg_nt_diff_pairs(md_data,name1,name2,legendOut,zoomMean=False):
     else:
         limit=round(max(minPairNTGene[minPairNTGene['num_nt_diff_recip_min']>0]['num_nt_diff_recip_min'].mean(),
                         minPairNTGene[minPairNTGene['num_nt_diff_extra']>0]['num_nt_diff_extra'].mean()))
-    plt.figure(figsize=(8,5))
+    plt.figure(figsize=(8.45,5))
     sns.scatterplot(data=minPairNTGene,x='num_nt_diff_recip_min',
                     y='num_nt_diff_extra',hue='Category',palette=colorPalleteRecip)
     plt.xlim(0,limit)
