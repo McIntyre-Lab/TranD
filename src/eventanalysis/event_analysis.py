@@ -115,6 +115,13 @@ def parse_args(print_help=False):
         help="Log file name for logging processing events to file.",
     )
     parser.add_argument(
+        "-c", "--complexityOnly",
+        dest='complexity_only',
+        action='store_true',
+        help="""Output only complexity measures, skipping event analysis and comparison functions
+                (default: Perform all analyses and comparisons including complexity calculations)"""
+    )
+    parser.add_argument(
         "-e", "--ea",
         dest='ea_mode',
         type=str,
@@ -1199,7 +1206,7 @@ def ea_pairwise(data):
     return ea_df, jct_df, td_df
 
 
-def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles):
+def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_only):
     """Compare all transcript pairs in a single GTF file."""
     logger.info("Input file: {}", infile)
     if ea_mode == 'gene':
@@ -1207,52 +1214,59 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles):
     else :
         del(outfiles['er_fh'])
         del(outfiles['ef_fh'])
-    logger.debug("Output files: {}", outfiles)
-    out_fhs = open_output_files(outdir, outfiles)
-    # Write out csv file headers
-    if ea_mode == 'gene':
-        out_fhs['er_fh'].write_text(",".join(er_df_cols) + '\n')
-        out_fhs['ef_fh'].write_text(",".join(ef_df_cols) + '\n')
-    else:
-        out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
-        out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
-    out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
     data = read_exon_data_from_file(infile)
     genes = data.groupby("gene_id")
     transcripts = data.groupby(["gene_id", "transcript_id"])
     logger.info("Found {} genes and {} transcripts", len(genes), len(transcripts))
 
-    # Initialize concatenated pairwise transcript distance dataframe
-    if ea_mode == "pairwise":
-        td_data_cat = pd.DataFrame()
-    for gene in genes.groups:
-        gene_df = data[data['gene_id'] == gene]
-        transcripts = gene_df.groupby("transcript_id")
-        transcript_groups = transcripts.groups
-        number_of_transcripts = len(transcript_groups)
-        if number_of_transcripts == 1:
-            logger.info("Gene {} has a single transcript. Skipping", gene)
-            continue
-        if ea_mode == 'gene':
-            try:
-                er_data, ef_data, jct_data = do_ea(gene_df, mode='gene', keep_ir=keep_ir)
-                if er_data is None:
-                    continue
-                write_output(er_data, out_fhs, 'er_fh')
-                write_output(ef_data, out_fhs, 'ef_fh')
-                write_output(jct_data, out_fhs, 'jc_fh')
-            except ValueError as e:
-                logger.error(e)
-                continue
-        else:
-            ea_data, jct_data, td_data = ea_pairwise(gene_df)
-            td_data_cat = pd.concat([td_data_cat,td_data],ignore_index=True)
-            write_output(ea_data, out_fhs, 'ea_fh')
-            write_output(jct_data, out_fhs, 'jc_fh')
-            write_output(td_data, out_fhs, 'td_fh')
+    # Output complexity measures using GTF data
     COMP.calculate_complexity(outdir,data)
-    if ea_mode == 'pairwise':
-        P1GP.plot_one_gtf_pairwise(outdir,td_data_cat)
+
+    # If requested, skip all other functions
+    if complexity_only:
+        logger.info("Complexity only option selected. Skipping all other functions.")
+    else:
+        logger.debug("Output files: {}", outfiles)
+        out_fhs = open_output_files(outdir, outfiles)
+        # Write out csv file headers
+        if ea_mode == 'gene':
+            out_fhs['er_fh'].write_text(",".join(er_df_cols) + '\n')
+            out_fhs['ef_fh'].write_text(",".join(ef_df_cols) + '\n')
+        else:
+            out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
+            out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
+        out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
+
+        # Initialize concatenated pairwise transcript distance dataframe
+        if ea_mode == "pairwise":
+            td_data_cat = pd.DataFrame()
+        for gene in genes.groups:
+            gene_df = data[data['gene_id'] == gene]
+            transcripts = gene_df.groupby("transcript_id")
+            transcript_groups = transcripts.groups
+            number_of_transcripts = len(transcript_groups)
+            if number_of_transcripts == 1:
+                logger.info("Gene {} has a single transcript. Skipping", gene)
+                continue
+            if ea_mode == 'gene':
+                try:
+                    er_data, ef_data, jct_data = do_ea(gene_df, mode='gene', keep_ir=keep_ir)
+                    if er_data is None:
+                        continue
+                    write_output(er_data, out_fhs, 'er_fh')
+                    write_output(ef_data, out_fhs, 'ef_fh')
+                    write_output(jct_data, out_fhs, 'jc_fh')
+                except ValueError as e:
+                    logger.error(e)
+                    continue
+            else:
+                ea_data, jct_data, td_data = ea_pairwise(gene_df)
+                td_data_cat = pd.concat([td_data_cat,td_data],ignore_index=True)
+                write_output(ea_data, out_fhs, 'ea_fh')
+                write_output(jct_data, out_fhs, 'jc_fh')
+                write_output(td_data, out_fhs, 'td_fh')
+        if ea_mode == 'pairwise':
+            P1GP.plot_one_gtf_pairwise(outdir,td_data_cat)
 
 def ea_two_files(f1_data, f2_data, out_fhs, gene_id):
     "Do EA (Event Analysis) for pairs of transcripts from two files for a gene."
@@ -1307,7 +1321,7 @@ def callback_results(results):
     td_list.append(td_data_cat)
 
 
-def process_two_files(infiles, outdir, outfiles, cpu, all_pairs):
+def process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only):
     """Compare transcript pairs between two GTF files."""
     logger.info("Input files: {}", infiles)
     if not all_pairs:
@@ -1319,87 +1333,92 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs):
     # Do not make gene mode files (remove from outfiles)
     del(outfiles['er_fh'])
     del(outfiles['ef_fh'])
-    out_fhs = open_output_files(outdir, outfiles)
-    out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
-    out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
-    if not all_pairs:
-        out_fhs['md_fh'].write_text(",".join(MD.md_df_cols) + '\n')
-    else:
-        out_fhs['td_fh'].write_text(",".join(MD.md_df_cols) + '\n')
+
     infile_1 = infiles[0]
     infile_2 = infiles[1]
     in_f1 = read_exon_data_from_file(infile_1)
     in_f2 = read_exon_data_from_file(infile_2)
-    f1_gene_names = set(in_f1['gene_id'])
-    f2_gene_names = set(in_f2['gene_id'])
-    only_f1_genes = f1_gene_names.difference(f2_gene_names)
-    only_f2_genes = f2_gene_names.difference(f1_gene_names)
-    odd_genes = only_f1_genes.union(only_f2_genes)
-    f1_odds = in_f1[in_f1['gene_id'].isin(only_f1_genes)]
-    f2_odds = in_f2[in_f2['gene_id'].isin(only_f2_genes)]
-    write_output(f1_odds, out_fhs, 'gtf1_fh')
-    write_output(f2_odds, out_fhs, 'gtf2_fh')
-    common_genes = f1_gene_names.difference(odd_genes)
-    valid_f1 = in_f1[in_f1['gene_id'].isin(common_genes)]
-    valid_f2 = in_f2[in_f2['gene_id'].isin(common_genes)]
-    f1_genes = valid_f1.groupby("gene_id")
-    f1_transcripts = valid_f1.groupby(["gene_id", "transcript_id"])
-    f2_genes = valid_f2.groupby("gene_id")
-    f2_transcripts = valid_f2.groupby(["gene_id", "transcript_id"])
-    logger.info("Found {} genes and {} transcripts in {} file", len(f1_genes), len(f1_transcripts),
-                infile_1)
-    logger.info("Found {} genes and {} transcripts in {} file", len(f2_genes), len(f2_transcripts),
-                infile_2)
-    gene_list = list(set(valid_f1['gene_id']))
-    logger.debug("Genes to process: \n{}", gene_list)
-    # If 1 cpu available
-    if cpu == 1:
-        ea_data, jct_data, td_data = loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs, cpu)
-        write_output(ea_data, out_fhs, 'ea_fh')
-        write_output(jct_data, out_fhs, 'jc_fh')
-        # Identify minimum pairs using transcript distances
-        md_data = MD.identify_min_pair(td_data, all_pairs)
-        if not all_pairs:
-            write_output(md_data, out_fhs, 'md_fh')
-        else:
-            write_output(md_data, out_fhs, 'td_fh')
-        # Generate 2 GTF pairwise plots
-        P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1="d1", name2="d2")
-        # Calculate complexity of individual transcriptomes
-        COMP.calculate_complexity(outdir,in_f1,"d1")
-        COMP.calculate_complexity(outdir,in_f2,"d2")
-    # If cpu > 1, parallelize
-    elif cpu > 1:
-        # Get lists for each process based on cpu value
-        geneLists = chunks(gene_list, cpu)
-        # Generate multiprocess Pool with specified number of cpus
-        #     to loop through genes and calculate distances
-        pool = Pool(cpu)
-        for genes in geneLists:
-            subset_f1 = valid_f1[valid_f1['gene_id'].isin(genes)]
-            subset_f2 = valid_f2[valid_f2['gene_id'].isin(genes)]
-            pool.apply_async(loop_over_genes, args=(genes, subset_f1, subset_f2, out_fhs, cpu),
-                             callback=callback_results)
-        pool.close()
-        pool.join()
-        ea_cat = pd.concat(ea_list)
-        jct_cat = pd.concat(jct_list)
-        td_cat = pd.concat(td_list)
-        write_output(ea_cat, out_fhs, 'ea_fh')
-        write_output(jct_cat, out_fhs, 'jc_fh')
-        # Identify minimum pairs using transcript distances
-        md_data = MD.identify_min_pair(td_cat, all_pairs)
-        if not all_pairs:
-            write_output(md_data, out_fhs, 'md_fh')
-        else:
-            write_output(md_data, out_fhs, 'td_fh')
-        # Generate 2 GTF pairwise plots
-        P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1="d1", name2="d2")
-        # Calculate complexity of individual transcriptomes
-        COMP.calculate_complexity(outdir,in_f1,"d1")
-        COMP.calculate_complexity(outdir,in_f2,"d2")
+
+    # Calculate complexity of individual transcriptomes
+    COMP.calculate_complexity(outdir,in_f1,"d1")
+    COMP.calculate_complexity(outdir,in_f2,"d2")
+
+    # If requested, skip all other functions
+    if complexity_only:
+        logger.info("Complexity only option selected. Skipping all other functions.")
     else:
-        logger.error("Invalid cpu parameter")
+        out_fhs = open_output_files(outdir, outfiles)
+        out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
+        out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
+        if not all_pairs:
+            out_fhs['md_fh'].write_text(",".join(MD.md_df_cols) + '\n')
+        else:
+            out_fhs['td_fh'].write_text(",".join(MD.md_df_cols) + '\n')
+        f1_gene_names = set(in_f1['gene_id'])
+        f2_gene_names = set(in_f2['gene_id'])
+        only_f1_genes = f1_gene_names.difference(f2_gene_names)
+        only_f2_genes = f2_gene_names.difference(f1_gene_names)
+        odd_genes = only_f1_genes.union(only_f2_genes)
+        f1_odds = in_f1[in_f1['gene_id'].isin(only_f1_genes)]
+        f2_odds = in_f2[in_f2['gene_id'].isin(only_f2_genes)]
+        write_output(f1_odds, out_fhs, 'gtf1_fh')
+        write_output(f2_odds, out_fhs, 'gtf2_fh')
+        common_genes = f1_gene_names.difference(odd_genes)
+        valid_f1 = in_f1[in_f1['gene_id'].isin(common_genes)]
+        valid_f2 = in_f2[in_f2['gene_id'].isin(common_genes)]
+        f1_genes = valid_f1.groupby("gene_id")
+        f1_transcripts = valid_f1.groupby(["gene_id", "transcript_id"])
+        f2_genes = valid_f2.groupby("gene_id")
+        f2_transcripts = valid_f2.groupby(["gene_id", "transcript_id"])
+        logger.info("Found {} genes and {} transcripts in {} file", len(f1_genes), len(f1_transcripts),
+                    infile_1)
+        logger.info("Found {} genes and {} transcripts in {} file", len(f2_genes), len(f2_transcripts),
+                    infile_2)
+        gene_list = list(set(valid_f1['gene_id']))
+        logger.debug("Genes to process: \n{}", gene_list)
+        # If 1 cpu available
+        if cpu == 1:
+            ea_data, jct_data, td_data = loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs, cpu)
+            write_output(ea_data, out_fhs, 'ea_fh')
+            write_output(jct_data, out_fhs, 'jc_fh')
+            # Identify minimum pairs using transcript distances
+            md_data = MD.identify_min_pair(td_data, all_pairs)
+            if not all_pairs:
+                write_output(md_data, out_fhs, 'md_fh')
+            else:
+                write_output(md_data, out_fhs, 'td_fh')
+            # Generate 2 GTF pairwise plots
+            P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1="d1", name2="d2")
+
+        # If cpu > 1, parallelize
+        elif cpu > 1:
+            # Get lists for each process based on cpu value
+            geneLists = chunks(gene_list, cpu)
+            # Generate multiprocess Pool with specified number of cpus
+            #     to loop through genes and calculate distances
+            pool = Pool(cpu)
+            for genes in geneLists:
+                subset_f1 = valid_f1[valid_f1['gene_id'].isin(genes)]
+                subset_f2 = valid_f2[valid_f2['gene_id'].isin(genes)]
+                pool.apply_async(loop_over_genes, args=(genes, subset_f1, subset_f2, out_fhs, cpu),
+                                 callback=callback_results)
+            pool.close()
+            pool.join()
+            ea_cat = pd.concat(ea_list)
+            jct_cat = pd.concat(jct_list)
+            td_cat = pd.concat(td_list)
+            write_output(ea_cat, out_fhs, 'ea_fh')
+            write_output(jct_cat, out_fhs, 'jc_fh')
+            # Identify minimum pairs using transcript distances
+            md_data = MD.identify_min_pair(td_cat, all_pairs)
+            if not all_pairs:
+                write_output(md_data, out_fhs, 'md_fh')
+            else:
+                write_output(md_data, out_fhs, 'td_fh')
+            # Generate 2 GTF pairwise plots
+            P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1="d1", name2="d2")
+        else:
+            logger.error("Invalid cpu parameter")
 
 
 def loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs, cpu):
@@ -1435,6 +1454,7 @@ def main():
     outdir = handle_outdir(args)
     ea_mode = args.ea_mode
     all_pairs = args.all_pairs
+    complexity_only = args.complexity_only
     cpu = args.cpu
     if len(infiles) == 1:
         logger.debug("Single file {} analysis", ea_mode)
@@ -1444,13 +1464,13 @@ def main():
             outfiles.update(pairwise_outfiles)
         else:
             outfiles.update(gene_outfiles)
-        process_single_file(infiles[0], ea_mode, keep_ir, outdir, outfiles)
+        process_single_file(infiles[0], ea_mode, keep_ir, outdir, outfiles, complexity_only)
     else:
         logger.debug("Two files pairwise analysis")
         outfiles = common_outfiles
         outfiles.update(two_gtfs_outfiles)
         outfiles.update(pairwise_outfiles)
-        process_two_files(infiles, outdir, outfiles, cpu, all_pairs)
+        process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only)
     # The End
 
 
