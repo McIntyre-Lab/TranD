@@ -151,7 +151,7 @@ def plot_transcript_in_gene_upset(md_data,f1_odds,f2_odds,name1,name2,legendOut)
     colList.append("5+ Transcript(s) "+name1)
     geneAll["5+ Transcript(s) "+name2] = np.where(geneAll['num_transcript_in_gene_'+name2]>=5,True,False)
     colList.append("5+ Transcript(s) "+name2)
-    legendText = "Number of genes with the specified number of transcripts in {} and {} indicated by the black dots below the histogram of genes counts. Columns with a single black dot represent the genes exclusive to {} (n = {}) or {} (n = {}). Genes with more than one dot are in both {} and {} (n = {})".format(name1,name2,name1,geneAll['transcript_in_gene'].value_counts()[name1+'_only'],name2,geneAll['transcript_in_gene'].value_counts()[name2+'_only'],name1,name2,geneAll['transcript_in_gene'].value_counts()[['match',name1+'_greater',name2+'_greater']].sum())
+    legendText = "Number of genes with the specified number of transcripts in {} and {} indicated by the black dots below the histogram of genes counts. Columns with a single black dot represent the genes exclusive to {} (n = {}) or {} (n = {}). Genes with more than one dot are in both {} and {} (n = {})".format(name1,name2,name1,geneAll['transcript_in_gene'].value_counts()[name1+'_only'] if name1+'_only' in geneAll['transcript_in_gene'].value_counts().index else 0,name2,geneAll['transcript_in_gene'].value_counts()[name2+'_only'] if name2+'_only' in geneAll['transcript_in_gene'].value_counts().index else 0,name1,name2,geneAll['transcript_in_gene'].value_counts()[['match',name1+'_greater',name2+'_greater']].sum())
     plot_upset(geneAll.set_index(colList),"Number of Genes with Each Number of Transcripts")
     with open(legendOut,'w') as outFile:
         start_rtf(outFile)
