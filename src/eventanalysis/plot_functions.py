@@ -152,7 +152,7 @@ def plot_transcript_in_gene_upset(md_data,f1_odds,f2_odds,name1,name2,legendOut)
     colList.append("5+ Transcript(s) "+name1)
     geneAll["5+ Transcript(s) "+name2] = np.where(geneAll['num_transcript_in_gene_'+name2]>=5,True,False)
     colList.append("5+ Transcript(s) "+name2)
-    legendText = "Number of genes with the specified number of transcripts in {} and {} indicated by the black dots below the histogram of genes counts. Columns with a single black dot represent the genes exclusive to {} (n = {}) or {} (n = {}). Genes with more than one dot are in both {} and {} (n = {})".format(name1,name2,name1,geneAll['transcript_in_gene'].value_counts()[name1+'_only'] if name1+'_only' in geneAll['transcript_in_gene'].value_counts().index else 0,name2,geneAll['transcript_in_gene'].value_counts()[name2+'_only'] if name2+'_only' in geneAll['transcript_in_gene'].value_counts().index else 0,name1,name2,geneAll['transcript_in_gene'].value_counts()[['match',name1+'_greater',name2+'_greater']].sum())
+    legendText = "Number of genes with the specified number of transcripts in {} and {} indicated by the black dots below the histogram of genes counts. Columns with a single black dot represent the genes exclusive to {} (n = {}) or {} (n = {}). Genes with more than one dot are in both {} and {} (n = {})".format(name1,name2,name1,get_value_count(geneAll,'transcript_in_gene',name1+'_only'),name2,get_value_count(geneAll,'transcript_in_gene',name2+'_only'),name1,name2,sum([get_value_count(geneAll,'transcript_in_gene','match'),get_value_count(geneAll,'transcript_in_gene',name1+'_greater'),get_value_count(geneAll,'transcript_in_gene',name2+'_greater')]))
     plot_upset(geneAll.set_index(colList),"Number of Genes with Each Number of Transcripts")
     with open(legendOut,'w') as outFile:
         start_rtf(outFile)
@@ -412,6 +412,17 @@ def plot_complexity_box(geneDF,transcriptDF,outdir,legendOut):
         outFile.write(r' \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github.')
         end_rtf(outFile)
 
+def get_value_count(df,col,value):
+    """
+    Do value_count function of column col on dataframe df
+    Get count of value (an element in col), if value is not present then return 0
+    """
+    df2 = df[col].value_counts()
+    if value in df2.index:
+        value = df2[value]
+    else:
+        value = 0
+    return value
         
 def start_rtf(outFile):
     """
