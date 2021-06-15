@@ -38,6 +38,7 @@ from loguru import logger
 from numpy import nan
 from pathlib import Path
 from pybedtools import BedTool
+from pybedtools import cleanup
 # from pybedtools import Interval
 from multiprocessing import Pool
 
@@ -1464,13 +1465,18 @@ def main():
             outfiles.update(pairwise_outfiles)
         else:
             outfiles.update(gene_outfiles)
-        process_single_file(infiles[0], ea_mode, keep_ir, outdir, outfiles, complexity_only)
+        try:
+            process_single_file(infiles[0], ea_mode, keep_ir, outdir, outfiles, complexity_only)
+        finally:
+            cleanup()
     else:
         logger.debug("Two files pairwise analysis")
         outfiles = common_outfiles
         outfiles.update(two_gtfs_outfiles)
         outfiles.update(pairwise_outfiles)
-        process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only)
+        try:
+            process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only)
+        finally: cleanup()
     # The End
 
 

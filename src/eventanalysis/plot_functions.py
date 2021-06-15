@@ -280,7 +280,7 @@ def plot_gene_AS_upset_nt_box(td_data,legendOut):
                                                               'prop_nt_diff':'Avg Proportion\nNT Different'})
     plot_upset(mergeASxcrptPerGene.set_index([c for c in mergeASxcrptPerGene.columns if ("gene" not in c) and ("Different" not in c) and ("Transcripts" not in c) and ('merge' not in c)]),
                "",['# Transcripts\nPer Gene','Avg #\nNT Different','Avg Proportion\nNT Different'])
-    legendText = "Number of genes with the specified types of alternative splicing indicated by the black dots below the histogram of gene counts (n = {} multi-transcrirpt genes). Box plots represent the number of transcripts per gene (blue)  and the average number (orange) and proportion (green) of nucleotides different between the pair of transcripts within the gene. Genes with \"No Shared NT\" have a pair of transcripts with nonoverlapping coordinates.".format(len(mergeASxcrptPerGene))
+    legendText = "Number of genes with the specified types of alternative splicing indicated by the black dots below the histogram of gene counts (n = {} multi-transcrirpt genes). Box plots represent the number of transcripts per gene (blue) and the average number (orange) and proportion (green) of nucleotides different between the pairs of transcripts within the gene. Genes with \"No Shared NT\" have a pair of transcripts with nonoverlapping coordinates.".format(len(mergeASxcrptPerGene))
     with open(legendOut,'w') as outFile:
         start_rtf(outFile)
         outFile.write(r'\b Figure. Alternative splicing in genes \b0 \line {} Transcriptome comparisons performed by TranD [1].'.format(legendText))
