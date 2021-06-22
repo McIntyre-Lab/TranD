@@ -38,11 +38,8 @@ md_df_cols = ['gene_id','transcript_1','transcript_2','num_junction_T1_only','nu
              'flag_IR_recip_min_match','flag_5_variation_recip_min_match','flag_3_variation_recip_min_match',
              'recip_min_pair_in_gene']
 
-def identify_min_pair(td_data, all_pairs):
-    # Set names of input data
-    name1 = "d1"
-    name2 = "d2"
-        
+def identify_min_pair(td_data, all_pairs, name1, name2):
+       
     # Get number of transcripts per gene
     td_data['num_transcript_in_gene_'+name1] = td_data.groupby('gene_id')['transcript_1'].transform('nunique')
     td_data['num_transcript_in_gene_'+name2] = td_data.groupby('gene_id')['transcript_2'].transform('nunique')

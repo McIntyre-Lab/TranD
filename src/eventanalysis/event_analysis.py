@@ -151,6 +151,24 @@ def parse_args(print_help=False):
         help="Number of CPUs to use for parallelization (default: 1).",
     )
     parser.add_argument(
+        "-1", "--name1",
+        dest='name1',
+        default="d1",
+        required=False,
+        help="""For multiple transcriptomes: name of transcriptome for dataset 1, for the first GTF file listed,
+                to be used in output (default: \"d1\"). Name must be alphanumeric, can only include \"_\" special character
+                and not contain any spaces.""",
+    )
+    parser.add_argument(
+        "-2", "--name2",
+        dest='name2',
+        default="d2",
+        required=False,
+        help="""For multiple transcriptomes: name of transcriptome for dataset 2, for the second GTF file listed,
+                to be used in output (default: \"d2\"). Name must be alphanumeric, can only include \"_\" special character
+                and not contain any spaces.""",
+    )
+    parser.add_argument(
         "-f", "--force",
         action="store_true",
         help="Force overwrite existing output directory and files within.",
@@ -1269,7 +1287,7 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
         if ea_mode == 'pairwise':
             P1GP.plot_one_gtf_pairwise(outdir,td_data_cat)
 
-def ea_two_files(f1_data, f2_data, out_fhs, gene_id):
+def ea_two_files(f1_data, f2_data, out_fhs, gene_id, name1, name2):
     "Do EA (Event Analysis) for pairs of transcripts from two files for a gene."
     f1_transcripts = list(set(f1_data['transcript_id']))
     f2_transcripts = list(set(f2_data['transcript_id']))
@@ -1281,9 +1299,9 @@ def ea_two_files(f1_data, f2_data, out_fhs, gene_id):
     for pair in transcript_combos:
         # try:
         tx_df_1 = f1_data[f1_data['transcript_id'] == pair[0]]
-        tx_df_1_s = tx_df_1.assign(transcript_id=lambda x: x.transcript_id + '_d1')
+        tx_df_1_s = tx_df_1.assign(transcript_id=lambda x: x.transcript_id + '_' + name1)
         tx_df_2 = f2_data[f2_data['transcript_id'] == pair[1]]
-        tx_df_2_s = tx_df_2.assign(transcript_id=lambda x: x.transcript_id + '_d2')
+        tx_df_2_s = tx_df_2.assign(transcript_id=lambda x: x.transcript_id + '_' + name2)
         tx_pair_data = pd.concat([tx_df_1_s, tx_df_2_s])
         try:
             ea_data, jct_data, td_data = do_ea(tx_pair_data, mode='pairwise')
@@ -1322,7 +1340,7 @@ def callback_results(results):
     td_list.append(td_data_cat)
 
 
-def process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only):
+def process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only, name1, name2):
     """Compare transcript pairs between two GTF files."""
     logger.info("Input files: {}", infiles)
     if not all_pairs:
@@ -1341,8 +1359,8 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only
     in_f2 = read_exon_data_from_file(infile_2)
 
     # Calculate complexity of individual transcriptomes
-    COMP.calculate_complexity(outdir,in_f1,"d1")
-    COMP.calculate_complexity(outdir,in_f2,"d2")
+    COMP.calculate_complexity(outdir, in_f1, name1)
+    COMP.calculate_complexity(outdir, in_f2, name2)
 
     # If requested, skip all other functions
     if complexity_only:
@@ -1379,17 +1397,17 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only
         logger.debug("Genes to process: \n{}", gene_list)
         # If 1 cpu available
         if cpu == 1:
-            ea_data, jct_data, td_data = loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs, cpu)
+            ea_data, jct_data, td_data = loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs, cpu, name1, name2)
             write_output(ea_data, out_fhs, 'ea_fh')
             write_output(jct_data, out_fhs, 'jc_fh')
             # Identify minimum pairs using transcript distances
-            md_data = MD.identify_min_pair(td_data, all_pairs)
+            md_data = MD.identify_min_pair(td_data, all_pairs, name1, name2)
             if not all_pairs:
                 write_output(md_data, out_fhs, 'md_fh')
             else:
                 write_output(md_data, out_fhs, 'td_fh')
             # Generate 2 GTF pairwise plots
-            P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1="d1", name2="d2")
+            P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1=name1, name2=name2)
 
         # If cpu > 1, parallelize
         elif cpu > 1:
@@ -1401,7 +1419,7 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only
             for genes in geneLists:
                 subset_f1 = valid_f1[valid_f1['gene_id'].isin(genes)]
                 subset_f2 = valid_f2[valid_f2['gene_id'].isin(genes)]
-                pool.apply_async(loop_over_genes, args=(genes, subset_f1, subset_f2, out_fhs, cpu),
+                pool.apply_async(loop_over_genes, args=(genes, subset_f1, subset_f2, out_fhs, cpu, name1, name2),
                                  callback=callback_results)
             pool.close()
             pool.join()
@@ -1411,18 +1429,18 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only
             write_output(ea_cat, out_fhs, 'ea_fh')
             write_output(jct_cat, out_fhs, 'jc_fh')
             # Identify minimum pairs using transcript distances
-            md_data = MD.identify_min_pair(td_cat, all_pairs)
+            md_data = MD.identify_min_pair(td_cat, all_pairs, name1, name2)
             if not all_pairs:
                 write_output(md_data, out_fhs, 'md_fh')
             else:
                 write_output(md_data, out_fhs, 'td_fh')
             # Generate 2 GTF pairwise plots
-            P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1="d1", name2="d2")
+            P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1=name1, name2=name2)
         else:
             logger.error("Invalid cpu parameter")
 
 
-def loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs, cpu):
+def loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs, cpu, name1, name2):
     ea_data_list = []
     jct_data_list = []
     td_data_list = []
@@ -1431,7 +1449,7 @@ def loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs, cpu):
         f1_data = valid_f1[valid_f1['gene_id'] == gene]
         f2_data = valid_f2[valid_f2['gene_id'] == gene]
         try:
-            ea_data, jct_data, td_data = ea_two_files(f1_data, f2_data, out_fhs, gene)
+            ea_data, jct_data, td_data = ea_two_files(f1_data, f2_data, out_fhs, gene, name1, name2)
         except ValueError as e:
             logger.error(e)
             continue
@@ -1474,9 +1492,18 @@ def main():
         outfiles = common_outfiles
         outfiles.update(two_gtfs_outfiles)
         outfiles.update(pairwise_outfiles)
+        if [k for k in list(args.name1) if k.isalnum() or k=="_"] == list(args.name1):
+            name1 = args.name1
+        else:
+            logger.error("Invalid name for dataset 1: Must be alphanumeric and can only include \"_\" special character")
+        if [k for k in list(args.name2) if k.isalnum() or k=="_"] == list(args.name2):
+            name2 = args.name2
+        else:
+            logger.error("Invalid name for dataset 1: Must be alphanumeric and can only include \"_\" special character")
         try:
-            process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only)
-        finally: cleanup()
+            process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only, name1, name2)
+        finally:
+            cleanup()
     # The End
 
 

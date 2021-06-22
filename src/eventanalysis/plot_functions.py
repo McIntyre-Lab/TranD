@@ -83,9 +83,9 @@ def get_pie_label(pct, allvals):
 def plot_gene_stack(md_data,name1,name2,legendOut,useProp=False):
     """
     Plot a stacked bar chart of the genes with reciprocal minimum pairs for
-            all transcript pairs possible (Match:Reciprocal Pairs or Greater:Reciprocal Pairs),
-            only some of the transcript pairs (Match:Partial Reciprocal Pairs or Greater:Partial Reciprocal Pairs),
-            or none of the transcript pars (Match:No Reciprocal Pairs or Greater:No Reciprocal Pairs)
+            all transcript pairs possible (Match: Reciprocal Pairs or Greater: Reciprocal Pairs),
+            only some of the transcript pairs (Match: Partial Reciprocal Pairs or Greater: Partial Reciprocal Pairs),
+            or none of the transcript pars (Match: No Reciprocal Pairs or Greater: No Reciprocal Pairs)
             using gene counts or proportions of Match or Greater genes
     """
     genePairDF = md_data.groupby(['transcript_in_gene','recip_min_pair_in_gene'])['gene_id'].nunique().reset_index().pivot_table(index=['transcript_in_gene'],columns='recip_min_pair_in_gene',values='gene_id')
@@ -101,20 +101,20 @@ def plot_gene_stack(md_data,name1,name2,legendOut,useProp=False):
                                            "match":"Match"})
     genePairPallete = ['#FAC748','#1D2F6F','#8390FA']
     if useProp:
-        legendText = "Within genes with equal numbers of transcript in {} and {} (Match), the proportion of genes where all transcripts have reciprocal minimum matches (Match:Reciprocal Pairs, n = {}), at least one but not all transcript pairs are reciprocal minimum matches (Match:Partial Reciprocal Pairs, n = {}), and no pairs are reciprocal minimum matches (Match:No Reciprocal Pairs, n = {}).".format(
+        legendText = "Within genes with equal numbers of transcripts in {} and {} (Match), the proportion of genes where all transcripts have reciprocal minimum matches (Match: Reciprocal Pairs, n = {}), at least one but not all transcript pairs are reciprocal minimum matches (Match: Partial Reciprocal Pairs, n = {}), and no pairs are reciprocal minimum matches (Match: No Reciprocal Pairs, n = {}).".format(
                 name1,name2,int(genePairDF.loc['Match','Reciprocal Pairs']),int(genePairDF.loc['Match','Partial Reciprocal Pairs']),int(genePairDF.loc['Match','No Reciprocal Pairs']))
-        legendText = legendText + " Within genes with more transcripts in {} compared to {} ({} Greater), the proportion of genes where all transcripts in {} have reciprocal minimum matches to a subset of {} ({} Greater:Reciprocal Pairs, n = {}), at least one but not all transcript pairs are reciprocal minimum matches ({} Greater:Partial Reciprocal Pairs, n = {}), and no pairs are reciprocal minimum matches ({} Greater:No Reciprocal Pairs, n = {}).".format(
+        legendText = legendText + " Within genes with more transcripts in {} compared to {} ({} Greater), the proportion of genes where all transcripts in {} have reciprocal minimum matches to a subset of {} ({} Greater: Reciprocal Pairs, n = {}), at least one but not all transcript pairs are reciprocal minimum matches ({} Greater: Partial Reciprocal Pairs, n = {}), and no pairs are reciprocal minimum matches ({} Greater: No Reciprocal Pairs, n = {}).".format(
                 name1,name2,name1,name2,name1,name1,int(genePairDF.loc[name1+" Greater",'Reciprocal Pairs']),name1,int(genePairDF.loc[name1+" Greater",'Partial Reciprocal Pairs']),name1,int(genePairDF.loc[name1+" Greater",'No Reciprocal Pairs']))
-        legendText = legendText + " Within genes with more transcripts in {} compared to {} ({} Greater), the proportion of genes where all transcripts in {} have reciprocal minimum matches to a subset of {} ({} Greater:Reciprocal Pairs, n = {}), at least one but not all transcript pairs are reciprocal minimum matches ({} Greater:Partial Reciprocal Pairs, n = {}), and no pairs are reciprocal minimum matches ({} Greater:No Reciprocal Pairs, n = {}).".format(
+        legendText = legendText + " Within genes with more transcripts in {} compared to {} ({} Greater), the proportion of genes where all transcripts in {} have reciprocal minimum matches to a subset of {} ({} Greater: Reciprocal Pairs, n = {}), at least one but not all transcript pairs are reciprocal minimum matches ({} Greater: Partial Reciprocal Pairs, n = {}), and no pairs are reciprocal minimum matches ({} Greater: No Reciprocal Pairs, n = {}).".format(
                 name2,name1,name2,name1,name2,name2,int(genePairDF.loc[name2+" Greater",'Reciprocal Pairs']),name2,int(genePairDF.loc[name2+" Greater",'Partial Reciprocal Pairs']),name2,int(genePairDF.loc[name2+" Greater",'No Reciprocal Pairs']))
         genePairDF = genePairDF.div(genePairDF.sum(axis=1), axis=0)
         title = "Proportion of Genes"
     else:
-        legendText = "Within genes with equal numbers of transcript in {} and {} (Match), the number of genes where all transcripts have reciprocal minimum matches (Match:Reciprocal Pairs, n = {}), at least one but not all transcript pairs are reciprocal minimum matches (Match:Partial Reciprocal Pairs, n = {}), and no pairs are reciprocal minimum matches (Match:No Reciprocal Pairs, n = {}).".format(
+        legendText = "Within genes with equal numbers of transcripts in {} and {} (Match), the number of genes where all transcripts have reciprocal minimum matches (Match: Reciprocal Pairs, n = {}), at least one but not all transcript pairs are reciprocal minimum matches (Match: Partial Reciprocal Pairs, n = {}), and no pairs are reciprocal minimum matches (Match: No Reciprocal Pairs, n = {}).".format(
                 name1,name2,int(genePairDF.loc['Match','Reciprocal Pairs']),int(genePairDF.loc['Match','Partial Reciprocal Pairs']),int(genePairDF.loc['Match','No Reciprocal Pairs']))
-        legendText = legendText + " Within genes with more transcripts in {} compared to {} ({} Greater), the number of genes where all transcripts in {} have reciprocal minimum matches to a subset of {} ({} Greater:Reciprocal Pairs, n = {}), at least one but not all transcript pairs are reciprocal minimum matches ({} Greater:Partial Reciprocal Pairs, n = {}), and no pairs are reciprocal minimum matches ({} Greater:No Reciprocal Pairs, n = {}).".format(
+        legendText = legendText + " Within genes with more transcripts in {} compared to {} ({} Greater), the number of genes where all transcripts in {} have reciprocal minimum matches to a subset of {} ({} Greater: Reciprocal Pairs, n = {}), at least one but not all transcript pairs are reciprocal minimum matches ({} Greater: Partial Reciprocal Pairs, n = {}), and no pairs are reciprocal minimum matches ({} Greater: No Reciprocal Pairs, n = {}).".format(
                 name1,name2,name1,name2,name1,name1,int(genePairDF.loc[name1+" Greater",'Reciprocal Pairs']),name1,int(genePairDF.loc[name1+" Greater",'Partial Reciprocal Pairs']),name1,int(genePairDF.loc[name1+" Greater",'No Reciprocal Pairs']))
-        legendText = legendText + " Within genes with more transcripts in {} compared to {} ({} Greater), the number of genes where all transcripts in {} have reciprocal minimum matches to a subset of {} ({} Greater:Reciprocal Pairs, n = {}), at least one but not all transcript pairs are reciprocal minimum matches ({} Greater:Partial Reciprocal Pairs, n = {}), and no pairs are reciprocal minimum matches ({} Greater:No Reciprocal Pairs, n = {}).".format(
+        legendText = legendText + " Within genes with more transcripts in {} compared to {} ({} Greater), the number of genes where all transcripts in {} have reciprocal minimum matches to a subset of {} ({} Greater: Reciprocal Pairs, n = {}), at least one but not all transcript pairs are reciprocal minimum matches ({} Greater: Partial Reciprocal Pairs, n = {}), and no pairs are reciprocal minimum matches ({} Greater: No Reciprocal Pairs, n = {}).".format(
                 name2,name1,name2,name1,name2,name2,int(genePairDF.loc[name2+" Greater",'Reciprocal Pairs']),name2,int(genePairDF.loc[name2+" Greater",'Partial Reciprocal Pairs']),name2,int(genePairDF.loc[name2+" Greater",'No Reciprocal Pairs']))
         title = "Number of Genes"
     genePairDF.plot(kind='bar',figsize=(8,6),stacked=True,rot=45,colormap=ListedColormap(genePairPallete))
@@ -130,7 +130,7 @@ def plot_gene_stack(md_data,name1,name2,legendOut,useProp=False):
 
 def plot_transcript_in_gene_upset(md_data,f1_odds,f2_odds,name1,name2,legendOut):
     """
-    UpSet plot for number of transcript in genes
+    UpSet plot for number of transcripts in genes
     """
     geneF1only = f1_odds.groupby('gene_id')['transcript_id'].nunique().reset_index().rename(columns={'transcript_id':'num_transcript_in_gene_'+name1})
     geneF1only['num_transcript_in_gene_'+name2] = 0
@@ -152,7 +152,7 @@ def plot_transcript_in_gene_upset(md_data,f1_odds,f2_odds,name1,name2,legendOut)
     colList.append("5+ Transcript(s) "+name1)
     geneAll["5+ Transcript(s) "+name2] = np.where(geneAll['num_transcript_in_gene_'+name2]>=5,True,False)
     colList.append("5+ Transcript(s) "+name2)
-    legendText = "Number of genes with the specified number of transcripts in {} and {} indicated by the black dots below the histogram of genes counts. Columns with a single black dot represent the genes exclusive to {} (n = {}) or {} (n = {}). Genes with more than one dot are in both {} and {} (n = {})".format(name1,name2,name1,get_value_count(geneAll,'transcript_in_gene',name1+'_only'),name2,get_value_count(geneAll,'transcript_in_gene',name2+'_only'),name1,name2,sum([get_value_count(geneAll,'transcript_in_gene','match'),get_value_count(geneAll,'transcript_in_gene',name1+'_greater'),get_value_count(geneAll,'transcript_in_gene',name2+'_greater')]))
+    legendText = "Number of genes with the specified number of transcripts in {} and {} indicated by the black dots below the histogram of genes counts. Columns with a single black dot represent the genes exclusive to {} (n = {}) or {} (n = {}). Genes with more than one dot are in both {} and {} (n = {}).".format(name1,name2,name1,get_value_count(geneAll,'transcript_in_gene',name1+'_only'),name2,get_value_count(geneAll,'transcript_in_gene',name2+'_only'),name1,name2,sum([get_value_count(geneAll,'transcript_in_gene','match'),get_value_count(geneAll,'transcript_in_gene',name1+'_greater'),get_value_count(geneAll,'transcript_in_gene',name2+'_greater')]))
     plot_upset(geneAll.set_index(colList),"Number of Genes with Each Number of Transcripts")
     with open(legendOut,'w') as outFile:
         start_rtf(outFile)
@@ -171,6 +171,8 @@ def plot_recip_min_pair_AS_upset_nt_box(md_data,name1,name2,legendOut):
                             'flag_IR_recip_min_match','flag_5_variation_recip_min_match',
                             'flag_3_variation_recip_min_match','flag_no_shared_nt_recip_min_match',
                             'num_nt_diff','prop_nt_diff']].copy()
+    # Set No Shared NT genes to have np.nan nucleotide difference
+    recipMinPairAS['num_nt_diff'] = np.where(recipMinPairAS['flag_no_shared_nt_recip_min_match']==1,np.nan,recipMinPairAS['num_nt_diff'])
     recipMinPairAS = recipMinPairAS.rename(columns={'flag_alt_exon_recip_min_match':'Alt. Exon',
                                                     'flag_alt_donor_acceptor_recip_min_match':'Alt. Donor/Acceptor',
                                                     'flag_IR_recip_min_match':'Intron Retention',
@@ -216,6 +218,8 @@ def plot_gene_recip_min_AS_upset_nt_box(md_data,name1,name2,legendOut):
                                                               'num_transcript_in_gene_'+name2:'max',
                                                               'num_nt_diff':'mean',
                                                               'prop_nt_diff':'mean'}).reset_index()
+    # Set No Shared NT genes to have np.nan nucleotide difference
+    geneRecipMatchAS['num_nt_diff'] = np.where(geneRecipMatchAS['flag_no_shared_nt_recip_min_match']==1,np.nan,geneRecipMatchAS['num_nt_diff'])
     geneFlagCols = ['flag_alt_exon_recip_min_match','flag_alt_donor_acceptor_recip_min_match',
                     'flag_IR_recip_min_match','flag_5_variation_recip_min_match',
                     'flag_3_variation_recip_min_match','flag_no_shared_nt_recip_min_match']
@@ -226,13 +230,13 @@ def plot_gene_recip_min_AS_upset_nt_box(md_data,name1,name2,legendOut):
                                                         'flag_5_variation_recip_min_match':'5\' Variation',
                                                         'flag_3_variation_recip_min_match':'3\' Variation',
                                                         'flag_no_shared_nt_recip_min_match':'No Shared NT',
-                                                        'num_recip_min_match_in_gene':'# Recip. Min.\nMatch Transcripts',
+                                                        'num_recip_min_match_in_gene':'# Recip. Min.\nTranscript Pairs',
                                                         'num_transcript_in_gene_'+name1:'# Transcripts\nin '+name1,
                                                         'num_transcript_in_gene_'+name2:'# Transcripts\nin '+name2,
                                                         'num_nt_diff':'Avg #\nNT Different',
                                                         'prop_nt_diff':'Avg Proportion\nNT Different'})
     AScols = ['5\' Variation','3\' Variation','Alt. Donor/Acceptor','Alt. Exon','Intron Retention','No Shared NT']
-    plot_upset(geneRecipMatchAS.set_index(AScols),"",['# Recip. Min.\nMatch Transcripts','# Transcripts\nin '+name1,'# Transcripts\nin '+name2,'Avg #\nNT Different','Avg Proportion\nNT Different'])
+    plot_upset(geneRecipMatchAS.set_index(AScols),"",['# Recip. Min.\nTranscript Pairs','# Transcripts\nin '+name1,'# Transcripts\nin '+name2,'Avg #\nNT Different','Avg Proportion\nNT Different'])
     legendText = "Number of genes with the specified types of alternative splicing in only reciprocal minimum pairs between {} and {} indicated by the black dots below the histogram of gene counts (n = {} genes with {} reciprocal minimum pairs). Box plots represent the number of reciprocal minimum pairs (blue), number of transcripts in {} (orange) and {} (green), and the average number (brown) and proportion (purple) of nucleotides different between the pairs. Genes with \"No Shared NT\" have a pair of transcripts with nonoverlapping coordinates.".format(name1,name2,len(geneRecipMatchAS),len(md_data[md_data['flag_recip_min_match']==1]),name1,name2)
     with open(legendOut,'w') as outFile:
         start_rtf(outFile)
@@ -311,7 +315,7 @@ def plot_gene_avg_nt_diff_pairs(md_data,name1,name2,legendOut,zoomMean=False):
             (max of the two means from recip. min pairs and extras)
     """
     minPairNT = md_data[['gene_id','transcript_in_gene','recip_min_pair_in_gene',
-                         'flag_recip_min_match','num_nt_diff']].copy()
+                         'flag_recip_min_match','num_nt_diff','prop_nt_diff']].copy()
     # Ensure number of nt different are int and float values
     minPairNT['num_nt_diff'] = minPairNT['num_nt_diff'].astype(int)
     minPairNT['prop_nt_diff'] = minPairNT['prop_nt_diff'].astype(float)
@@ -356,7 +360,7 @@ def plot_gene_avg_nt_diff_pairs(md_data,name1,name2,legendOut,zoomMean=False):
     plt.ylabel("Avg. # NT Different in Min. Pairs of Extras")
     plt.legend(bbox_to_anchor=(1.04,1), loc="upper left")
     plt.plot((0,limit),(0,limit),color='r')
-    legendText = "Each point represents a gene plotted by the average number of nucleotides different between reciprocal minimum pairs (X-axis) and minimum pairs of extras without a reciprocal minimum pair (Y-axis). Genes are colored by categorizations of the comparison between {} and {}".format(name1,name2)
+    legendText = "Each point represents a gene plotted by the average number of nucleotides different between reciprocal minimum pairs (X-axis) and minimum pairs of extras without a reciprocal minimum pair (Y-axis). Genes are colored by categorizations of the comparison between {} and {}.".format(name1,name2)
     plt.tight_layout()
     with open(legendOut,'w') as outFile:
         start_rtf(outFile)
@@ -405,6 +409,38 @@ def plot_complexity_box(geneDF,transcriptDF,outdir,legendOut):
             median.set(color='red')
         for whisker in bplot['whiskers']:
             whisker.set(color='black')
+    legendText = "Distributions of transcriptome complexity measures including transcripts per gene (median = {}, mean = {}), unique exons per gene (median = {}, mean = {}), and exons per transcript (median = {}, mean = {}). Total genes described = {}.".format(geneDF['num_transcript'].median(),geneDF['num_transcript'].mean(),geneDF['num_uniq_exon'].median(),geneDF['num_uniq_exon'].mean(),transcriptDF['num_exon'].median(),transcriptDF['num_exon'].mean(),len(geneDF))
+    with open(legendOut,'w') as outFile:
+        start_rtf(outFile)
+        outFile.write(r'\b Figure. Transcriptome complexity \b0 \line {} Transcriptome analyses performed by TranD [1].'.format(legendText))
+        outFile.write(r' \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github.')
+        end_rtf(outFile)
+
+def plot_complexity_violin(geneDF,transcriptDF,outdir,legendOut):
+    """
+    Plot violin plots of complexity measures:
+        1) Transcripts per gene
+        2) Unique exons per gene
+        3) Exons per transcript
+    """
+    sns.set(style="whitegrid")
+    fig = plt.figure(figsize=(12,5))
+    axLeft = plt.subplot2grid((1,3),(0,0),fig=fig)
+    axLeft.set_title("Number of Transcripts Per Gene")
+    axMid = plt.subplot2grid((1,3),(0,1),fig=fig)
+    axMid.set_title("Number of Unique Exons Per Gene")
+    axRight = plt.subplot2grid((1,3),(0,2),fig=fig)
+    axRight.set_title("Number of Exons Per Transcript")
+    sns.violinplot(y='num_transcript',data=geneDF.set_index('gene_id'),ax=axLeft)
+    sns.violinplot(y='num_uniq_exon',data=geneDF.set_index('gene_id'),ax=axMid)
+    sns.violinplot(y='num_exon',data=transcriptDF.set_index('transcript_id'),ax=axRight)
+    axLeft.set_xlabel("")
+    axLeft.set_ylabel("")
+    axMid.set_xlabel("")
+    axMid.set_ylabel("")
+    axRight.set_xlabel("")
+    axRight.set_ylabel("")
+    plt.tight_layout()
     legendText = "Distributions of transcriptome complexity measures including transcripts per gene (median = {}, mean = {}), unique exons per gene (median = {}, mean = {}), and exons per transcript (median = {}, mean = {}). Total genes described = {}.".format(geneDF['num_transcript'].median(),geneDF['num_transcript'].mean(),geneDF['num_uniq_exon'].median(),geneDF['num_uniq_exon'].mean(),transcriptDF['num_exon'].median(),transcriptDF['num_exon'].mean(),len(geneDF))
     with open(legendOut,'w') as outFile:
         start_rtf(outFile)
