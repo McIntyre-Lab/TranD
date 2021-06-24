@@ -38,7 +38,7 @@ md_df_cols = ['gene_id','transcript_1','transcript_2','num_junction_T1_only','nu
              'flag_IR_recip_min_match','flag_5_variation_recip_min_match','flag_3_variation_recip_min_match',
              'recip_min_pair_in_gene']
 
-def identify_min_pair(td_data, all_pairs, name1, name2):
+def identify_min_pair(td_data, out_pairs, name1, name2):
        
     # Get number of transcripts per gene
     td_data['num_transcript_in_gene_'+name1] = td_data.groupby('gene_id')['transcript_1'].transform('nunique')
@@ -126,8 +126,14 @@ def identify_min_pair(td_data, all_pairs, name1, name2):
         logger.error("Unexpected variable assignment for gene reciprocal minimum pair comparison")
 
     # Return minimum distance of transcript all pairs
-    if all_pairs:
+    if out_pairs == 'all':
         return td_data
     # Return minimum distance of only minimum pairs of each transcript
-    else:
+    elif out_pairs == 'both':
         return td_data[(td_data['flag_min_match_'+name1]==1)|(td_data['flag_min_match_'+name2]==1)]
+    elif out_pairs == 'first':
+        return td_data[td_data['flag_min_match_'+name1]==1]
+    elif out_pairs == 'second':
+        return td_data[td_data['flag_min_match_'+name1]==1]
+    else:
+        logger.error("Unexpected value for output pairs argument.")

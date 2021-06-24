@@ -136,11 +136,16 @@ def parse_args(print_help=False):
         help="Keep transcripts with Intron Retention events in full-gene EA. Default: remove",
     )
     parser.add_argument(
-        "-a", "--allpairs",
-        dest='all_pairs',
-        action='store_true',
-        help="""Output pairwise distance values for all transcript pairs in 2 GTF comparison
-                (default: Output only minimum pair for each transcript)"""
+        "-p", "--pairs",
+        type=str,
+        choices=['all','both','first','second'],
+        dest='out_pairs',
+        default='both',
+        help="""Output pairwise distance values for:
+                all - all transcript pairs in 2 GTF comparison,
+                both (default) - only minimum pairs for both datasets,
+                first - only minimum pairs for the first dataset,
+                second - only minimum pairs for the second dataset"""
     )
     parser.add_argument(
         "-n", "--cpu",
@@ -528,7 +533,8 @@ def list_ir_exon_transcript(tx_data, introns):
                         if i[1] <= e[1]:
                             logger.debug("IR detected, {}", e)
                             ir_exon_list.append(e[2])
-                            ir_transcript_list.append(e_tx)
+                            if e_tx not in ir_transcript_list:
+                                ir_transcript_list.append(e_tx)
     return ir_exon_list, ir_transcript_list
 
 def do_ea_gene(data, keep_ir):
@@ -1432,10 +1438,10 @@ def callback_results(results):
     td_list.append(td_data_cat)
 
 
-def process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only, skip_plots, skip_interm, name1, name2):
+def process_two_files(infiles, outdir, outfiles, cpu, out_pairs, complexity_only, skip_plots, skip_interm, name1, name2):
     """Compare transcript pairs between two GTF files."""
     logger.info("Input files: {}", infiles)
-    if not all_pairs:
+    if out_pairs != 'all':
         # Do not create full transcript distance output
         del(outfiles['td_fh'])
     else:
@@ -1468,7 +1474,7 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only
             del(outfiles['gtf1_fh'])
             del(outfiles['gtf2_fh'])
             out_fhs = open_output_files(outdir, outfiles)
-        if not all_pairs:
+        if out_pairs != 'all':
             out_fhs['md_fh'].write_text(",".join(MD.md_df_cols) + '\n')
         else:
             out_fhs['td_fh'].write_text(",".join(MD.md_df_cols) + '\n')
@@ -1502,8 +1508,8 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only
                 write_output(ea_data, out_fhs, 'ea_fh')
                 write_output(jct_data, out_fhs, 'jc_fh')
             # Identify minimum pairs using transcript distances
-            md_data = MD.identify_min_pair(td_data, all_pairs, name1, name2)
-            if not all_pairs:
+            md_data = MD.identify_min_pair(td_data, out_pairs, name1, name2)
+            if out_pairs != 'all':
                 write_output(md_data, out_fhs, 'md_fh')
             else:
                 write_output(md_data, out_fhs, 'td_fh')
@@ -1532,8 +1538,8 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only
                 write_output(ea_cat, out_fhs, 'ea_fh')
                 write_output(jct_cat, out_fhs, 'jc_fh')
             # Identify minimum pairs using transcript distances
-            md_data = MD.identify_min_pair(td_cat, all_pairs, name1, name2)
-            if not all_pairs:
+            md_data = MD.identify_min_pair(td_cat, out_pairs, name1, name2)
+            if out_pairs != 'all':
                 write_output(md_data, out_fhs, 'md_fh')
             else:
                 write_output(md_data, out_fhs, 'td_fh')
@@ -1576,7 +1582,7 @@ def main():
     infiles = args.infiles
     outdir = handle_outdir(args)
     ea_mode = args.ea_mode
-    all_pairs = args.all_pairs
+    out_pairs = args.out_pairs
     skip_plots = args.skip_plots
     complexity_only = args.complexity_only
     skip_interm = args.skip_interm
@@ -1607,7 +1613,7 @@ def main():
         else:
             logger.error("Invalid name for dataset 1: Must be alphanumeric and can only include \"_\" special character")
         try:
-            process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only, skip_plots, skip_interm, name1, name2)
+            process_two_files(infiles, outdir, outfiles, cpu, out_pairs, complexity_only, skip_plots, skip_interm, name1, name2)
         finally:
             cleanup()
     # The End
