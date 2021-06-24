@@ -136,7 +136,7 @@ def parse_args(print_help=False):
         help="Keep transcripts with Intron Retention events in full-gene EA. Default: remove",
     )
     parser.add_argument(
-        "-a", "--allPairs",
+        "-a", "--allpairs",
         dest='all_pairs',
         action='store_true',
         help="""Output pairwise distance values for all transcript pairs in 2 GTF comparison
@@ -172,6 +172,12 @@ def parse_args(print_help=False):
         "-f", "--force",
         action="store_true",
         help="Force overwrite existing output directory and files within.",
+    )
+    parser.add_argument(
+        "-s","--skipplots",
+        dest='skip_plots',
+        action="store_true",
+        help="Skip generation of all plots.",
     )
     parser.add_argument(
         "-v", "--verbose",
@@ -526,55 +532,121 @@ def do_ea_gene(data, keep_ir):
     # logger.debug(data)
     tx_names = data['transcript_list']
     logger.debug("Transcripts in {}: {}", gene_id, tx_names)
-    tx_data = {}
-    tx_coords = {}
-    all_introns = []
-    for tx_name in tx_names:
-        tx_bed_str = data[tx_name]
-        starts = [int(x[1]) for x in tx_bed_str]
-        ends = [int(x[2]) for x in tx_bed_str]
-        chrom = data[tx_name][0][0]
-        strand = data[tx_name][0][5]
-        feature = f"{tx_name}_transcript"
-        left_edge = min(starts)
-        right_edge = max(ends)
-        tx_exons = BedTool(tx_bed_str).saveas()
-        tx_data[tx_name] = tx_exons
-        tx_coords[tx_name] = [left_edge, right_edge]
-        tx_full = BedTool(f"{chrom} {left_edge} {right_edge} {feature} 0 {strand}",
-                          from_string=True)
-        tx_introns = tx_full.subtract(tx_exons)
-        i_coords = [(int(x.start), int(x.end)) for x in tx_introns]
-        all_introns.extend(i_coords)
-    intron_data = list(set(all_introns))
-    intron_data.sort(key=lambda x: x[0])
-    # Removal of IR containing transcripts
-    if not keep_ir:
-        tx_data = remove_ir_transcripts(tx_data, intron_data)
-        old_tx_names = tx_names
-        tx_names = tx_data.keys()
-        tx_coords_delete = [k for k in old_tx_names if k not in tx_names]
-        for k in tx_coords_delete:
-            del tx_coords[k]
+    if len(tx_names) == 1:
+        logger.info("Gene {} has a single transcript.", gene_id)
+        er_data, ef_data = single_transcript_ea(gene_id, tx_names[0], data[tx_names[0]])
+        junction_data = create_junction_catalog_str(gene_id,tx_names[0],data[tx_names[0]])
+        junction_df = pd.DataFrame(junction_data, columns=jct_df_cols)
     else:
-        ir_exons = list_ir_exon(tx_data, intron_data)
-        logger.info("Not attempting to remove IR-containing transcripts")
-    # Junction Catalog creation
-    junction_data = []
-    for tx_name in tx_names:
-        tx_jc_data = create_junction_catalog(gene_id, tx_name, tx_data[tx_name])
-        junction_data.extend(tx_jc_data)
-        for jc in tx_jc_data:
-            tx_coords[tx_name].append(jc[2])
-    junction_df = pd.DataFrame(junction_data, columns=jct_df_cols)
-    # Event Analysis
-    if not tx_data:
-        logger.warning("Missing transcript data for {} gene, skipping", gene_id)
-        return None, None, None
-    er_data, ef_data = ea_analysis(gene_id, tx_data, tx_coords, ir_exons)
+        tx_data = {}
+        tx_coords = {}
+        all_introns = []
+        for tx_name in tx_names:
+            tx_bed_str = data[tx_name]
+            starts = [int(x[1]) for x in tx_bed_str]
+            ends = [int(x[2]) for x in tx_bed_str]
+            chrom = data[tx_name][0][0]
+            strand = data[tx_name][0][5]
+            feature = f"{tx_name}_transcript"
+            left_edge = min(starts)
+            right_edge = max(ends)
+            tx_exons = BedTool(tx_bed_str).saveas()
+            tx_data[tx_name] = tx_exons
+            tx_coords[tx_name] = [left_edge, right_edge]
+            tx_full = BedTool(f"{chrom} {left_edge} {right_edge} {feature} 0 {strand}",
+                              from_string=True)
+            tx_introns = tx_full.subtract(tx_exons)
+            i_coords = [(int(x.start), int(x.end)) for x in tx_introns]
+            all_introns.extend(i_coords)
+        intron_data = list(set(all_introns))
+        intron_data.sort(key=lambda x: x[0])
+        # Removal of IR containing transcripts
+        if not keep_ir:
+            tx_data = remove_ir_transcripts(tx_data, intron_data)
+            old_tx_names = tx_names
+            tx_names = tx_data.keys()
+            tx_coords_delete = [k for k in old_tx_names if k not in tx_names]
+            for k in tx_coords_delete:
+                del tx_coords[k]
+            ir_exons = []
+        else:
+            ir_exons = list_ir_exon(tx_data, intron_data)
+            logger.info("Not attempting to remove IR-containing transcripts")
+        # Junction Catalog creation
+        junction_data = []
+        for tx_name in tx_names:
+            tx_jc_data = create_junction_catalog(gene_id, tx_name, tx_data[tx_name])
+            junction_data.extend(tx_jc_data)
+            for jc in tx_jc_data:
+                tx_coords[tx_name].append(jc[2])
+        junction_df = pd.DataFrame(junction_data, columns=jct_df_cols)
+        # Event Analysis
+        if not tx_data:
+            logger.warning("Missing transcript data for {} gene, skipping", gene_id)
+            return None, None, None
+        er_data, ef_data = ea_analysis(gene_id, tx_data, tx_coords, ir_exons)
     er_df = pd.DataFrame(er_data, columns=er_df_cols)
     ef_df = pd.DataFrame(ef_data, columns=ef_df_cols)
     return er_df, ef_df, junction_df
+
+def single_transcript_ea(gene_id, tx_name, tx_data):
+    """
+    Generate ERs (Exonic Regions) and EFs (Exonic Fragments) for single transcript genes.
+
+    Required outputs:
+    gene_id
+    gene_transcript_ids
+    transcripts_per_gene
+    er_id
+    er_chr
+    er_start
+    er_end
+    er_strand
+    er_flag_ir ( zero if IRs were removed)
+    exons_per_er
+    er_exon_ids = Piped ("|") list of exon IDs that are contained within the exon region
+    transcripts_per_er
+    er_transcript_ids = Piped ("|") list of transcript IDs the exon region is present in
+    er_annotation_frequency = “unique”, “common”, “constitutive” (one, many, all) per txs
+    ef_id
+    ef_chr
+    ef_start
+    ef_end
+    ef_strand
+    ef_flag_ir (zero if IRs were removed)
+    ef_exon_ids
+    exons_per_ef
+    transcripts_per_ef
+    ef_transcript_ids = Piped ("|") list of transcript IDs the exon fragment is present in
+    ef_annotation_frequency = “unique”, “common”, “constitutive” (one, many, all) per txs
+    """
+    er_out_data = []
+    ef_out_data = []
+    er_id = 1
+    ef_id = 1
+    for i in tx_data:
+        er_name = f"{gene_id}:ER{er_id}"
+        ef_name = f"{gene_id}:ER{er_id}:EF{ef_id}"
+        chrom = i[0]
+        start = i[1]
+        end = i[2]
+        strand = i[5]
+        ex_id = i[3]
+        ex_num = 1
+        tx_num = 1
+        gene_tx_num = 1
+        ir_flag = 0
+        er_freq = "unique"
+        ef_freq = "unique"
+        er_out_data.append([gene_id, er_name, chrom, start, end, strand, ex_id,
+                        tx_name, tx_name, ex_num, tx_num,
+                        gene_tx_num, ir_flag, er_freq])
+        ef_out_data.append([gene_id, er_name, ef_name, chrom, start, end, strand,
+                        ex_id, tx_name, ex_num, tx_num, ir_flag,
+                        ef_freq])
+        er_id += 1
+        ef_id += 1
+    return er_out_data, ef_out_data
 
 
 def do_ea_pair(data):
@@ -644,22 +716,16 @@ def do_ea_pair(data):
                 logger.info("Junctions and start coordinates are identical for {}.", tx_names_str)
                 ea_data = format_fsm_pair_ea(tx1_bed_df, tx2_bed_df, tx1_name, tx2_name, gene_id,
                                              side_diff="end")
-                # !!! Add calculation of distances (will only need to calculate the difference of 3'
-                # ends
             elif same_end and not same_start:
                 # End coordinates and junctions are the same
                 logger.info("Junctions and end coordinates are identical for {}.", tx_names_str)
                 ea_data = format_fsm_pair_ea(tx1_bed_df, tx2_bed_df, tx1_name, tx2_name, gene_id,
                                              side_diff="start")
-                # !!! Add calculation of distances (will only need to calculate the difference of 5'
-                # ends
             else:
                 # Junctions are the same and ends are both different
                 logger.info("Junctions are identical for {}.", " / ".join(tx_names))
                 ea_data = format_fsm_pair_ea(tx1_bed_df, tx2_bed_df, tx1_name, tx2_name, gene_id,
                                              side_diff="both")
-                # !!! Add calculation of distances (will only need to calculate the difference of 5'
-                # and 3' ends)
     else:
         # Junctions are not identical (there is some alternate donor/acceptor/exon)
         tx1_bed = BedTool(tx1_bed_str).saveas()
@@ -1119,7 +1185,7 @@ def ea_analysis(gene_id, tx_data, tx_coords, ir_exons):
         for ef_id in ef_data:
             ef_start = ef_data[ef_id].start
             if ef_start in ex_set:
-                # EF is a parf of an exon - are there any duplicate exons and transcripts?
+                # EF is a part of an exon - are there any duplicate exons and transcripts?
                 tx_id = tx_exon_map[ex_id]
                 if ex_id not in ef_data[ef_id].ex_ids:
                     ef_data[ef_id].ex_ids.append(ex_id)
@@ -1153,7 +1219,7 @@ def ea_analysis(gene_id, tx_data, tx_coords, ir_exons):
     for er in er_data:
         i = er_data[er]
         # Flag exon regions that contain IR exons
-        if len(set(i.ex_ids).intersection(set(ir_exons))) > 0:
+        if len(ir_exons) != 0 and len(set(i.ex_ids).intersection(set(ir_exons))) > 0:
             i.ir_flag = 1
         else:
             i.ir_flag = 0
@@ -1167,7 +1233,7 @@ def ea_analysis(gene_id, tx_data, tx_coords, ir_exons):
     for ef in ef_data:
         i = ef_data[ef]
         # Flag exon fragments that contain IR exons
-        if len(set(i.ex_ids).intersection(set(ir_exons))) > 0:
+        if len(ir_exons) != 0 and len(set(i.ex_ids).intersection(set(ir_exons))) > 0:
             i.ir_flag = 1
         else:
             i.ir_flag = 0
@@ -1225,7 +1291,7 @@ def ea_pairwise(data):
     return ea_df, jct_df, td_df
 
 
-def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_only):
+def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_only, skip_plots):
     """Compare all transcript pairs in a single GTF file."""
     logger.info("Input file: {}", infile)
     if ea_mode == 'gene':
@@ -1239,7 +1305,7 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
     logger.info("Found {} genes and {} transcripts", len(genes), len(transcripts))
 
     # Output complexity measures using GTF data
-    COMP.calculate_complexity(outdir,data)
+    COMP.calculate_complexity(outdir,data, skip_plots)
 
     # If requested, skip all other functions
     if complexity_only:
@@ -1264,9 +1330,6 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
             transcripts = gene_df.groupby("transcript_id")
             transcript_groups = transcripts.groups
             number_of_transcripts = len(transcript_groups)
-            if number_of_transcripts == 1:
-                logger.info("Gene {} has a single transcript. Skipping", gene)
-                continue
             if ea_mode == 'gene':
                 try:
                     er_data, ef_data, jct_data = do_ea(gene_df, mode='gene', keep_ir=keep_ir)
@@ -1279,13 +1342,17 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
                     logger.error(e)
                     continue
             else:
+                if number_of_transcripts == 1:
+                   logger.info("Gene {} has a single transcript. Skipping", gene)
+                continue
                 ea_data, jct_data, td_data = ea_pairwise(gene_df)
                 td_data_cat = pd.concat([td_data_cat,td_data],ignore_index=True)
                 write_output(ea_data, out_fhs, 'ea_fh')
                 write_output(jct_data, out_fhs, 'jc_fh')
                 write_output(td_data, out_fhs, 'td_fh')
         if ea_mode == 'pairwise':
-            P1GP.plot_one_gtf_pairwise(outdir,td_data_cat)
+            if not skip_plots:
+                P1GP.plot_one_gtf_pairwise(outdir,td_data_cat)
 
 def ea_two_files(f1_data, f2_data, out_fhs, gene_id, name1, name2):
     "Do EA (Event Analysis) for pairs of transcripts from two files for a gene."
@@ -1340,7 +1407,7 @@ def callback_results(results):
     td_list.append(td_data_cat)
 
 
-def process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only, name1, name2):
+def process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only, skip_plots, name1, name2):
     """Compare transcript pairs between two GTF files."""
     logger.info("Input files: {}", infiles)
     if not all_pairs:
@@ -1359,8 +1426,8 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only
     in_f2 = read_exon_data_from_file(infile_2)
 
     # Calculate complexity of individual transcriptomes
-    COMP.calculate_complexity(outdir, in_f1, name1)
-    COMP.calculate_complexity(outdir, in_f2, name2)
+    COMP.calculate_complexity(outdir, in_f1, skip_plots, name1)
+    COMP.calculate_complexity(outdir, in_f2, skip_plots, name2)
 
     # If requested, skip all other functions
     if complexity_only:
@@ -1407,7 +1474,8 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only
             else:
                 write_output(md_data, out_fhs, 'td_fh')
             # Generate 2 GTF pairwise plots
-            P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1=name1, name2=name2)
+            if not skip_plots:
+                P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1=name1, name2=name2)
 
         # If cpu > 1, parallelize
         elif cpu > 1:
@@ -1435,7 +1503,8 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only
             else:
                 write_output(md_data, out_fhs, 'td_fh')
             # Generate 2 GTF pairwise plots
-            P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1=name1, name2=name2)
+            if not skip_plots:
+                P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1=name1, name2=name2)
         else:
             logger.error("Invalid cpu parameter")
 
@@ -1473,6 +1542,7 @@ def main():
     outdir = handle_outdir(args)
     ea_mode = args.ea_mode
     all_pairs = args.all_pairs
+    skip_plots = args.skip_plots
     complexity_only = args.complexity_only
     cpu = args.cpu
     if len(infiles) == 1:
@@ -1484,7 +1554,7 @@ def main():
         else:
             outfiles.update(gene_outfiles)
         try:
-            process_single_file(infiles[0], ea_mode, keep_ir, outdir, outfiles, complexity_only)
+            process_single_file(infiles[0], ea_mode, keep_ir, outdir, outfiles, complexity_only, skip_plots)
         finally:
             cleanup()
     else:
@@ -1501,7 +1571,7 @@ def main():
         else:
             logger.error("Invalid name for dataset 1: Must be alphanumeric and can only include \"_\" special character")
         try:
-            process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only, name1, name2)
+            process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only, skip_plots, name1, name2)
         finally:
             cleanup()
     # The End

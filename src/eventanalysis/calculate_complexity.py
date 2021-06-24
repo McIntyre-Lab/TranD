@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 # Import plot functions
 import plot_functions as PF
 
-def calculate_complexity(outdir,gtf_df,prefix=None):
+def calculate_complexity(outdir,gtf_df,skip_plots,prefix=None):
     """
     Calculate complexity measures from gtf dataframe:
         1) Transcripts per gene
@@ -76,12 +76,17 @@ def calculate_complexity(outdir,gtf_df,prefix=None):
     
     # Plot boxplots of complexity measures and output counts to file
     if prefix is None:
-        PF.plot_complexity_box(geneDF,transcriptDF,outdir,"{}/complexity_plots.rtf".format(outdir))
-        plt.savefig("{}/complexity_plots.png".format(outdir),dpi=600,format="png")
+        if not skip_plots:
+            PF.plot_complexity_box(geneDF,transcriptDF,outdir,"{}/complexity_plots.rtf".format(outdir))
+            plt.savefig("{}/complexity_plots.png".format(outdir),dpi=600,format="png")
+            plt.clf()
         counts.to_csv("{}/transcriptome_complexity_counts.csv".format(outdir),index=False)
+#        plot_complexity_violin(geneDF,transcriptDF,outdir,legendOut)
+#        plt.savefig("{}/complexity_plots_violin.png".format(outdir),dpi=600,format="png")
     else:
-        PF.plot_complexity_box(geneDF,transcriptDF,outdir,"{}/{}_complexity_plots.rtf".format(outdir,prefix))
-        plt.savefig("{}/{}_complexity_plots.png".format(outdir,prefix),dpi=600,format="png")
+        if not skip_plots:
+            PF.plot_complexity_box(geneDF,transcriptDF,outdir,"{}/{}_complexity_plots.rtf".format(outdir,prefix))
+            plt.savefig("{}/{}_complexity_plots.png".format(outdir,prefix),dpi=600,format="png")
+            plt.clf()
         counts.to_csv("{}/{}_transcriptome_complexity_counts.csv".format(outdir,prefix),index=False)
-    plt.clf()
 
