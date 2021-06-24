@@ -180,6 +180,12 @@ def parse_args(print_help=False):
         help="Skip generation of all plots.",
     )
     parser.add_argument(
+        "-i","--skip-intermediate",
+        dest='skip_interm',
+        action="store_true",
+        help="Skip output of intermediate files (such as junction and exon region/fragment files).",
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Verbose output",
@@ -501,11 +507,12 @@ def remove_ir_transcripts(tx_data, introns):
         del tx_data[ir_tx]
     return tx_data
 
-def list_ir_exon(tx_data, introns):
+def list_ir_exon_transcript(tx_data, introns):
     """List exons that contain Intron Retention events i.e. an
     intron is encompassed by an exon
     """
     ir_exon_list = []
+    ir_transcript_list = []
     for e_tx in tx_data:
         e_ints = [(int(x.start), int(x.end), x.name) for x in tx_data[e_tx]]
         e_ints.sort(key=lambda x: x[0])
@@ -521,7 +528,8 @@ def list_ir_exon(tx_data, introns):
                         if i[1] <= e[1]:
                             logger.debug("IR detected, {}", e)
                             ir_exon_list.append(e[2])
-    return ir_exon_list
+                            ir_transcript_list.append(e_tx)
+    return ir_exon_list, ir_transcript_list
 
 def do_ea_gene(data, keep_ir):
     """
@@ -537,6 +545,7 @@ def do_ea_gene(data, keep_ir):
         er_data, ef_data = single_transcript_ea(gene_id, tx_names[0], data[tx_names[0]])
         junction_data = create_junction_catalog_str(gene_id,tx_names[0],data[tx_names[0]])
         junction_df = pd.DataFrame(junction_data, columns=jct_df_cols)
+        ir_transcripts= []
     else:
         tx_data = {}
         tx_coords = {}
@@ -569,8 +578,9 @@ def do_ea_gene(data, keep_ir):
             for k in tx_coords_delete:
                 del tx_coords[k]
             ir_exons = []
+            ir_transcripts = []
         else:
-            ir_exons = list_ir_exon(tx_data, intron_data)
+            ir_exons, ir_transcripts = list_ir_exon_transcript(tx_data, intron_data)
             logger.info("Not attempting to remove IR-containing transcripts")
         # Junction Catalog creation
         junction_data = []
@@ -587,7 +597,7 @@ def do_ea_gene(data, keep_ir):
         er_data, ef_data = ea_analysis(gene_id, tx_data, tx_coords, ir_exons)
     er_df = pd.DataFrame(er_data, columns=er_df_cols)
     ef_df = pd.DataFrame(ef_data, columns=ef_df_cols)
-    return er_df, ef_df, junction_df
+    return er_df, ef_df, junction_df, ir_transcripts
 
 def single_transcript_ea(gene_id, tx_name, tx_data):
     """
@@ -1255,8 +1265,8 @@ def do_ea(tx_data, mode='pairwise', keep_ir=False):
     # full-gene, more transcripts than two
     elif mode == 'gene':
         # full-gene, all transcripts
-        er_df, ef_df, jct_catalog = do_ea_gene(bed_data, keep_ir)
-        return er_df, ef_df, jct_catalog
+        er_df, ef_df, jct_catalog, ir_transcripts = do_ea_gene(bed_data, keep_ir)
+        return er_df, ef_df, jct_catalog, ir_transcripts
     else:
         raise ValueError("Wrong EA mode")
 
@@ -1291,14 +1301,20 @@ def ea_pairwise(data):
     return ea_df, jct_df, td_df
 
 
-def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_only, skip_plots):
+def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_only, skip_plots, skip_interm):
     """Compare all transcript pairs in a single GTF file."""
     logger.info("Input file: {}", infile)
-    if ea_mode == 'gene':
-        del outfiles['ea_fh']
-    else :
+    if not skip_interm:
+        if ea_mode == 'gene':
+            del(outfiles['ea_fh'])
+        else :
+            del(outfiles['er_fh'])
+            del(outfiles['ef_fh'])
+    else:
+        del(outfiles['ea_fh'])
         del(outfiles['er_fh'])
         del(outfiles['ef_fh'])
+        del(outfiles['jc_fh'])
     data = read_exon_data_from_file(infile)
     genes = data.groupby("gene_id")
     transcripts = data.groupby(["gene_id", "transcript_id"])
@@ -1311,16 +1327,20 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
     if complexity_only:
         logger.info("Complexity only option selected. Skipping all other functions.")
     else:
-        logger.debug("Output files: {}", outfiles)
+        #    logger.debug("Output files: {}", outfiles)
         out_fhs = open_output_files(outdir, outfiles)
+        
         # Write out csv file headers
-        if ea_mode == 'gene':
-            out_fhs['er_fh'].write_text(",".join(er_df_cols) + '\n')
-            out_fhs['ef_fh'].write_text(",".join(ef_df_cols) + '\n')
-        else:
-            out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
-            out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
-        out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
+        if not skip_interm:
+            if ea_mode == 'gene':
+                out_fhs['er_fh'].write_text(",".join(er_df_cols) + '\n')
+                out_fhs['ef_fh'].write_text(",".join(ef_df_cols) + '\n')
+                ir_file = open("{}/ir_transcripts.txt".format(outdir),'w')
+                ir_file.close()
+            else:
+                out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
+                out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
+            out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
 
         # Initialize concatenated pairwise transcript distance dataframe
         if ea_mode == "pairwise":
@@ -1332,12 +1352,16 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
             number_of_transcripts = len(transcript_groups)
             if ea_mode == 'gene':
                 try:
-                    er_data, ef_data, jct_data = do_ea(gene_df, mode='gene', keep_ir=keep_ir)
+                    er_data, ef_data, jct_data, ir_transcripts = do_ea(gene_df, mode='gene', keep_ir=keep_ir)
                     if er_data is None:
                         continue
-                    write_output(er_data, out_fhs, 'er_fh')
-                    write_output(ef_data, out_fhs, 'ef_fh')
-                    write_output(jct_data, out_fhs, 'jc_fh')
+                    if not skip_interm:
+                        write_output(er_data, out_fhs, 'er_fh')
+                        write_output(ef_data, out_fhs, 'ef_fh')
+                        write_output(jct_data, out_fhs, 'jc_fh')
+                        if len(ir_transcripts) > 0:
+                            with open("{}/ir_transcripts.txt".format(outdir),'a') as ir_outfile:
+                                ir_outfile.write("\n".join(ir_transcripts)+"\n")
                 except ValueError as e:
                     logger.error(e)
                     continue
@@ -1347,14 +1371,15 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
                 continue
                 ea_data, jct_data, td_data = ea_pairwise(gene_df)
                 td_data_cat = pd.concat([td_data_cat,td_data],ignore_index=True)
-                write_output(ea_data, out_fhs, 'ea_fh')
-                write_output(jct_data, out_fhs, 'jc_fh')
-                write_output(td_data, out_fhs, 'td_fh')
+                if not skip_interm:
+                    write_output(ea_data, out_fhs, 'ea_fh')
+                    write_output(jct_data, out_fhs, 'jc_fh')
+                    write_output(td_data, out_fhs, 'td_fh')
         if ea_mode == 'pairwise':
             if not skip_plots:
                 P1GP.plot_one_gtf_pairwise(outdir,td_data_cat)
 
-def ea_two_files(f1_data, f2_data, out_fhs, gene_id, name1, name2):
+def ea_two_files(f1_data, f2_data, gene_id, name1, name2):
     "Do EA (Event Analysis) for pairs of transcripts from two files for a gene."
     f1_transcripts = list(set(f1_data['transcript_id']))
     f2_transcripts = list(set(f2_data['transcript_id']))
@@ -1407,7 +1432,7 @@ def callback_results(results):
     td_list.append(td_data_cat)
 
 
-def process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only, skip_plots, name1, name2):
+def process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only, skip_plots, skip_interm, name1, name2):
     """Compare transcript pairs between two GTF files."""
     logger.info("Input files: {}", infiles)
     if not all_pairs:
@@ -1433,9 +1458,16 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only
     if complexity_only:
         logger.info("Complexity only option selected. Skipping all other functions.")
     else:
-        out_fhs = open_output_files(outdir, outfiles)
-        out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
-        out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
+        if not skip_interm:
+            out_fhs = open_output_files(outdir, outfiles)
+            out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
+            out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
+        else:
+            del(outfiles['ea_fh'])
+            del(outfiles['jc_fh'])
+            del(outfiles['gtf1_fh'])
+            del(outfiles['gtf2_fh'])
+            out_fhs = open_output_files(outdir, outfiles)
         if not all_pairs:
             out_fhs['md_fh'].write_text(",".join(MD.md_df_cols) + '\n')
         else:
@@ -1447,8 +1479,9 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only
         odd_genes = only_f1_genes.union(only_f2_genes)
         f1_odds = in_f1[in_f1['gene_id'].isin(only_f1_genes)]
         f2_odds = in_f2[in_f2['gene_id'].isin(only_f2_genes)]
-        write_output(f1_odds, out_fhs, 'gtf1_fh')
-        write_output(f2_odds, out_fhs, 'gtf2_fh')
+        if not skip_interm:
+            write_output(f1_odds, out_fhs, 'gtf1_fh')
+            write_output(f2_odds, out_fhs, 'gtf2_fh')
         common_genes = f1_gene_names.difference(odd_genes)
         valid_f1 = in_f1[in_f1['gene_id'].isin(common_genes)]
         valid_f2 = in_f2[in_f2['gene_id'].isin(common_genes)]
@@ -1465,8 +1498,9 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only
         # If 1 cpu available
         if cpu == 1:
             ea_data, jct_data, td_data = loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs, cpu, name1, name2)
-            write_output(ea_data, out_fhs, 'ea_fh')
-            write_output(jct_data, out_fhs, 'jc_fh')
+            if not skip_interm:
+                write_output(ea_data, out_fhs, 'ea_fh')
+                write_output(jct_data, out_fhs, 'jc_fh')
             # Identify minimum pairs using transcript distances
             md_data = MD.identify_min_pair(td_data, all_pairs, name1, name2)
             if not all_pairs:
@@ -1494,8 +1528,9 @@ def process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only
             ea_cat = pd.concat(ea_list)
             jct_cat = pd.concat(jct_list)
             td_cat = pd.concat(td_list)
-            write_output(ea_cat, out_fhs, 'ea_fh')
-            write_output(jct_cat, out_fhs, 'jc_fh')
+            if not skip_interm:
+                write_output(ea_cat, out_fhs, 'ea_fh')
+                write_output(jct_cat, out_fhs, 'jc_fh')
             # Identify minimum pairs using transcript distances
             md_data = MD.identify_min_pair(td_cat, all_pairs, name1, name2)
             if not all_pairs:
@@ -1518,7 +1553,7 @@ def loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs, cpu, name1, name2):
         f1_data = valid_f1[valid_f1['gene_id'] == gene]
         f2_data = valid_f2[valid_f2['gene_id'] == gene]
         try:
-            ea_data, jct_data, td_data = ea_two_files(f1_data, f2_data, out_fhs, gene, name1, name2)
+            ea_data, jct_data, td_data = ea_two_files(f1_data, f2_data, gene, name1, name2)
         except ValueError as e:
             logger.error(e)
             continue
@@ -1544,6 +1579,7 @@ def main():
     all_pairs = args.all_pairs
     skip_plots = args.skip_plots
     complexity_only = args.complexity_only
+    skip_interm = args.skip_interm
     cpu = args.cpu
     if len(infiles) == 1:
         logger.debug("Single file {} analysis", ea_mode)
@@ -1554,7 +1590,7 @@ def main():
         else:
             outfiles.update(gene_outfiles)
         try:
-            process_single_file(infiles[0], ea_mode, keep_ir, outdir, outfiles, complexity_only, skip_plots)
+            process_single_file(infiles[0], ea_mode, keep_ir, outdir, outfiles, complexity_only, skip_plots, skip_interm)
         finally:
             cleanup()
     else:
@@ -1571,7 +1607,7 @@ def main():
         else:
             logger.error("Invalid name for dataset 1: Must be alphanumeric and can only include \"_\" special character")
         try:
-            process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only, skip_plots, name1, name2)
+            process_two_files(infiles, outdir, outfiles, cpu, all_pairs, complexity_only, skip_plots, skip_interm, name1, name2)
         finally:
             cleanup()
     # The End
