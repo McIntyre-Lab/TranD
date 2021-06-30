@@ -30,6 +30,7 @@ import argparse
 import itertools
 import logging
 import sys
+import csv
 import pandas as pd
 from collections import namedtuple
 from dataclasses import dataclass
@@ -53,6 +54,9 @@ import plot_one_gtf_pairwise as P1GP
 # Import complexity calculation function
 import calculate_complexity as COMP
 
+# Import consolidation function
+import consolidation as CONSOL
+
 # CONFIGURATION
 common_outfiles = {'ea_fh': 'event_analysis.csv', 'jc_fh': 'junction_catalog.csv', 'er_fh':
                    'event_analysis_er.csv', 'ef_fh': 'event_analysis_ef.csv'}
@@ -63,6 +67,10 @@ gene_outfiles = {'er_fh': 'event_analysis_er.csv', 'ef_fh': 'event_analysis_ef.c
 
 two_gtfs_outfiles = {'gtf1_fh': 'gtf1_only.gtf', 'gtf2_fh': 'gtf2_only.gtf',
                      'md_fh': 'minimum_pairwise_transcript_distance.csv'}
+
+consol_outfiles = {'key_fh': 'transcript_id_2_consolidation_id.csv', 'consol_gtf_fh': 'consolidated_transcriptome.gtf'}
+
+consol_key_cols = ['gene_id', 'transcript_id', 'consolidation_transcript_id']
 
 ea_df_cols = ['gene_id', 'transcript_1', 'transcript_2', 'transcript_id', 'ef_id', 'ef_chr',
               'ef_start', 'ef_end', 'ef_strand', 'ef_ir_flag', 'er_id', 'er_chr', 'er_start',
@@ -121,6 +129,13 @@ def parse_args(print_help=False):
         action='store_true',
         help="""Output only complexity measures, skipping event analysis and comparison functions
                 (default: Perform all analyses and comparisons including complexity calculations)"""
+    )
+    parser.add_argument(
+        "--consolidate",
+        dest='consolidate',
+        action='store_true',
+        help="""Consolidate transcripts with identical junctions prior to evaluation of a single transcriptome
+                (remove 5'/3' variation in redundantly spliced transcripts)."""
     )
     parser.add_argument(
         "-e", "--ea",
@@ -390,6 +405,15 @@ def write_output(data, out_fhs, fh_name):
     """Write results of event analysis to output files."""
     data.to_csv(out_fhs[fh_name], mode='a', header=False, index=False)
 
+def write_gtf(data, out_fhs, fh_name):
+    """Write output gtf files."""
+    data['source'] = "TranD"
+    data['feature'] = "exon"
+    data['score'] = "."
+    data['frame'] = "."
+    data['attribute'] = "transcript_id \""+data['transcript_id']+"\"; gene_id \""+data['gene_id']+"\";"
+    data[['seqname','source','feature','start','end','score','strand','frame',
+          'attribute']].to_csv(out_fhs[fh_name], sep="\t", mode='a', index=False, header=False, doublequote=False, quoting=csv.QUOTE_NONE)
 
 def prep_bed_for_ea(data):
     """Event analysis"""
@@ -1307,7 +1331,7 @@ def ea_pairwise(data):
     return ea_df, jct_df, td_df
 
 
-def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_only, skip_plots, skip_interm):
+def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_only, skip_plots, skip_interm, consolidate):
     """Compare all transcript pairs in a single GTF file."""
     logger.info("Input file: {}", infile)
     if not skip_interm:
@@ -1326,13 +1350,52 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
     transcripts = data.groupby(["gene_id", "transcript_id"])
     logger.info("Found {} genes and {} transcripts", len(genes), len(transcripts))
 
+    # If requested, consolidate transcripts with identical junctions
+    #   (remove 5'/3' variation in redundantly spliced transcripts)
+    if consolidate:
+        logger.info("Consolidation of transcript with identical junctions.")
+        # Loop over genes
+        consol_data = pd.DataFrame(columns=data.columns)
+        if not skip_interm:
+            consol_fhs = open_output_files(outdir, consol_outfiles)
+            consol_fhs['key_fh'].write_text(",".join(consol_key_cols) + '\n')
+        for gene in genes.groups:
+            # Test for single transcript gene (WBGene00000003)
+            # Test gene for multiple groups with consolidation (WBGene00001574)
+            # Test monoexon gene (WBGene00000214)
+            # Test monoexon with multiexon (WBGene00022161) -> added extra 2 monoexon transcripts using gene_df = pd.concat([gene_df,pd.DataFrame([["I",1779855,1781091,'-',"WBGene00022161","new_transcript_1"],["I",1781991,1782900,'-',"WBGene00022161","new_transcript_2"]], columns=gene_df.columns)],ignore_index=True)
+            pre_consol_jct = []
+            gene_df = data[data['gene_id'] == gene]
+            try:
+                bed_gene_data = prep_bed_for_ea(gene_df)
+            except ValueError as e:
+                logger.error(e)
+                continue
+            transcripts = gene_df.groupby("transcript_id")
+            # Loop over transcripts to get junctions
+            for transcript in transcripts.groups:
+                pre_consol_jct.extend(create_junction_catalog_str(gene, transcript, bed_gene_data[transcript]))
+            pre_consol_jct_df = pd.DataFrame(pre_consol_jct, columns = jct_df_cols)
+            # Consolidate 5'/3' variation
+            consol_gene, key_gene = CONSOL.consolidate_junctions(bed_gene_data, pre_consol_jct_df, outdir, skip_interm)
+            consol_data = pd.concat([consol_data, consol_gene], ignore_index=True)
+            if not skip_interm:
+                write_output(key_gene, consol_fhs, 'key_fh')
+                write_gtf(consol_data, consol_fhs, 'consol_gtf_fh')
+        # Set data variable to new consolidated data
+        data = consol_data.copy()
+        del(consol_data)
+        genes = data.groupby("gene_id")
+        transcripts = data.groupby(["gene_id", "transcript_id"])
+        logger.info("After consolidation: {} genes and {} transcripts", len(genes), len(transcripts))
+
     # Output complexity measures using GTF data
     COMP.calculate_complexity(outdir,data, skip_plots)
 
     # If requested, skip all other functions
     if complexity_only:
         logger.info("Complexity only option selected. Skipping all other functions.")
-    else:
+    else:                        
         #    logger.debug("Output files: {}", outfiles)
         out_fhs = open_output_files(outdir, outfiles)
         
@@ -1486,8 +1549,8 @@ def process_two_files(infiles, outdir, outfiles, cpu, out_pairs, complexity_only
         f1_odds = in_f1[in_f1['gene_id'].isin(only_f1_genes)]
         f2_odds = in_f2[in_f2['gene_id'].isin(only_f2_genes)]
         if not skip_interm:
-            write_output(f1_odds, out_fhs, 'gtf1_fh')
-            write_output(f2_odds, out_fhs, 'gtf2_fh')
+            write_gtf(f1_odds, out_fhs, 'gtf1_fh')
+            write_gtf(f2_odds, out_fhs, 'gtf2_fh')
         common_genes = f1_gene_names.difference(odd_genes)
         valid_f1 = in_f1[in_f1['gene_id'].isin(common_genes)]
         valid_f2 = in_f2[in_f2['gene_id'].isin(common_genes)]
@@ -1585,6 +1648,7 @@ def main():
     out_pairs = args.out_pairs
     skip_plots = args.skip_plots
     complexity_only = args.complexity_only
+    consolidate = args.consolidate
     skip_interm = args.skip_interm
     cpu = args.cpu
     if len(infiles) == 1:
@@ -1596,7 +1660,7 @@ def main():
         else:
             outfiles.update(gene_outfiles)
         try:
-            process_single_file(infiles[0], ea_mode, keep_ir, outdir, outfiles, complexity_only, skip_plots, skip_interm)
+            process_single_file(infiles[0], ea_mode, keep_ir, outdir, outfiles, complexity_only, skip_plots, skip_interm, consolidate)
         finally:
             cleanup()
     else:
