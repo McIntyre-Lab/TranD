@@ -61,8 +61,8 @@ def identify_min_pair(td_data, out_pairs, name1, name2):
     #   proportion of ER different, and proportion of nt different
     # Also sort at the end by transcript_1 and transcrpit_2 IDs to ensure the
     #   same transcript is chosen in the case of ties
-    td_data = td_data.sort_values(['prop_junction_diff','prop_ER_diff','prop_nt_diff',
-                                   'num_nt_diff','transcript_1','transcript_2'], ascending=True)
+    td_data = td_data.sort_values(['prop_ER_diff','prop_junction_diff','prop_nt_diff','transcript_1','transcript_2'],
+                                  ascending=[True,True,True,False,False])
     td_data['min_match_'+name1] = td_data.groupby('transcript_1')['transcript_2'].transform('first')
     td_data['flag_min_match_'+name1] = np.where(td_data['min_match_'+name1]==td_data['transcript_2'],1,0)
     td_data['min_match_'+name2] = td_data.groupby('transcript_2')['transcript_1'].transform('first')
