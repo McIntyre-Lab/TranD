@@ -272,5 +272,6 @@ def set_AS_flags(singlePair,ef_df,tx1_name,tx2_name):
         singlePair['flag_alt_exon'] = 0
         singlePair['flag_5_variation'] = 0
         singlePair['flag_3_variation'] = 0
+        singlePair['flag_FSM'] = 0
     
     return singlePair
