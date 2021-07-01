@@ -1,10 +1,14 @@
 #!/bin/bash
 
-export PATH=${HOME}/projects/bioinformatics/mcintyre-cid/Event_Analysis_2.0/conda/bin:${PATH}
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+export PATH=${SCRIPT_DIR}/../../conda/bin:${PATH}
 pwd;hostname;date
 
-DATA=data/test/test_two_identical.gtf
+DATA="data/test/test_two_identical.gtf"
+TEST="pair_identical"
 
-python eventanalysis/src/event_analysis.py -o testout "$@" ${DATA}
+CMD="trand -f -o testout/${TEST} $* ${DATA}"
+echo "CMD: ${CMD}"
+eval "${CMD}"
 
 date
