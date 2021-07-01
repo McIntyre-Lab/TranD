@@ -1128,7 +1128,7 @@ def ea_pairwise(data):
         tx_df_2 = tx_data[tx_pair[1]]
         tx_pair_data = pd.concat([tx_df_1, tx_df_2])
         # try:
-        ea_data, jct_data, td_data = do_ea(tx_pair_data, jct_df_cols, mode='pairwise')
+        ea_data, jct_data, td_data = do_ea(tx_pair_data, mode='pairwise')
         ea_df = ea_df.append(ea_data)
         jct_df = jct_df.append(jct_data)
         td_df = td_df.append(td_data)
