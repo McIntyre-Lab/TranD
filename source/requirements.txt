@@ -1,0 +1,7 @@
+numpy >= 1.18
+pandas >= 1.0
+pybedtools >= 0.8
+matplotlib
+seaborn
+loguru
+upsetplot
