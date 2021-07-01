@@ -1,3 +1,7 @@
+data/
+tests/
+article/
+output/
 conda
 external_code
 original

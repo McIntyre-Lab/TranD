@@ -9,9 +9,10 @@ Created on Wed May 26 11:33:04 2021
 import matplotlib.pyplot as plt
 
 # Import plot functions
-import plot_functions as PF
+from . import plot_functions as PF
 
-def plot_two_gtf_pairwise(outdir,md_data,f1_odds,f2_odds,name1,name2):
+
+def plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1, name2):
     """
     Plot 2 GTF Pairwise output including the following:
 
@@ -33,17 +34,17 @@ def plot_two_gtf_pairwise(outdir,md_data,f1_odds,f2_odds,name1,name2):
         5) For all reciprocal minimum pair transcripts: Upset plot for the number
             of transcripts with each kind of alternative splicing (AS)
             and the distribution of nt differences between the pairs plotted
-        
+
         6) Upset plot for number of genes with each kind of AS when comparing the
             reciprocally min match pairs of the two datasets with added box plots
             of the number of min match pairs present in the gene, the number of
             transcripts in each dataset, the average number of nt different,
             and the average proportion of nt different
-            
+
         7) Plot average number of nt different in recip. min match pairs against
             avg number of nt different in min pairs that are extra
             (either in the greater sets of in set that do not match)
-            
+
         8) Same as plot (7) with zoom in axises to the mean value of non-zero
             nucleotide differences (max of the two means from recip. min pairs and extras)
     """
@@ -58,13 +59,13 @@ def plot_two_gtf_pairwise(outdir,md_data,f1_odds,f2_odds,name1,name2):
     PF.plot_transcript_in_gene_split_pie(md_data,f1_odds,f2_odds,name1,name2,"{}/transcript_in_gene_split_pie.rtf".format(outdir))
     plt.savefig("{}/transcript_in_gene_split_pie.png".format(outdir),dpi=600,format="png")
     plt.clf()
-    
+
 ###### Plot 2 ######
     # Upset plot for number of transcripts in genes
     PF.plot_transcript_in_gene_upset(md_data,f1_odds,f2_odds,name1,name2,"{}/transcript_in_gene_upset.rtf".format(outdir))
     plt.savefig("{}/transcript_in_gene_upset.png".format(outdir),dpi=600,format="png")
     plt.clf()
-    
+
 ###### Plot 3 ######
     # Plot stacked bar chart of genes with reciprocal minimum pairs for:
     #   1) all transcript pairs possible (Match:Reciprocal Pairs or Greater:Reciprocal Pairs)
@@ -73,13 +74,13 @@ def plot_two_gtf_pairwise(outdir,md_data,f1_odds,f2_odds,name1,name2):
     PF.plot_gene_stack(md_data,name1,name2,"{}/transcript_in_gene_stackCount.rtf".format(outdir))
     plt.savefig("{}/transcript_in_gene_stackCount.png".format(outdir),dpi=600,format="png")
     plt.clf()
-    
+
 ###### Plot 4 ######
     # With percentage of genes instead of count
     PF.plot_gene_stack(md_data,name1,name2,"{}/transcript_in_gene_stack_proportion.rtf".format(outdir),useProp=True)
     plt.savefig("{}/transcript_in_gene_stack_proportion.png".format(outdir),dpi=600,format="png")
-    plt.clf()    
-    
+    plt.clf()
+
 ###### Plot 5 ######
     # For all reciprocal minimum pair transcripts:
     # Upset plot for the number of transcripts with each kind of AS and the distribution
@@ -87,7 +88,7 @@ def plot_two_gtf_pairwise(outdir,md_data,f1_odds,f2_odds,name1,name2):
     PF.plot_recip_min_pair_AS_upset_nt_box(md_data,name1,name2,"{}/recip_min_pair_AS_upset_nt_box.rtf".format(outdir))
     plt.savefig("{}/recip_min_pair_AS_upset_nt_box.png".format(outdir),dpi=600,format="png")
     plt.clf()
-    
+
 ###### Plot 6 ######
     # Upset plot for number of genes with each kind of AS when comparing the
     #   reciprocally min match pairs of the two datasets with added box plots
@@ -97,7 +98,7 @@ def plot_two_gtf_pairwise(outdir,md_data,f1_odds,f2_odds,name1,name2):
     PF.plot_gene_recip_min_AS_upset_nt_box(md_data,name1,name2,"{}/xcrpt_gene_AS_upset_nt_box.rtf".format(outdir))
     plt.savefig("{}/xcrpt_gene_AS_upset_nt_box.png".format(outdir),dpi=600,format="png")
     plt.clf()
-    
+
 ###### Plot 7 ######
     # Plot average number of nt different in recip. min match pairs against
     #   avg number of nt different in min pairs that are extra
