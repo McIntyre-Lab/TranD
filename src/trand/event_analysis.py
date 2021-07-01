@@ -68,7 +68,8 @@ gene_outfiles = {'er_fh': 'event_analysis_er.csv', 'ef_fh': 'event_analysis_ef.c
 two_gtfs_outfiles = {'gtf1_fh': 'gtf1_only.gtf', 'gtf2_fh': 'gtf2_only.gtf',
                      'md_fh': 'minimum_pairwise_transcript_distance.csv'}
 
-consol_outfiles = {'key_fh': 'transcript_id_2_consolidation_id.csv', 'consol_gtf_fh': 'consolidated_transcriptome.gtf'}
+consol_outfiles = {'key_fh': 'transcript_id_2_consolidation_id.csv', 'consol_gtf_fh':
+                   'consolidated_transcriptome.gtf'}
 
 consol_key_cols = ['gene_id', 'transcript_id', 'consolidation_transcript_id']
 
@@ -153,7 +154,7 @@ def parse_args(print_help=False):
     parser.add_argument(
         "-p", "--pairs",
         type=str,
-        choices=['all','both','first','second'],
+        choices=['all', 'both', 'first', 'second'],
         dest='out_pairs',
         default='both',
         help="""Output pairwise distance values for:
@@ -175,18 +176,18 @@ def parse_args(print_help=False):
         dest='name1',
         default="d1",
         required=False,
-        help="""For multiple transcriptomes: name of transcriptome for dataset 1, for the first GTF file listed,
-                to be used in output (default: \"d1\"). Name must be alphanumeric, can only include \"_\" special character
-                and not contain any spaces.""",
+        help="""For multiple transcriptomes: name of transcriptome for dataset 1, for the first GTF
+        file listed, to be used in output (default: \"d1\"). Name must be alphanumeric, can only
+        include \"_\" special character and not contain any spaces.""",
     )
     parser.add_argument(
         "-2", "--name2",
         dest='name2',
         default="d2",
         required=False,
-        help="""For multiple transcriptomes: name of transcriptome for dataset 2, for the second GTF file listed,
-                to be used in output (default: \"d2\"). Name must be alphanumeric, can only include \"_\" special character
-                and not contain any spaces.""",
+        help="""For multiple transcriptomes: name of transcriptome for dataset 2, for the second GTF
+        file listed, to be used in output (default: \"d2\"). Name must be alphanumeric, can only
+        include \"_\" special character and not contain any spaces.""",
     )
     parser.add_argument(
         "-f", "--force",
@@ -194,13 +195,13 @@ def parse_args(print_help=False):
         help="Force overwrite existing output directory and files within.",
     )
     parser.add_argument(
-        "-s","--skipplots",
+        "-s", "--skipplots",
         dest='skip_plots',
         action="store_true",
         help="Skip generation of all plots.",
     )
     parser.add_argument(
-        "-i","--skip-intermediate",
+        "-i", "--skip-intermediate",
         dest='skip_interm',
         action="store_true",
         help="Skip output of intermediate files (such as junction and exon region/fragment files).",
@@ -405,15 +406,18 @@ def write_output(data, out_fhs, fh_name):
     """Write results of event analysis to output files."""
     data.to_csv(out_fhs[fh_name], mode='a', header=False, index=False)
 
+
 def write_gtf(data, out_fhs, fh_name):
     """Write output gtf files."""
     data['source'] = "TranD"
     data['feature'] = "exon"
     data['score'] = "."
     data['frame'] = "."
-    data['attribute'] = "transcript_id \""+data['transcript_id']+"\"; gene_id \""+data['gene_id']+"\";"
-    data[['seqname','source','feature','start','end','score','strand','frame',
-          'attribute']].to_csv(out_fhs[fh_name], sep="\t", mode='a', index=False, header=False, doublequote=False, quoting=csv.QUOTE_NONE)
+    data['attribute'] = f'transcript_id "{data["transcript_id"]}"; gene_id "{data["gene_id"]}";'
+    data[['seqname', 'source', 'feature', 'start', 'end', 'score', 'strand', 'frame',
+          'attribute']].to_csv(out_fhs[fh_name], sep="\t", mode='a', index=False, header=False,
+                               doublequote=False, quoting=csv.QUOTE_NONE)
+
 
 def prep_bed_for_ea(data):
     """Event analysis"""
@@ -536,6 +540,7 @@ def remove_ir_transcripts(tx_data, introns):
         del tx_data[ir_tx]
     return tx_data
 
+
 def list_ir_exon_transcript(tx_data, introns):
     """List exons that contain Intron Retention events i.e. an
     intron is encompassed by an exon
@@ -561,6 +566,7 @@ def list_ir_exon_transcript(tx_data, introns):
                                 ir_transcript_list.append(e_tx)
     return ir_exon_list, ir_transcript_list
 
+
 def do_ea_gene(data, keep_ir):
     """
     Event Analysis on a full gene
@@ -573,9 +579,9 @@ def do_ea_gene(data, keep_ir):
     if len(tx_names) == 1:
         logger.info("Gene {} has a single transcript.", gene_id)
         er_data, ef_data = single_transcript_ea(gene_id, tx_names[0], data[tx_names[0]])
-        junction_data = create_junction_catalog_str(gene_id,tx_names[0],data[tx_names[0]])
+        junction_data = create_junction_catalog_str(gene_id, tx_names[0], data[tx_names[0]])
         junction_df = pd.DataFrame(junction_data, columns=jct_df_cols)
-        ir_transcripts= []
+        ir_transcripts = []
     else:
         tx_data = {}
         tx_coords = {}
@@ -629,6 +635,7 @@ def do_ea_gene(data, keep_ir):
     ef_df = pd.DataFrame(ef_data, columns=ef_df_cols)
     return er_df, ef_df, junction_df, ir_transcripts
 
+
 def single_transcript_ea(gene_id, tx_name, tx_data):
     """
     Generate ERs (Exonic Regions) and EFs (Exonic Fragments) for single transcript genes.
@@ -678,12 +685,10 @@ def single_transcript_ea(gene_id, tx_name, tx_data):
         ir_flag = 0
         er_freq = "unique"
         ef_freq = "unique"
-        er_out_data.append([gene_id, er_name, chrom, start, end, strand, ex_id,
-                        tx_name, tx_name, ex_num, tx_num,
-                        gene_tx_num, ir_flag, er_freq])
-        ef_out_data.append([gene_id, er_name, ef_name, chrom, start, end, strand,
-                        ex_id, tx_name, ex_num, tx_num, ir_flag,
-                        ef_freq])
+        er_out_data.append([gene_id, er_name, chrom, start, end, strand, ex_id, tx_name, tx_name,
+                            ex_num, tx_num, gene_tx_num, ir_flag, er_freq])
+        ef_out_data.append([gene_id, er_name, ef_name, chrom, start, end, strand, ex_id, tx_name,
+                            ex_num, tx_num, ir_flag, ef_freq])
         er_id += 1
         ef_id += 1
     return er_out_data, ef_out_data
@@ -1216,9 +1221,10 @@ def ea_analysis(gene_id, tx_data, tx_coords, ir_exons):
         for ef_start in er_ef_map[er_id]:
             ef_id = f"{er_id}:EF{ef_id_ord}"
             ef_id_ord += 1
-            ef_data[ef_id] = EF(gene_id=gene_id, er_id=er_id, ef_id=ef_id, chrom=er_data[er_id].chrom,
-                                start=ef_start, end=ef_start_end_map[ef_start],
-                                strand=er_data[er_id].strand, ex_ids=[], tx_ids=[])
+            ef_data[ef_id] = EF(gene_id=gene_id, er_id=er_id, ef_id=ef_id,
+                                chrom=er_data[er_id].chrom, start=ef_start,
+                                end=ef_start_end_map[ef_start], strand=er_data[er_id].strand,
+                                ex_ids=[], tx_ids=[])
     # Match against exons
     for ex_id in tx_ranges:
         ex_set = set(range(tx_ranges[ex_id][0], tx_ranges[ex_id][1] + 1))
@@ -1331,13 +1337,14 @@ def ea_pairwise(data):
     return ea_df, jct_df, td_df
 
 
-def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_only, skip_plots, skip_interm, consolidate):
+def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_only, skip_plots,
+                        skip_interm, consolidate):
     """Compare all transcript pairs in a single GTF file."""
     logger.info("Input file: {}", infile)
     if not skip_interm:
         if ea_mode == 'gene':
             del(outfiles['ea_fh'])
-        else :
+        else:
             del(outfiles['er_fh'])
             del(outfiles['ef_fh'])
     else:
@@ -1363,7 +1370,10 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
             # Test for single transcript gene (WBGene00000003)
             # Test gene for multiple groups with consolidation (WBGene00001574)
             # Test monoexon gene (WBGene00000214)
-            # Test monoexon with multiexon (WBGene00022161) -> added extra 2 monoexon transcripts using gene_df = pd.concat([gene_df,pd.DataFrame([["I",1779855,1781091,'-',"WBGene00022161","new_transcript_1"],["I",1781991,1782900,'-',"WBGene00022161","new_transcript_2"]], columns=gene_df.columns)],ignore_index=True)
+            # Test monoexon with multiexon (WBGene00022161) -> added extra 2 monoexon transcripts
+            # using gene_df =
+            # pd.concat([gene_df,pd.DataFrame([["I",1779855,1781091,'-',"WBGene00022161","new_transcript_1"],["I",1781991,1782900,'-',"WBGene00022161","new_transcript_2"]],
+            # columns=gene_df.columns)],ignore_index=True)
             pre_consol_jct = []
             gene_df = data[data['gene_id'] == gene]
             try:
@@ -1374,10 +1384,12 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
             transcripts = gene_df.groupby("transcript_id")
             # Loop over transcripts to get junctions
             for transcript in transcripts.groups:
-                pre_consol_jct.extend(create_junction_catalog_str(gene, transcript, bed_gene_data[transcript]))
-            pre_consol_jct_df = pd.DataFrame(pre_consol_jct, columns = jct_df_cols)
+                pre_consol_jct.extend(create_junction_catalog_str(gene, transcript,
+                                                                  bed_gene_data[transcript]))
+            pre_consol_jct_df = pd.DataFrame(pre_consol_jct, columns=jct_df_cols)
             # Consolidate 5'/3' variation
-            consol_gene, key_gene = CONSOL.consolidate_junctions(bed_gene_data, pre_consol_jct_df, outdir, skip_interm)
+            consol_gene, key_gene = CONSOL.consolidate_junctions(bed_gene_data, pre_consol_jct_df,
+                                                                 outdir, skip_interm)
             consol_data = pd.concat([consol_data, consol_gene], ignore_index=True)
             if not skip_interm:
                 write_output(key_gene, consol_fhs, 'key_fh')
@@ -1386,25 +1398,25 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
         data = consol_data.copy()
         del(consol_data)
         genes = data.groupby("gene_id")
-        transcripts = data.groupby(["gene_id", "transcript_id"])
-        logger.info("After consolidation: {} genes and {} transcripts", len(genes), len(transcripts))
+        num_tx = data.groupby(["gene_id", "transcript_id"])
+        logger.info("After consolidation: {} genes and {} transcripts", len(genes), len(num_tx))
 
     # Output complexity measures using GTF data
-    COMP.calculate_complexity(outdir,data, skip_plots)
+    COMP.calculate_complexity(outdir, data, skip_plots)
 
     # If requested, skip all other functions
     if complexity_only:
         logger.info("Complexity only option selected. Skipping all other functions.")
-    else:                        
+    else:
         #    logger.debug("Output files: {}", outfiles)
         out_fhs = open_output_files(outdir, outfiles)
-        
+
         # Write out csv file headers
         if not skip_interm:
             if ea_mode == 'gene':
                 out_fhs['er_fh'].write_text(",".join(er_df_cols) + '\n')
                 out_fhs['ef_fh'].write_text(",".join(ef_df_cols) + '\n')
-                ir_file = open("{}/ir_transcripts.txt".format(outdir),'w')
+                ir_file = open("{}/ir_transcripts.txt".format(outdir), 'w')
                 ir_file.close()
             else:
                 out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
@@ -1421,7 +1433,8 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
             number_of_transcripts = len(transcript_groups)
             if ea_mode == 'gene':
                 try:
-                    er_data, ef_data, jct_data, ir_transcripts = do_ea(gene_df, mode='gene', keep_ir=keep_ir)
+                    er_data, ef_data, jct_data, ir_transcripts = do_ea(gene_df, mode='gene',
+                                                                       keep_ir=keep_ir)
                     if er_data is None:
                         continue
                     if not skip_interm:
@@ -1429,24 +1442,25 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
                         write_output(ef_data, out_fhs, 'ef_fh')
                         write_output(jct_data, out_fhs, 'jc_fh')
                         if len(ir_transcripts) > 0:
-                            with open("{}/ir_transcripts.txt".format(outdir),'a') as ir_outfile:
+                            with open("{}/ir_transcripts.txt".format(outdir), 'a') as ir_outfile:
                                 ir_outfile.write("\n".join(ir_transcripts)+"\n")
                 except ValueError as e:
                     logger.error(e)
                     continue
             else:
                 if number_of_transcripts == 1:
-                   logger.info("Gene {} has a single transcript. Skipping", gene)
-                continue
+                    logger.info("Gene {} has a single transcript. Skipping", gene)
+                    continue
                 ea_data, jct_data, td_data = ea_pairwise(gene_df)
-                td_data_cat = pd.concat([td_data_cat,td_data],ignore_index=True)
+                td_data_cat = pd.concat([td_data_cat, td_data], ignore_index=True)
                 if not skip_interm:
                     write_output(ea_data, out_fhs, 'ea_fh')
                     write_output(jct_data, out_fhs, 'jc_fh')
                     write_output(td_data, out_fhs, 'td_fh')
         if ea_mode == 'pairwise':
             if not skip_plots:
-                P1GP.plot_one_gtf_pairwise(outdir,td_data_cat)
+                P1GP.plot_one_gtf_pairwise(outdir, td_data_cat)
+
 
 def ea_two_files(f1_data, f2_data, gene_id, name1, name2):
     "Do EA (Event Analysis) for pairs of transcripts from two files for a gene."
@@ -1501,7 +1515,8 @@ def callback_results(results):
     td_list.append(td_data_cat)
 
 
-def process_two_files(infiles, outdir, outfiles, cpu, out_pairs, complexity_only, skip_plots, skip_interm, name1, name2):
+def process_two_files(infiles, outdir, outfiles, cpu, out_pairs, complexity_only, skip_plots,
+                      skip_interm, name1, name2):
     """Compare transcript pairs between two GTF files."""
     logger.info("Input files: {}", infiles)
     if out_pairs != 'all':
@@ -1558,15 +1573,16 @@ def process_two_files(infiles, outdir, outfiles, cpu, out_pairs, complexity_only
         f1_transcripts = valid_f1.groupby(["gene_id", "transcript_id"])
         f2_genes = valid_f2.groupby("gene_id")
         f2_transcripts = valid_f2.groupby(["gene_id", "transcript_id"])
-        logger.info("Found {} genes and {} transcripts in {} file", len(f1_genes), len(f1_transcripts),
-                    infile_1)
-        logger.info("Found {} genes and {} transcripts in {} file", len(f2_genes), len(f2_transcripts),
-                    infile_2)
+        logger.info("Found {} genes and {} transcripts in {} file", len(f1_genes),
+                    len(f1_transcripts), infile_1)
+        logger.info("Found {} genes and {} transcripts in {} file", len(f2_genes),
+                    len(f2_transcripts), infile_2)
         gene_list = list(set(valid_f1['gene_id']))
         logger.debug("Genes to process: \n{}", gene_list)
         # If 1 cpu available
         if cpu == 1:
-            ea_data, jct_data, td_data = loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs, cpu, name1, name2)
+            ea_data, jct_data, td_data = loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs,
+                                                         cpu, name1, name2)
             if not skip_interm:
                 write_output(ea_data, out_fhs, 'ea_fh')
                 write_output(jct_data, out_fhs, 'jc_fh')
@@ -1578,7 +1594,8 @@ def process_two_files(infiles, outdir, outfiles, cpu, out_pairs, complexity_only
                 write_output(md_data, out_fhs, 'td_fh')
             # Generate 2 GTF pairwise plots
             if not skip_plots:
-                P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1=name1, name2=name2)
+                P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1=name1,
+                                           name2=name2)
 
         # If cpu > 1, parallelize
         elif cpu > 1:
@@ -1590,8 +1607,8 @@ def process_two_files(infiles, outdir, outfiles, cpu, out_pairs, complexity_only
             for genes in geneLists:
                 subset_f1 = valid_f1[valid_f1['gene_id'].isin(genes)]
                 subset_f2 = valid_f2[valid_f2['gene_id'].isin(genes)]
-                pool.apply_async(loop_over_genes, args=(genes, subset_f1, subset_f2, out_fhs, cpu, name1, name2),
-                                 callback=callback_results)
+                pool.apply_async(loop_over_genes, args=(genes, subset_f1, subset_f2, out_fhs, cpu,
+                                                        name1, name2), callback=callback_results)
             pool.close()
             pool.join()
             ea_cat = pd.concat(ea_list)
@@ -1608,7 +1625,8 @@ def process_two_files(infiles, outdir, outfiles, cpu, out_pairs, complexity_only
                 write_output(md_data, out_fhs, 'td_fh')
             # Generate 2 GTF pairwise plots
             if not skip_plots:
-                P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1=name1, name2=name2)
+                P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1=name1,
+                                           name2=name2)
         else:
             logger.error("Invalid cpu parameter")
 
@@ -1660,7 +1678,8 @@ def main():
         else:
             outfiles.update(gene_outfiles)
         try:
-            process_single_file(infiles[0], ea_mode, keep_ir, outdir, outfiles, complexity_only, skip_plots, skip_interm, consolidate)
+            process_single_file(infiles[0], ea_mode, keep_ir, outdir, outfiles, complexity_only,
+                                skip_plots, skip_interm, consolidate)
         finally:
             cleanup()
     else:
@@ -1668,19 +1687,26 @@ def main():
         outfiles = common_outfiles
         outfiles.update(two_gtfs_outfiles)
         outfiles.update(pairwise_outfiles)
-        if [k for k in list(args.name1) if k.isalnum() or k=="_"] == list(args.name1):
+        if [k for k in list(args.name1) if k.isalnum() or k == "_"] == list(args.name1):
             name1 = args.name1
         else:
-            logger.error("Invalid name for dataset 1: Must be alphanumeric and can only include \"_\" special character")
-        if [k for k in list(args.name2) if k.isalnum() or k=="_"] == list(args.name2):
+            logger.error(
+                "Invalid name for dataset 1: Must be alphanumeric and can only "
+                "include '_' special character"
+            )
+        if [k for k in list(args.name2) if k.isalnum() or k == "_"] == list(args.name2):
             name2 = args.name2
         else:
-            logger.error("Invalid name for dataset 1: Must be alphanumeric and can only include \"_\" special character")
+            logger.error(
+                "Invalid name for dataset 2: Must be alphanumeric and can only "
+                "include '_' special character"
+            )
+
         try:
-            process_two_files(infiles, outdir, outfiles, cpu, out_pairs, complexity_only, skip_plots, skip_interm, name1, name2)
+            process_two_files(infiles, outdir, outfiles, cpu, out_pairs, complexity_only,
+                              skip_plots, skip_interm, name1, name2)
         finally:
             cleanup()
-    # The End
 
 
 if __name__ == '__main__':
