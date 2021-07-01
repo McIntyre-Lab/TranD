@@ -5,6 +5,6 @@ pwd;hostname;date
 
 DATA=data/raw/mel_head_PB.pb2fbgn.sorted.gtf
 
-time python src/eventanalysis/event_analysis.py -o testout_single_full_mel_head "$@" ${DATA}
+time python src/eventanalysis/event_analysis.py -e gene -o testout/gene_full_mel_head "$@" ${DATA}
 
 date
