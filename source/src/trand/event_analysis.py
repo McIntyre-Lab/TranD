@@ -204,7 +204,6 @@ def do_td(data):
     return td_data
 
 
-# !!! Need to add a write_gtf function that will output in correct GTF format
 def write_output(data, out_fhs, fh_name):
     """Write results of event analysis to output files."""
     data.to_csv(out_fhs[fh_name], mode='a', header=False, index=False)
@@ -216,10 +215,14 @@ def write_gtf(data, out_fhs, fh_name):
     data['feature'] = "exon"
     data['score'] = "."
     data['frame'] = "."
-    data['attribute'] = f'transcript_id "{data["transcript_id"]}"; gene_id "{data["gene_id"]}";'
+    data['attribute'] = data.apply(lambda x: get_gtf_attribute(x['transcript_id'], x['gene_id']), axis=1)
     data[['seqname', 'source', 'feature', 'start', 'end', 'score', 'strand', 'frame',
           'attribute']].to_csv(out_fhs[fh_name], sep="\t", mode='a', index=False, header=False,
                                doublequote=False, quoting=csv.QUOTE_NONE)
+
+
+def get_gtf_attribute(transcript_id, gene_id):
+    return f'transcript_id "{transcript_id}"; gene_id "{gene_id}";'
 
 
 def prep_bed_for_ea(data):
@@ -1196,7 +1199,9 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
             consol_data = pd.concat([consol_data, consol_gene], ignore_index=True)
             if not skip_interm:
                 write_output(key_gene, consol_fhs, 'key_fh')
-                write_gtf(consol_data, consol_fhs, 'consol_gtf_fh')
+        # Output consolidated GTF
+        if not skip_interm:
+            write_gtf(consol_data, consol_fhs, 'consol_gtf_fh')
         # Set data variable to new consolidated data
         data = consol_data.copy()
         del(consol_data)

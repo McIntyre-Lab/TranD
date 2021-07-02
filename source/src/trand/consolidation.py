@@ -17,9 +17,9 @@ def consolidate_junctions(bed_gene_data, pre_consol_jct_df, outdir, skip_interm,
     # Set output data dataframe
     consol_gene_cols = ['seqname', 'start', 'end', 'strand', 'gene_id', 'transcript_id']
     consol_gene = pd.DataFrame(columns=consol_gene_cols)
-            
+
     # Check if single transcript, if yes then it cannot be consolidated
-    if len(bed_gene_data['transcript_list']) < 2:
+    if len(bed_gene_data['transcript_list']) == 1:
         logger.debug("Gene {} has a single transcript.", gene_id)
         xcrpt_all = pd.DataFrame(bed_gene_data['transcript_list'], columns=['transcript_id'])
         xcrpt_all['gene_id'] = gene_id
@@ -32,9 +32,9 @@ def consolidate_junctions(bed_gene_data, pre_consol_jct_df, outdir, skip_interm,
             for row in bed_gene_data[transcript]:
                 consol_gene = pd.concat([consol_gene,pd.DataFrame([[row[0],int(row[1])+1,int(row[2]),row[5],gene_id,consol_transcript]],columns=consol_gene.columns)],ignore_index=True)
                 consol_gene = consol_gene.sort_values(by=['transcript_id','start']).reset_index(drop=True)
-        
-    # Check if all are monoexon (no junctions present)
-    elif len(pre_consol_jct_df) == 0:
+
+    # Check if more than one transcript present and all are monoexon (no junctions present)
+    elif len(bed_gene_data['transcript_list']) > 1 and len(pre_consol_jct_df) == 0:
         logger.debug("Gene {} has all monoexon transcripts (more than 1 transcript present).", gene_id)
         # Get transcript list and start/end of transcripts
         xcrpt_all = pd.DataFrame(bed_gene_data['transcript_list'], columns=['transcript_id'])
@@ -77,7 +77,7 @@ def consolidate_junctions(bed_gene_data, pre_consol_jct_df, outdir, skip_interm,
         collapse_pre_jct = pre_consol_jct_df.groupby('transcript_id').apply(
                 func=lambda x:"|".join(x['coords'])).reset_index().rename(
                         columns={0:'junctionID_order'}).sort_values(['junctionID_order']).reset_index(drop=True)
-        
+
         # Merge transcript-level junction (multiexon transcripts only) and
         #     transcript_id values (all transcripts including multi-exon) variables to get
         #     mono-exon transcripts
@@ -115,7 +115,6 @@ def consolidate_junctions(bed_gene_data, pre_consol_jct_df, outdir, skip_interm,
             # Set junctionID_order to monoexon group number
             xcrpt_jct_w_mono = xcrpt_jct_w_mono.fillna(-1)
             xcrpt_jct_w_mono.loc[xcrpt_jct_w_mono['junctionID_order']==-1,'junctionID_order'] = xcrpt_jct_w_mono['monoexon_group']
- #           xcrpt_jct_w_mono.loc[xcrpt_jct_w_mono['junctionID_order']==-1,'junctionID_order'] = xcrpt_jct_w_mono['transcript_id']
 
         # Make groups of transcripts with same junctionID_order
         # Group names will be piped list of transcript IDs that share the same junctions
@@ -129,7 +128,7 @@ def consolidate_junctions(bed_gene_data, pre_consol_jct_df, outdir, skip_interm,
 
         # Select the longest transcript for each junctionID_order
         longest_df = xcrpt_jct_w_mono.loc[xcrpt_jct_w_mono.groupby('junctionID_order')['transcript_length'].idxmax()]
-    
+
         # Generate new transcript_id for each transcript:
         #     [prefix]_[gene_id]_# where #={1,...,n} for all n transcripts in the gene
         # First sort transcript_length
@@ -137,22 +136,22 @@ def consolidate_junctions(bed_gene_data, pre_consol_jct_df, outdir, skip_interm,
         longest_df = longest_df.sort_values(by='consol_transcript_length',ascending=False).reset_index(drop=True)
         longest_df['transcript_rank_in_gene'] = longest_df['consol_transcript_length'].rank(method='first')
         longest_df['consolidation_transcript_id'] = prefix+"_"+gene_id+"_"+longest_df['transcript_rank_in_gene'].astype(int).map(str)
-        
+
         # Flag transcripts where the min start does not match the start of the longest representative
         longest_df['flag_not_min_start'] = np.where(longest_df['start']!=longest_df['min_group_start'],1,0)
         # Flag transcripts where the max end does not match the end of the longest representative
         longest_df['flag_not_max_end'] = np.where(longest_df['end']!=longest_df['max_group_end'],1,0)
-        
+
         # Set consolidated start and end
         longest_df['consol_start'] = np.where(longest_df['flag_not_min_start']==1, longest_df['min_group_start'], longest_df['start'])
         longest_df['consol_end'] = np.where(longest_df['flag_not_max_end']==1, longest_df['max_group_end'], longest_df['end'])
-        
+
         # Make key for gene_id 2 transcript_id 2 consolidation_transcript_id
         key_gene = pd.merge(xcrpt_jct_w_mono, longest_df[['consolidation_transcript_id','junctionID_order']],
                          how='left', on='junctionID_order', validate="m:1")
         key_gene['gene_id'] = gene_id
         key_gene = key_gene[['gene_id','transcript_id','consolidation_transcript_id']]
-        
+
         # Format output data by setting first and last exon coordinates based on
         #   longest first and last exons of the groups
         # Internal exons are the same for all transcripts in the group so coordinates are kept for those
