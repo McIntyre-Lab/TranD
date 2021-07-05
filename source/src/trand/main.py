@@ -80,6 +80,13 @@ def parse_args(print_help=False):
                 (remove 5'/3' variation in redundantly spliced transcripts)."""
     )
     parser.add_argument(
+        "--consolPrefix",
+        dest='consol_prefix',
+        default='tr',
+        help="""Prefix for consolidated transcript_id values if consolidation is performed (default: tr).
+                Prefix must be alphanumeric, can only include \"_\" special character and not contain any spaces."""
+    )
+    parser.add_argument(
         "-e", "--ea",
         dest='ea_mode',
         type=str,
@@ -218,6 +225,14 @@ def cli():
     skip_plots = args.skip_plots
     complexity_only = args.complexity_only
     consolidate = args.consolidate
+    if consolidate:
+        if [k for k in list(args.consol_prefix) if k.isalnum() or k == "_"] == list(args.consol_prefix):
+            consol_prefix = args.consol_prefix
+        else:
+            logger.error(
+                "Invalid consolidated prefix for consolidated transcript_id values: "
+                "Must be alphanumerica and can only include '_' special character"
+            )
     skip_interm = args.skip_interm
     cpu = args.cpu
     if len(infiles) == 1:
@@ -230,7 +245,7 @@ def cli():
             outfiles.update(gene_outfiles)
         try:
             process_single_file(infiles[0], ea_mode, keep_ir, outdir, outfiles, complexity_only,
-                                skip_plots, skip_interm, consolidate)
+                                skip_plots, skip_interm, consolidate, consol_prefix)
         finally:
             cleanup()
     else:

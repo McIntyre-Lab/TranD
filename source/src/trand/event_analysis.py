@@ -1144,7 +1144,7 @@ def ea_pairwise(data):
 
 
 def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_only, skip_plots,
-                        skip_interm, consolidate):
+                        skip_interm, consolidate, consol_prefix):
     """Compare all transcript pairs in a single GTF file."""
     logger.info("Input file: {}", infile)
     if not skip_interm:
@@ -1195,7 +1195,7 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
             pre_consol_jct_df = pd.DataFrame(pre_consol_jct, columns=jct_df_cols)
             # Consolidate 5'/3' variation
             consol_gene, key_gene = CONSOL.consolidate_junctions(bed_gene_data, pre_consol_jct_df,
-                                                                 outdir, skip_interm)
+                                                                 outdir, skip_interm, consol_prefix)
             consol_data = pd.concat([consol_data, consol_gene], ignore_index=True)
             if not skip_interm:
                 write_output(key_gene, consol_fhs, 'key_fh')
