@@ -233,6 +233,8 @@ def cli():
                 "Invalid consolidated prefix for consolidated transcript_id values: "
                 "Must be alphanumerica and can only include '_' special character"
             )
+    else:
+        consol_prefix = args.consol_prefix
     skip_interm = args.skip_interm
     cpu = args.cpu
     if len(infiles) == 1:
