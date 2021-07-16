@@ -38,7 +38,7 @@ def parse_args(print_help=False):
             self.print_help()
             sys.exit(2)
     parser = MyParser(
-        description="Perform Event Analysis on annotated NGS read data."
+        description="Perform transcript distance, complexity and transcriptome comparison analyses."
     )
     parser.add_argument(
         dest="infiles",
@@ -53,7 +53,7 @@ def parse_args(print_help=False):
         action="store",
         type=str,
         required=False,
-        help="Output directory. Default:current directory.",
+        help="Output directory. If directory does not exist, it will be created. Default:current directory.",
     )
     parser.add_argument(
         "-l",
@@ -69,7 +69,7 @@ def parse_args(print_help=False):
         "-c", "--complexityOnly",
         dest='complexity_only',
         action='store_true',
-        help="""Output only complexity measures, skipping event analysis and comparison functions
+        help="""Output only complexity measures
                 (default: Perform all analyses and comparisons including complexity calculations)"""
     )
     parser.add_argument(
@@ -77,7 +77,7 @@ def parse_args(print_help=False):
         dest='consolidate',
         action='store_true',
         help="""Consolidate transcripts with identical junctions prior to evaluation of a single transcriptome
-                (remove 5'/3' variation in redundantly spliced transcripts)."""
+                (remove 5'/3' transcript end variation in redundantly spliced transcripts)."""
     )
     parser.add_argument(
         "--consolPrefix",
@@ -92,12 +92,14 @@ def parse_args(print_help=False):
         type=str,
         choices=['pairwise', 'gene'],
         default='pairwise',
-        help="Event analysis based on a pair of transcripts for TD or all gene isoforms without TD",
+        help="""Specify type of transcript comparison: 
+                pairwise (default) - compare pairs of transcripts within a gene, 
+                gene - compare all transcripts within a gene"""
     )
     parser.add_argument(
         "-k", "--keepir",
         action="store_true",
-        help="Keep transcripts with Intron Retention events in full-gene EA. Default: remove",
+        help="Keep transcripts with Intron Retention events when generating transcript events. Default: remove",
     )
     parser.add_argument(
         "-p", "--pairs",
