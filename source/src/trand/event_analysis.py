@@ -43,6 +43,7 @@ from . import minimum_distance as MD
 # Import plotting functions
 from . import plot_two_gtf_pairwise as P2GP
 from . import plot_one_gtf_pairwise as P1GP
+from . import plot_transcriptome as P1GG
 
 # Import complexity calculation function
 from . import calculate_complexity as COMP
@@ -1210,7 +1211,7 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
         logger.info("After consolidation: {} genes and {} transcripts", len(genes), len(num_tx))
 
     # Output complexity measures using GTF data
-    COMP.calculate_complexity(outdir, data, skip_plots)
+    uniq_ex = COMP.calculate_complexity(outdir, data, skip_plots)
 
     # If requested, skip all other functions
     if complexity_only:
@@ -1224,8 +1225,6 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
             if ea_mode == 'gene':
                 out_fhs['er_fh'].write_text(",".join(er_df_cols) + '\n')
                 out_fhs['ef_fh'].write_text(",".join(ef_df_cols) + '\n')
-                ir_file = open("{}/ir_transcripts.txt".format(outdir), 'w')
-                ir_file.close()
             else:
                 out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
                 out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
@@ -1234,6 +1233,10 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
         # Initialize concatenated pairwise transcript distance dataframe
         if ea_mode == "pairwise":
             td_data_cat = pd.DataFrame()
+        else:
+            er_data_cat = pd.DataFrame(columns=er_df_cols)
+            ef_data_cat = pd.DataFrame(columns=ef_df_cols)
+            ir_data_cat = pd.DataFrame(columns=['er_transcript_ids'])
         for gene in genes.groups:
             gene_df = data[data['gene_id'] == gene]
             transcripts = gene_df.groupby("transcript_id")
@@ -1249,9 +1252,11 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
                         write_output(er_data, out_fhs, 'er_fh')
                         write_output(ef_data, out_fhs, 'ef_fh')
                         write_output(jct_data, out_fhs, 'jc_fh')
-                        if len(ir_transcripts) > 0:
-                            with open("{}/ir_transcripts.txt".format(outdir), 'a') as ir_outfile:
-                                ir_outfile.write("\n".join(ir_transcripts)+"\n")
+                    er_data_cat = pd.concat([er_data_cat, er_data], ignore_index=True)
+                    ef_data_cat = pd.concat([ef_data_cat, ef_data], ignore_index=True)
+                    if len(ir_transcripts) > 0:
+                        ir_data = pd.DataFrame(ir_transcripts, columns=['er_transcript_ids'])
+                        ir_data_cat = pd.concat([ir_data_cat, ir_data], ignore_index=True)
                 except ValueError as e:
                     logger.error(e)
                     continue
@@ -1265,9 +1270,11 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
                     write_output(ea_data, out_fhs, 'ea_fh')
                     write_output(jct_data, out_fhs, 'jc_fh')
                     write_output(td_data, out_fhs, 'td_fh')
-        if ea_mode == 'pairwise':
-            if not skip_plots:
+        if not skip_plots:
+            if ea_mode == 'pairwise':
                 P1GP.plot_one_gtf_pairwise(outdir, td_data_cat)
+            elif ea_mode == 'gene':
+                P1GG.plot_transcriptome(er_data_cat, ef_data_cat, ir_data_cat, uniq_ex, outdir)
 
 
 def ea_two_files(f1_data, f2_data, gene_id, name1, name2):
