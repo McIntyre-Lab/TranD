@@ -69,15 +69,15 @@ def parse_args(print_help=False):
         "-c", "--complexityOnly",
         dest='complexity_only',
         action='store_true',
-        help="""Output only complexity measures
+        help="""Output only complexity measures. In presence of 'consolidate' flag, complexity calculated on consolidated transcriptome. 
                 (default: Perform all analyses and comparisons including complexity calculations)"""
     )
     parser.add_argument(
         "--consolidate",
         dest='consolidate',
         action='store_true',
-        help="""Consolidate transcripts with identical junctions prior to evaluation of a single transcriptome
-                (remove 5'/3' transcript end variation in redundantly spliced transcripts)."""
+        help="""Consolidate transcripts with identical junctions prior to evaluation of a single transcriptome.
+                (remove 5'/3' transcript end variation in redundantly spliced transcripts, Default: No consolidation)."""
     )
     parser.add_argument(
         "--consolPrefix",
