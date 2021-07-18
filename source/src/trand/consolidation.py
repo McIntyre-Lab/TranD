@@ -157,7 +157,7 @@ def consolidate_junctions(bed_gene_data, pre_consol_jct_df, outdir, skip_interm,
         # Internal exons are the same for all transcripts in the group so coordinates are kept for those
         for consol_transcript,transcript in key_gene.groupby('consolidation_transcript_id')['transcript_id'].first().iteritems():
             num = 0
-            for row in bed_gene_data[transcript]:
+            for row in sorted(bed_gene_data[transcript]):
                 num = num + 1
                 if num == 1:
                     consol_gene = pd.concat([consol_gene,pd.DataFrame([[row[0],longest_df[longest_df['consolidation_transcript_id']==consol_transcript]['consol_start'].values[0],int(row[2]),row[5],gene_id,consol_transcript]],columns=consol_gene.columns)],ignore_index=True)
