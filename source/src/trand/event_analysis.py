@@ -1368,9 +1368,9 @@ def process_two_files(infiles, outdir, outfiles, cpu, out_pairs, complexity_only
             del(outfiles['gtf2_fh'])
             out_fhs = open_output_files(outdir, outfiles)
         if out_pairs != 'all':
-            out_fhs['md_fh'].write_text(",".join(MD.md_df_cols) + '\n')
+            out_fhs['md_fh'].write_text(",".join(MD.get_md_cols(name1, name2)) + '\n')
         else:
-            out_fhs['td_fh'].write_text(",".join(MD.md_df_cols) + '\n')
+            out_fhs['td_fh'].write_text(",".join(MD.get_md_cols(name1, name2)) + '\n')
         f1_gene_names = set(in_f1['gene_id'])
         f2_gene_names = set(in_f2['gene_id'])
         only_f1_genes = f1_gene_names.difference(f2_gene_names)
