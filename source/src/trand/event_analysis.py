@@ -1005,6 +1005,7 @@ def ea_analysis(gene_id, tx_data, tx_coords, ir_exons):
         tx_num = len(er_data[er].tx_ids)
         er_data[er].ex_num = ex_num
         er_data[er].tx_num = tx_num
+        er_data[er].gene_tx_num = total_number_of_transcripts
         if tx_num == 1:
             er_data[er].er_freq = 'unique'
         elif tx_num == total_number_of_transcripts:
