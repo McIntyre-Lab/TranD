@@ -45,7 +45,7 @@ def parse_args(print_help=False):
         metavar="input_file",
         type=str,
         nargs='+',
-        help="One or two input GTF (or GFFv2) file(s).",
+        help="One or two input GTF file(s).",
     )
     parser.add_argument(
         "-o",
@@ -53,7 +53,7 @@ def parse_args(print_help=False):
         action="store",
         type=str,
         required=False,
-        help="Output directory. If directory does not exist, it will be created. Default:current directory.",
+        help="Output directory. If directory does not exist, it will be created. Default: current directory.",
     )
     parser.add_argument(
         "-l",
@@ -66,25 +66,27 @@ def parse_args(print_help=False):
         help="Log file name for logging processing events to file.",
     )
     parser.add_argument(
-        "-c", "--complexityOnly",
-        dest='complexity_only',
-        action='store_true',
-        help="""Output only complexity measures. In presence of 'consolidate' flag, complexity calculated on consolidated transcriptome. 
-                (default: Perform all analyses and comparisons including complexity calculations)"""
-    )
-    parser.add_argument(
         "--consolidate",
         dest='consolidate',
         action='store_true',
-        help="""Consolidate transcripts with identical junctions prior to evaluation of a single transcriptome.
-                (remove 5'/3' transcript end variation in redundantly spliced transcripts, Default: No consolidation)."""
+        help="""Used with 1 GTF input file. Consolidate transcripts remove 5'/3' transcript end variation in redundantly spliced transcripts)
+		with identical junctions prior to complexity calculations, events and summary plotting.
+                Default: No consolidation"""
     )
     parser.add_argument(
         "--consolPrefix",
         dest='consol_prefix',
         default='tr',
-        help="""Prefix for consolidated transcript_id values if consolidation is performed (default: tr).
-                Prefix must be alphanumeric, can only include \"_\" special character and not contain any spaces."""
+        help="""Used with 1 GTF input file. Requires '--consolidate' flag. Specify the prefix to use for consolidated transcript_id values.
+                Prefix must be alphanumeric, can only include \"_\" special character and not contain any spaces.
+		Default: tr"""
+    )
+    parser.add_argument(
+        "-c", "--complexityOnly",
+        dest='complexity_only',
+        action='store_true',
+        help="""Used with 1 or 2 GTF input file(s). Output only complexity measures. If used in presence of the '--consolidate' flag, complexity is calculated on the consolidated GTF(s).
+                Default: Perform all analyses and comparisons including complexity calculations"""
     )
     parser.add_argument(
         "-e", "--ea",
@@ -92,14 +94,16 @@ def parse_args(print_help=False):
         type=str,
         choices=['pairwise', 'gene'],
         default='pairwise',
-        help="""Specify type of transcript comparison: 
-                pairwise (default) - compare pairs of transcripts within a gene, 
-                gene - compare all transcripts within a gene"""
+        help="""Specify type of within gene transcript comparison:
+                pairwise - Used with 1 or 2 GTF input files. Compare pairs of transcripts within a gene.
+                gene - Used iwth 1 GTF input file. Compare all transcripts within a gene
+		Default: pairwise"""
     )
     parser.add_argument(
         "-k", "--keepir",
         action="store_true",
-        help="Keep transcripts with Intron Retention events when generating transcript events. Default: remove",
+        help="""Used with 1 GTF input file. Keep transcripts with Intron Retention(s) when generating transcript events. 
+		Default: remove"""
     )
     parser.add_argument(
         "-p", "--pairs",
@@ -107,11 +111,30 @@ def parse_args(print_help=False):
         choices=['all', 'both', 'first', 'second'],
         dest='out_pairs',
         default='both',
-        help="""Output pairwise distance values for:
-                all - all transcript pairs in 2 GTF comparison,
-                both (default) - only minimum pairs for both datasets,
-                first - only minimum pairs for the first dataset,
-                second - only minimum pairs for the second dataset"""
+        help="""Used with 2 GTF input files. The TranD metrics can be for all transcript pairs in both GTF files or for a subset of transcript pairs using the following options:
+                both - Trand metrics for the minimum pairs in both GTF files,
+                first - TranD metrics for the minimum pairs in the first GTF file,
+                second - TranD metrics for the minimum pairs in the second GTF file
+                all - TranD metrics for all transcript pairs in both GTF files
+		Default: both"""
+    )
+    parser.add_argument(
+        "-1", "--name1",
+        dest='name1',
+        default="d1",
+        required=False,
+        help="""Used with 2 GTF input files. User-specified name to be used for labeling output files related to the first GTF file.
+        	Name must be alphanumeric, can only include \"_\" special character and not contain any spaces.
+		Default: d1"""
+    )
+    parser.add_argument(
+        "-2", "--name2",
+        dest='name2',
+        default="d2",
+        required=False,
+        help="""Used with 2 GTF input files. User-specified name to be used for labeling output files related to the second GTF file.
+                Name must be alphanumeric, can only include \"_\" special character and not contain any spaces.
+                Default: d2"""
     )
     parser.add_argument(
         "-n", "--cpu",
@@ -119,26 +142,9 @@ def parse_args(print_help=False):
         type=int,
         default=1,
         required=False,
-        help="Number of CPUs to use for parallelization (default: 1).",
+        help="Number of CPUs to use for parallelization. Default: 1",
     )
-    parser.add_argument(
-        "-1", "--name1",
-        dest='name1',
-        default="d1",
-        required=False,
-        help="""For multiple transcriptomes: name of transcriptome for dataset 1, for the first GTF
-        file listed, to be used in output (default: \"d1\"). Name must be alphanumeric, can only
-        include \"_\" special character and not contain any spaces.""",
-    )
-    parser.add_argument(
-        "-2", "--name2",
-        dest='name2',
-        default="d2",
-        required=False,
-        help="""For multiple transcriptomes: name of transcriptome for dataset 2, for the second GTF
-        file listed, to be used in output (default: \"d2\"). Name must be alphanumeric, can only
-        include \"_\" special character and not contain any spaces.""",
-    )
+
     parser.add_argument(
         "-f", "--force",
         action="store_true",
