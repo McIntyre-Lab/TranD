@@ -907,13 +907,15 @@ def plot_gene_avg_nt_diff_pairs(md_data, name1, name2, legendOut, zoomMean=False
         )
     else:
         limit = round(
-            max(
-                minPairNTGene[minPairNTGene["num_nt_diff_recip_min"] > 0][
-                    "num_nt_diff_recip_min"
-                ].mean(),
-                minPairNTGene[minPairNTGene["num_nt_diff_extra"] > 0][
-                    "num_nt_diff_extra"
-                ].mean(),
+            np.nanmax(
+                [
+                    minPairNTGene[minPairNTGene["num_nt_diff_recip_min"] > 0][
+                        "num_nt_diff_recip_min"
+                    ].mean(),
+                    minPairNTGene[minPairNTGene["num_nt_diff_extra"] > 0][
+                        "num_nt_diff_extra"
+                    ].mean()
+                ]
             )
         )
     plt.figure(figsize=(8.45, 5))
