@@ -157,6 +157,12 @@ def consolidate_junctions(bed_gene_data, pre_consol_jct_df, outdir, skip_interm,
         # Internal exons are the same for all transcripts in the group so coordinates are kept for those
         for consol_transcript,transcript in key_gene.groupby('consolidation_transcript_id')['transcript_id'].first().iteritems():
             num = 0
+            # Make start and end values integers for proper sorting
+            for val in range(0,len(bed_gene_data[transcript])):
+                tupleList = list(bed_gene_data[transcript][val])
+                tupleList[1] = int(tupleList[1])
+                tupleList[2] = int(tupleList[2])
+                bed_gene_data[transcript][val] = tuple(tupleList)
             for row in sorted(bed_gene_data[transcript]):
                 num = num + 1
                 if num == 1:
