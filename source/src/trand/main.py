@@ -57,7 +57,8 @@ def parse_args(print_help=False):
             sys.exit(2)
 
     parser = MyParser(
-        description="Perform transcript distance, complexity and transcriptome comparison analyses."
+        description="Perform transcript distance, complexity and "
+                    "transcriptome comparison analyses."
     )
     parser.add_argument(
         dest="infiles",
@@ -137,10 +138,11 @@ def parse_args(print_help=False):
         dest="out_pairs",
         default="both",
         help="""Used with 2 GTF input files. The TranD metrics can be for all transcript pairs in
-        both GTF files or for a subset of transcript pairs using the following options: both - Trand
-        metrics for the minimum pairs in both GTF files, first - TranD metrics for the minimum pairs
-        in the first GTF file, second - TranD metrics for the minimum pairs in the second GTF file
-        all - TranD metrics for all transcript pairs in both GTF files Default: both""",
+        both GTF files or for a subset of transcript pairs using the following options: both -
+        Trand metrics for the minimum pairs in both GTF files, first - TranD metrics for the
+        minimum pairs in the first GTF file, second - TranD metrics for the minimum pairs in the
+        second GTF file all - TranD metrics for all transcript pairs in both GTF files Default:
+        both""",
     )
     parser.add_argument(
         "-1",
@@ -190,7 +192,7 @@ def parse_args(print_help=False):
         "--skip-intermediate",
         dest="skip_interm",
         action="store_true",
-        help="Skip output of intermediate files (such as junction and exon region/fragment files).",
+        help="Skip intermediate file output (junction and exon region/fragment files).",
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
     parser.add_argument("-d", "--debug", action="store_true", help=argparse.SUPPRESS)
@@ -270,19 +272,17 @@ def setup_logging(debug, verbose, logfile):
     logger.debug("Logging level set to : {}", level)
 
 
-def handle_outdir(args):
+def prepare_outdir(args):
     if not args.outdir:
         outdir = Path.cwd()
     else:
         outdir = Path(args.outdir)
-    logger.debug("Output directory: {}", str(outdir))
-    if outdir.exists():
-        if not args.force:
-            exit(
-                "Not overwriting existing output directory without -f|--force. Exiting."
-            )
-    outdir.mkdir(parents=True, exist_ok=True)
-    return str(outdir)
+        logger.debug("Output directory: {}", str(outdir))
+        if outdir.exists():
+            if not args.force:
+                exit("Not overwriting existing output directory without -f|--force. Exiting.")
+        else:
+            outdir.mkdir(parents=True, exist_ok=True)
 
 
 def cli():
@@ -290,6 +290,7 @@ def cli():
     args = parse_args()
     setup_logging(args.debug, args.verbose, args.log_file)
     logger.debug("Args: {}", args)
+    prepare_outdir(args)
     if len(args.infiles) == 1:
         logger.debug("Single file {} analysis", args.ea_mode)
         outfiles = common_outfiles
