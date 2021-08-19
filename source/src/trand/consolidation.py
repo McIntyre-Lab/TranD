@@ -9,10 +9,14 @@ Created on Thu Jun 24 14:38:56 2021
 import pandas as pd
 import numpy as np
 from loguru import logger
-from .main import write_gtf
 from .main import open_output_files
+from .main import write_gtf
+from .main import write_output
+from .event_analysis import prep_bed_for_ea
+from .event_analysis import create_junction_catalog_str
 
 # CONFIGURATION
+jct_df_cols = ['gene_id', 'transcript_id', 'coords']
 consol_key_cols = ['gene_id', 'transcript_id', 'consolidation_transcript_id']
 
 
@@ -274,7 +278,7 @@ def consolidate_junctions(
         )
 
         # Flag transcripts where min start does not match the longest representative start
-         
+
         longest_df["flag_not_min_start"] = np.where(
             longest_df["start"] != longest_df["min_group_start"], 1, 0
         )
@@ -402,7 +406,7 @@ def consolidate_junctions(
     return consol_gene, key_gene
 
 
-def consolidate_transcripts(data, outdir, consol_outfiles, genes):
+def consolidate_transcripts(data, outdir, consol_prefix, consol_outfiles, genes, skip_interm):
     """
     If requested, consolidate junctions in input transcripts.
     """

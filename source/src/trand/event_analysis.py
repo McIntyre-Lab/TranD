@@ -1082,7 +1082,8 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
     # If requested, consolidate transcripts with identical junctions
     #   (remove 5'/3' variation in redundantly spliced transcripts)
     if consolidate:
-        data, genes = CONSOL.consolidate_transcripts(data,  outdir, consol_outfiles, genes)
+        data, genes = CONSOL.consolidate_transcripts(data,  outdir, consol_prefix, consol_outfiles,
+                                                     genes, skip_interm,)
     # Output complexity measures using GTF data
     uniq_ex = COMP.calculate_complexity(outdir, data, skip_plots)
 
