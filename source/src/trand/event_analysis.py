@@ -208,15 +208,18 @@ def write_output(data, out_fhs, fh_name):
 
 def write_gtf(data, out_fhs, fh_name):
     """Write output gtf files."""
-    data['source'] = "TranD"
-    data['feature'] = "exon"
-    data['score'] = "."
-    data['frame'] = "."
-    data['attribute'] = data.apply(lambda x: get_gtf_attribute(x['transcript_id'], x['gene_id']),
-                                   axis=1)
-    data[['seqname', 'source', 'feature', 'start', 'end', 'score', 'strand', 'frame',
-          'attribute']].to_csv(out_fhs[fh_name], sep="\t", mode='a', index=False, header=False,
-                               doublequote=False, quoting=csv.QUOTE_NONE)
+    if len(data) == 0:
+        return
+    else:
+        data['source'] = "TranD"
+        data['feature'] = "exon"
+        data['score'] = "."
+        data['frame'] = "."
+        data['attribute'] = data.apply(lambda x: get_gtf_attribute(x['transcript_id'], x['gene_id']),
+                                       axis=1)
+        data[['seqname', 'source', 'feature', 'start', 'end', 'score', 'strand', 'frame',
+              'attribute']].to_csv(out_fhs[fh_name], sep="\t", mode='a', index=False, header=False,
+                                   doublequote=False, quoting=csv.QUOTE_NONE)
 
 
 def get_gtf_attribute(transcript_id, gene_id):
@@ -1381,8 +1384,8 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
     only_f1_genes = f1_gene_names.difference(f2_gene_names)
     only_f2_genes = f2_gene_names.difference(f1_gene_names)
     odd_genes = only_f1_genes.union(only_f2_genes)
-    f1_odds = in_f1[in_f1['gene_id'].isin(only_f1_genes)]
-    f2_odds = in_f2[in_f2['gene_id'].isin(only_f2_genes)]
+    f1_odds = in_f1[in_f1['gene_id'].isin(only_f1_genes)].copy()
+    f2_odds = in_f2[in_f2['gene_id'].isin(only_f2_genes)].copy()
     if not skip_interm:
         write_gtf(f1_odds, out_fhs, 'gtf1_fh')
         write_gtf(f2_odds, out_fhs, 'gtf2_fh')
