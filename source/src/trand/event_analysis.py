@@ -12,29 +12,21 @@ This program takes a single GTF file for all pairwise transcript comparisons wit
 GTF files for transcript comparisions between genes in both datasets, reads in exonic fragment data,
 and performs event analysis to determine transcript distance measures for the genes and transcripts
 in the data.
-
-Raw gtf data:
-seqname source  feature  start end  score strand frame attributes
-2L      FlyBase 5UTR     7529  7679 .     +      .     gene_symbol "CG11023"; transcript_id "FBtr...
-2L      FlyBase exon     7529  8116 .     +      .     gene_symbol "CG11023"; transcript_id "FBtr...
-
-Exon Fragment Data for Event Analysis:
-seqname start end   strand gene_id      transcript_id
-2L      7529  8116  +      FBgn0031208  FBtr0300689
-2L      8193  9484  +      FBgn0031208  FBtr0300689
-2L      9839  11344 -      FBgn0002121  FBtr0078169
 """
 
 import itertools
-import csv
 import pandas as pd
 from collections import namedtuple
 from dataclasses import dataclass
 from loguru import logger
-from numpy import nan
-from pathlib import Path
 from pybedtools import BedTool
 from multiprocessing import Pool
+
+# Import general trand functions
+from .main import write_output
+from .main import write_gtf
+from .main import open_output_files
+from .main import read_exon_data_from_file
 
 # Import transcript distance functions and variables
 from . import transcript_distance as TD
@@ -56,7 +48,6 @@ jct_df_cols = ['gene_id', 'transcript_id', 'coords']
 er_df_cols = ['gene_id', 'er_id', 'er_chr', 'er_start', 'er_end', 'er_strand', 'er_exon_ids',
               'er_transcript_ids', 'gene_transcript_ids', 'exons_per_er', 'transcripts_per_er',
               'transcripts_per_gene',  'er_ir_flag', 'er_annotation_frequency']
-consol_key_cols = ['gene_id', 'transcript_id', 'consolidation_transcript_id']
 ea_df_cols = ['gene_id', 'transcript_1', 'transcript_2', 'transcript_id', 'ef_id', 'ef_chr',
               'ef_start', 'ef_end', 'ef_strand', 'ef_ir_flag', 'er_id', 'er_chr', 'er_start',
               'er_end', 'er_strand']
@@ -102,75 +93,27 @@ class EF:
     ef_freq: str = ''
 
 
-def open_output_files(outdir, outfiles):
-    """Open all necessary output files and return filehandles"""
-    out_fhs = {}
-    try:
-        for outfile in outfiles:
-            fh = Path(outdir) / outfiles[outfile]
-            open(fh, 'w')
-            out_fhs[outfile] = fh
-    except SystemError as e:
-        logger.error("Cannot open one or more output file for writing: {}", e)
-    return out_fhs
+# TODO refactor module level variables used for first-pass parallelization
+ea_list = []
+jct_list = []
+td_list = []
 
 
-def read_exon_data_from_file(infile):
-    """Create a pandas dataframe with exon records from a gtf file"""
-    all_gtf_columns = ['seqname', 'source', 'feature', 'start', 'end', 'score', 'strand', 'frame',
-                       'attributes', 'comments']
-    drop_columns = ['source', 'feature', 'score', 'frame', 'comments']
-    data = pd.read_csv(infile, sep='\t', comment='#', header=None, low_memory=False)
-    file_cols = data.columns
-    if len(file_cols) < len(all_gtf_columns):
-        gtf_cols = all_gtf_columns[:len(file_cols)]
-    data.columns = gtf_cols
-    drop_cols = [x for x in drop_columns if x in gtf_cols]
-    data['seqname'] = data['seqname'].astype(str)
-    data['start'] = data['start'].astype(int)
-    data['end'] = data['end'].astype(int)
-    logger.debug("Raw data rows: {}", data.shape[0])
-    data = data[data['feature'] == 'exon']
-    data = data.drop(labels=drop_cols, axis=1)
-    data.reset_index(drop=True, inplace=True)
-    for i in data.index:
-        raw_attrs = data.at[i, "attributes"]
-        attr_list = [x.strip() for x in raw_attrs.strip().split(';')]
-        g_t_attrs = [x for x in attr_list if 'transcript_id' in x or 'gene_id' in x]
-        gene_id, transcript_id = nan, nan
-        for item in g_t_attrs:
-            if 'gene_id' in item:
-                gene_id = item.split('gene_id')[1].strip().strip('\"')
-            elif 'transcript_id' in item:
-                transcript_id = item.split('transcript_id')[-1].strip().strip('\"')
-        if not gene_id:
-            logger.error("gene_id not found in '{}'", data[i])
-        if not transcript_id:
-            logger.error("transcript_id not found in '{}'", data[i])
-        # logger.debug("Gene: {}, Transcript: {}", gene_id, transcript_id)
-        data.at[i, "gene_id"] = gene_id
-        data.at[i, "transcript_id"] = transcript_id
-    data = data.drop(labels='attributes', axis=1)
-    logger.debug("Exon data rows: {}", data.shape[0])
-    missing_value_num = data.isnull().sum().sum()
-    if missing_value_num > 0:
-        logger.warning("Total number of missing values: {}", missing_value_num)
-    else:
-        logger.info("No missing values in data")
-    gene_id_missing_value_num = data['gene_id'].isnull().sum()
-    transcript_id_missing_value_num = data['transcript_id'].isnull().sum()
-    if gene_id_missing_value_num > 0:
-        logger.warning("Missing gene_id value number: {}", missing_value_num)
-    if transcript_id_missing_value_num > 0:
-        logger.warning("Missing transcript_id value number: {}", missing_value_num)
-    data['start'] = pd.to_numeric(data['start'], downcast="unsigned")
-    data['end'] = pd.to_numeric(data['end'], downcast="unsigned")
-    # str_columns = ['seqname', 'strand', 'gene_id', 'transcript_id']
-    # for col in str_columns:
-    #     data[col] = data[col].astype('|S')
-    # logger.debug(data.memory_usage(deep=True))
-    # logger.debug("Data types: {}", data.dtypes)
-    return data
+def chunks(lst, n):
+    # Split list into n chunks and return list of lists
+    splitSize = (len(lst)//n) + ((len(lst) % n) > 0)
+    list_of_lists = []
+    for element in range(0, len(lst), splitSize):
+        list_of_lists.append(lst[element:element + splitSize])
+    return list_of_lists
+
+
+def callback_results(results):
+    # Callback function to append result to list of results
+    ea_data_cat, jct_data_cat, td_data_cat = results
+    ea_list.append(ea_data_cat)
+    jct_list.append(jct_data_cat)
+    td_list.append(td_data_cat)
 
 
 def verify_same_reference(tx_names, data):
@@ -199,33 +142,6 @@ def do_td(data):
     # logger.debug("TD on {}", tx_names)
     td_data = ""
     return td_data
-
-
-def write_output(data, out_fhs, fh_name):
-    """Write results of event analysis to output files."""
-    data.to_csv(out_fhs[fh_name], mode='a', header=False, index=False)
-
-
-def write_gtf(data, out_fhs, fh_name):
-    """Write output gtf files."""
-    if len(data) == 0:
-        return
-    else:
-        data.loc[:, 'source'] = "TranD"
-        data.loc[:, 'feature'] = "exon"
-        data.loc[:, 'score'] = "."
-        data.loc[:, 'frame'] = "."
-        data.loc[:, 'attribute'] = data.apply(lambda x: get_gtf_attribute(x['transcript_id'],
-                                              x['gene_id']), axis=1)
-        output_column_names = ['seqname', 'source', 'feature', 'start', 'end', 'score', 'strand',
-                               'frame', 'attribute']
-        data = data.reindex(columns=output_column_names)
-        data.to_csv(out_fhs[fh_name], sep="\t", mode='a', index=False, header=False,
-                    doublequote=False, quoting=csv.QUOTE_NONE)
-
-
-def get_gtf_attribute(transcript_id, gene_id):
-    return f'transcript_id "{transcript_id}"; gene_id "{gene_id}";'
 
 
 def prep_bed_for_ea(data):
@@ -1069,9 +985,6 @@ def ea_analysis(gene_id, tx_data, tx_coords, ir_exons):
             ef_data[ef].ef_freq = 'constitutive'
         else:
             ef_data[ef].ef_freq = 'common'
-    # er_df_cols = ['gene_id', 'er_id', 'er_chr', 'er_start', 'er_end', 'er_strand', 'er_exon_ids',
-    #         'er_transcript_ids', 'gene_transcript_ids', 'exons_per_er', 'transcripts_per_er',
-    #         'transcripts_per_gene',  'er_ir_flag', 'er_annotation_frequency']
     er_out_data = []
     for er in er_data:
         i = er_data[er]
@@ -1083,9 +996,6 @@ def ea_analysis(gene_id, tx_data, tx_coords, ir_exons):
         er_out_data.append([i.gene_id, i.id, i.chrom, i.start, i.end, i.strand, "|".join(i.ex_ids),
                             "|".join(i.tx_ids), "|".join(i.gene_tx_ids), i.ex_num, i.tx_num,
                             i.gene_tx_num, i.ir_flag, i.er_freq])
-    # ef_df_cols = ['gene_id', 'er_id', 'ef_id', 'ef_chr', 'ef_start', 'ef_end', 'ef_strand',
-    #         'ef_exon_ids', 'ef_transcript_ids', 'exons_per_ef', 'transcripts_per_ef',
-    #         'ef_ir_flag', 'ea_annotation_frequence']
     ef_out_data = []
     for ef in ef_data:
         i = ef_data[ef]
@@ -1172,49 +1082,7 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
     # If requested, consolidate transcripts with identical junctions
     #   (remove 5'/3' variation in redundantly spliced transcripts)
     if consolidate:
-        logger.info("Consolidation of transcript with identical junctions.")
-        # Loop over genes
-        consol_data = pd.DataFrame(columns=data.columns)
-        if not skip_interm:
-            consol_fhs = open_output_files(outdir, consol_outfiles)
-            consol_fhs['key_fh'].write_text(",".join(consol_key_cols) + '\n')
-        for gene in genes.groups:
-            # Test for single transcript gene (WBGene00000003)
-            # Test gene for multiple groups with consolidation (WBGene00001574)
-            # Test monoexon gene (WBGene00000214)
-            # Test monoexon with multiexon (WBGene00022161) -> added extra 2 monoexon transcripts
-            # using gene_df =
-            # pd.concat([gene_df,pd.DataFrame([["I",1779855,1781091,'-',"WBGene00022161","new_transcript_1"],["I",1781991,1782900,'-',"WBGene00022161","new_transcript_2"]],
-            # columns=gene_df.columns)],ignore_index=True)
-            pre_consol_jct = []
-            gene_df = data[data['gene_id'] == gene]
-            try:
-                bed_gene_data = prep_bed_for_ea(gene_df)
-            except ValueError as e:
-                logger.error(e)
-                continue
-            transcripts = gene_df.groupby("transcript_id")
-            # Loop over transcripts to get junctions
-            for transcript in transcripts.groups:
-                pre_consol_jct.extend(create_junction_catalog_str(gene, transcript,
-                                                                  bed_gene_data[transcript]))
-            pre_consol_jct_df = pd.DataFrame(pre_consol_jct, columns=jct_df_cols)
-            # Consolidate 5'/3' variation
-            consol_gene, key_gene = CONSOL.consolidate_junctions(bed_gene_data, pre_consol_jct_df,
-                                                                 outdir, skip_interm, consol_prefix)
-            consol_data = pd.concat([consol_data, consol_gene], ignore_index=True)
-            if not skip_interm:
-                write_output(key_gene, consol_fhs, 'key_fh')
-        # Output consolidated GTF
-        if not skip_interm:
-            write_gtf(consol_data, consol_fhs, 'consol_gtf_fh')
-        # Set data variable to new consolidated data
-        data = consol_data.copy()
-        del(consol_data)
-        genes = data.groupby("gene_id")
-        num_tx = data.groupby(["gene_id", "transcript_id"])
-        logger.info("After consolidation: {} genes and {} transcripts", len(genes), len(num_tx))
-
+        data, genes = CONSOL.consolidate_transcripts(data,  outdir, consol_outfiles, genes)
     # Output complexity measures using GTF data
     uniq_ex = COMP.calculate_complexity(outdir, data, skip_plots)
 
@@ -1311,28 +1179,6 @@ def ea_two_files(f1_data, f2_data, gene_id, name1, name2):
         #     #     # DEBUG, exit for now, just write to rejects later
         #     #     # continue
     return ea_df, jct_df, td_df
-
-
-def chunks(lst, n):
-    # Split list into n chunks and return list of lists
-    splitSize = (len(lst)//n) + ((len(lst) % n) > 0)
-    list_of_lists = []
-    for element in range(0, len(lst), splitSize):
-        list_of_lists.append(lst[element:element + splitSize])
-    return list_of_lists
-
-
-ea_list = []
-jct_list = []
-td_list = []
-
-
-def callback_results(results):
-    # Callback function to append result to list of results
-    ea_data_cat, jct_data_cat, td_data_cat = results
-    ea_list.append(ea_data_cat)
-    jct_list.append(jct_data_cat)
-    td_list.append(td_data_cat)
 
 
 def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexity_only, skip_plots,
