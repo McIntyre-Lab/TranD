@@ -14,9 +14,9 @@ from .main import write_gtf
 from .main import write_output
 from .event_analysis import prep_bed_for_ea
 from .event_analysis import create_junction_catalog_str
+from .event_analysis import jct_df_cols
 
 # CONFIGURATION
-jct_df_cols = ['gene_id', 'transcript_id', 'coords']
 consol_key_cols = ['gene_id', 'transcript_id', 'consolidation_transcript_id']
 
 
