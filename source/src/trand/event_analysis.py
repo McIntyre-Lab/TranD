@@ -211,15 +211,17 @@ def write_gtf(data, out_fhs, fh_name):
     if len(data) == 0:
         return
     else:
-        data['source'] = "TranD"
-        data['feature'] = "exon"
-        data['score'] = "."
-        data['frame'] = "."
-        data['attribute'] = data.apply(lambda x: get_gtf_attribute(x['transcript_id'], x['gene_id']),
-                                       axis=1)
-        data[['seqname', 'source', 'feature', 'start', 'end', 'score', 'strand', 'frame',
-              'attribute']].to_csv(out_fhs[fh_name], sep="\t", mode='a', index=False, header=False,
-                                   doublequote=False, quoting=csv.QUOTE_NONE)
+        data.loc[:, 'source'] = "TranD"
+        data.loc[:, 'feature'] = "exon"
+        data.loc[:, 'score'] = "."
+        data.loc[:, 'frame'] = "."
+        data.loc[:, 'attribute'] = data.apply(lambda x: get_gtf_attribute(x['transcript_id'],
+                                              x['gene_id']), axis=1)
+        output_column_names = ['seqname', 'source', 'feature', 'start', 'end', 'score', 'strand',
+                               'frame', 'attribute']
+        data = data.reindex(columns=output_column_names)
+        data.to_csv(out_fhs[fh_name], sep="\t", mode='a', index=False, header=False,
+                    doublequote=False, quoting=csv.QUOTE_NONE)
 
 
 def get_gtf_attribute(transcript_id, gene_id):
@@ -1233,7 +1235,6 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
             out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
             out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
         out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
-
     # Initialize concatenated pairwise transcript distance dataframe
     if ea_mode == "pairwise":
         td_data_cat = pd.DataFrame()
