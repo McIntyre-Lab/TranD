@@ -23,10 +23,11 @@ from pybedtools import BedTool
 from multiprocessing import Pool
 
 # Import general trand functions
-from .main import write_output
-from .main import write_gtf
-from .main import open_output_files
-from .main import read_exon_data_from_file
+from .io import write_output
+from .io import write_gtf
+from .io import open_output_files
+from .io import read_exon_data_from_file
+from .bedtools import prep_bed_for_ea
 
 # Import transcript distance functions and variables
 from . import transcript_distance as TD
@@ -116,20 +117,6 @@ def callback_results(results):
     td_list.append(td_data_cat)
 
 
-def verify_same_reference(tx_names, data):
-    """Verify that exons are on the same contig/chrom"""
-    locs = data['seqname'].unique()
-    if len(locs) > 1:
-        raise ValueError(f"Multiple contig/chromn locations found for {tx_names}, skipping.")
-
-
-def verify_same_strand(tx_names, data):
-    """Verify exons are on the same strand"""
-    strands = data['strand'].unique()
-    if len(strands) > 1:
-        raise ValueError(f"Multiple strands found in {tx_names}, skipping.")
-
-
 def write_td_data(data, out_fhs):
     """Write results of a transcript distance comparison to output files."""
     logger.debug("Writing TD data")
@@ -142,31 +129,6 @@ def do_td(data):
     # logger.debug("TD on {}", tx_names)
     td_data = ""
     return td_data
-
-
-def prep_bed_for_ea(data):
-    """Event analysis"""
-    exons = {}
-    gene_id = data['gene_id'].unique()[0]
-    tx_names = list(data['transcript_id'].unique())
-    try:
-        verify_same_strand(tx_names, data)
-        verify_same_reference(tx_names, data)
-    except ValueError:
-        raise
-    exons = {'gene_id': gene_id}
-    exons['transcript_list'] = tx_names
-    for tx in tx_names:
-        exon_id = 1
-        tx_data = data[data['transcript_id'] == tx]
-        tx_bed = []
-        for index, row in tx_data.iterrows():
-            # Score is optional, use zero to keep the strand data in the next column
-            tx_bed.append((row.seqname, str(int(row.start)-1), str(int(row.end)),
-                           f"{row.transcript_id}_exon_{str(exon_id)}", '0', row.strand))
-            exon_id += 1
-        exons[tx] = tx_bed
-    return exons
 
 
 def format_ea_identical(gene, tx_names, data):

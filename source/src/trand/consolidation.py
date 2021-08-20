@@ -9,15 +9,37 @@ Created on Thu Jun 24 14:38:56 2021
 import pandas as pd
 import numpy as np
 from loguru import logger
-from .main import open_output_files
-from .main import write_gtf
-from .main import write_output
-from .event_analysis import prep_bed_for_ea
-from .event_analysis import create_junction_catalog_str
-from .event_analysis import jct_df_cols
+from .io import open_output_files
+from .io import write_gtf
+from .io import write_output
+from .bedtools import prep_bed_for_ea
 
 # CONFIGURATION
 consol_key_cols = ['gene_id', 'transcript_id', 'consolidation_transcript_id']
+
+# Duplicate to prevent a circular import
+jct_df_cols = ['gene_id', 'transcript_id', 'coords']
+
+
+def create_junction_catalog_str(gene, tx, tx_data):
+    """Create a junction catalog for a transcript"""
+    junctions = []
+    id = 0
+    tx_data_df = pd.DataFrame(tx_data, columns=['chrom', 'start', 'end', 'name',
+                              'score', 'strand'])
+    tx_data_df['start'] = tx_data_df['start'].astype(int)
+    tx_data_df['end'] = tx_data_df['end'].astype(int)
+    tx_data_df = tx_data_df.sort_values('start')
+    for index, e in tx_data_df.iterrows():
+        id += 1
+        if id == 1:
+            left_end = int(e.end) - 10
+            continue
+        right_start = int(e.start + 10)
+        jct_coords = f"{e.chrom}:{left_end}:{right_start}:{e.strand}"
+        junctions.append([gene, tx, jct_coords])
+        left_end = int(e.end) - 10
+    return junctions
 
 
 def consolidate_junctions(
