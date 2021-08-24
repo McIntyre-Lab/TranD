@@ -1,0 +1,195 @@
+<?xml version="1.0" ?>
+<macros>
+    <token name="@WRAPPER_VERSION@">21.6.10</token>
+    <xml name="requirements">
+        <requirements>
+            <requirement type="package" version="@WRAPPER_VERSION@">trand</requirement>
+            <yield/>
+        </requirements>
+    </xml> <xml name="citations">
+        <citations>
+            <citation type="bibtex">@ARTICLE{Kirpich17secimtools,
+            author = {Alexander S. Kirpich, Miguel Ibarra, Oleksandr Moskalenko, Justin M. Fear, Joseph Gerken, Xinlei Mi, Ali Ashrafi, Alison M. Morse, Lauren M. McIntyre},
+            title = {SECIMTools: A suite of Metabolomics Data Analysis Tools},
+            journal = {BMC Bioinformatics},
+            year = {in press}
+            }</citation>
+        </citations>
+    </xml>
+
+    <token name="@TIP_AND_WARNING@">
+    **TIP:** If your data is not TAB delimited, use *Text Manipulation-&gt;Convert*
+
+    **WARNINGS:**
+
+       (1) SampleIDs in the wide data that have no matching name in the design file, as well as sampleIDs in the design file that have no matching name in the data, will be excluded from the analysis.
+       (2) This script automatically removes spaces and special characters from strings.
+       (3) If a compound/feature name starts with a number it will prepend an '_'.
+       (4) Input names are case sensitive and must match exactly (e.g use 'Feature' not 'feature').
+    </token>
+    <token name="@WIDE@">
+    **Wide Formatted Dataset**
+
+    A wide formatted dataset that contains measurements for each sample:
+
+        +---------+---------+---------+---------+-----+
+        | Feature | sample1 | sample2 | sample3 | ... |
+        +=========+=========+=========+=========+=====+
+        | one     | 10      | 20      | 10      | ... |
+        +---------+---------+---------+---------+-----+
+        | two     | 5       | 22      | 30      | ... |
+        +---------+---------+---------+---------+-----+
+        | three   | 30      | 27      | 2       | ... |
+        +---------+---------+---------+---------+-----+
+        | four    | 32      | 17      | 8       | ... |
+        +---------+---------+---------+---------+-----+
+        | ...     | ...     | ...     | ...     | ... |
+        +---------+---------+---------+---------+-----+
+
+    **NOTE:** The 'Feature' column defines the rows within a wide formatted dataset.
+    </token>
+    <token name="@METADATA@">
+    **Design File** 
+
+    A Design file relating samples to various groups/treatment:
+
+        +----------+--------+
+        | sampleID | group  |
+        +==========+========+
+        | sample1  | g1     |
+        +----------+--------+
+        | sample2  | g1     |
+        +----------+--------+
+        | sample3  | g1     |
+        +----------+--------+
+        | sample4  | g2     |
+        +----------+--------+
+        | sample5  | g2     |
+        +----------+--------+
+        | sample6  | g2     |
+        +----------+--------+
+        | ...      | ...    |
+        +----------+--------+
+
+    **NOTE:** You must have a column named **sampleID** and the values in this column must match the column names in the wide dataset.
+    </token>
+    <token name="@DF@">
+    **Design File** 
+
+    A Design file relating samples to various groups/treatment:
+
+        +----------+--------+
+        | sampleID | group  |
+        +==========+========+
+        | sample1  | g1     |
+        +----------+--------+
+        | sample2  | g1     |
+        +----------+--------+
+        | sample3  | g1     |
+        +----------+--------+
+        | sample4  | g2     |
+        +----------+--------+
+        | sample5  | g2     |
+        +----------+--------+
+        | sample6  | g2     |
+        +----------+--------+
+        | ...      | ...    |
+        +----------+--------+
+
+    **NOTE:** You must have a column named **sampleID** and the values in this column must match  
+    the column names in the long dataset.
+    </token>
+    <token name="@LONG@">
+    **Long Dataset:**
+
+    A dataset in long/stacked format that contains measurements for each sample:
+    
+    +----------+----------+------------+
+    | Feature  | sampleID | Peak Height| 
+    +==========+==========+============+
+    |  One     |   1      |      10    |    
+    +----------+----------+------------+
+    |  One     |   2      |      5     |
+    +----------+----------+------------+
+    |  One     |   3      |      30    |
+    +----------+----------+------------+
+    |  Two     |   1      |      20    |
+    +----------+----------+------------+
+    |  Two     |   2      |      22    |     
+    +----------+----------+------------+
+    |  Two     |   3      |      27    |
+    +----------+----------+------------+
+    |  ...     |  ...     |   ...      |
+    +----------+----------+------------+
+
+    </token> 
+    <token name="@FLAGS@">
+    **Flag File:** 
+
+    A wide formated dataset that contains flags for each sample or feature:
+
+        +----------+---------+---------+---------+-----+
+        | Feature  | flag_A  | flag_B  | flag_C  | ... |
+        +==========+=========+=========+=========+=====+
+        | one      | 0       | 0       | 0       | ... |
+        +----------+---------+---------+---------+-----+
+        | two      | 0       | 1       | 1       | ... |
+        +----------+---------+---------+---------+-----+
+        | three    | 0       | 1       | 0       | ... |
+        +----------+---------+---------+---------+-----+
+        | four     | 1       | 0       | 0       | ... |
+        +----------+---------+---------+---------+-----+
+        | ...      | ...     | ...     | ...     | ... |
+        +----------+---------+---------+---------+-----+
+
+    </token>
+    <token name="@MZRTFILE@">
+    **M/Z RT File:** 
+
+    A wide formated dataset that contains M/Z and RT measurements for each sample:
+
+        +----------+--------+----------------+
+        | sampleID | M/Z    | Retention Time |
+        +==========+========+================+
+        | sample1  | 0.1556 |  0.253618769   |
+        +----------+--------+----------------+
+        | sample2  | 0.1675 |  0.327658519   |
+        +----------+--------+----------------+
+        | sample3  | 0.1341 |  0.156587769   |
+        +----------+--------+----------------+
+        | sample4  | 0.2341 |  0.153658165   |
+        +----------+--------+----------------+
+        | sample5  | 0.4557 |  0.315765787   |
+        +----------+--------+----------------+
+        | sample6  | 0.1879 |  0.253655765   |
+        +----------+--------+----------------+
+        | ...      | ...    |  ...           |
+        +----------+--------+----------------+
+
+    </token>
+    <token name="@GROUP_OPTIONAL@">
+    **Group/Treatment [Optional]**
+
+        - Name of the column in your Design File that contains group classifications.
+    </token>
+    <token name="@GROUP@">
+    **Group/Treatment**
+
+        - Name of the column in your Design File that contains group classifications.
+    </token>
+    <token name="@UNIQID@">
+    **Unique Feature ID**
+
+        - Name of the column in your Wide Dataset that has unique Feature IDs.
+    </token>
+    <token name="@RUNORDER@">
+    **Run Order ID**
+
+        - The column name in your Design file that contains the order samples were run.
+    </token>
+    <token name="@RUNORDER_OPTIONAL@">
+    **Run Order ID [Optional]**
+
+        - The column name in your Design file that contains the order samples were run.
+    </token>
+</macros>
