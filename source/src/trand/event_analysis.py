@@ -1131,7 +1131,7 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
     # Output additional intermediate files for gene mode
     if ea_mode == 'gene' and not skip_interm:
         write_output(ir_data_cat, out_fhs, 'ir_fh')
-        write_output(ue_data_cat, out_fhs, 'ue_fh')
+        write_output(uniq_ex, out_fhs, 'ue_fh')
     if not skip_plots:
         if ea_mode == 'pairwise':
             P1GP.plot_one_gtf_pairwise(outdir, td_data_cat)
