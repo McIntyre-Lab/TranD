@@ -33,16 +33,27 @@ common_outfiles = {
     "jc_fh": "junction_catalog.csv",
     "er_fh": "event_analysis_er.csv",
     "ef_fh": "event_analysis_ef.csv",
+    "ir_fh": "ir_transcripts.csv",
+    "ue_fh": "uniq_exons_per_gene.csv",
 }
-pairwise_outfiles = {"td_fh": "pairwise_transcript_distance.csv"}
-gene_outfiles = {"er_fh": "event_analysis_er.csv", "ef_fh": "event_analysis_ef.csv"}
+pairwise_outfiles = {
+    "td_fh": "pairwise_transcript_distance.csv",
+}
+gene_outfiles = {
+    "er_fh": "event_analysis_er.csv",
+    "ef_fh": "event_analysis_ef.csv",
+    "ir_fh": "ir_transcripts.csv",
+    "ue_fh": "uniq_exons_per_gene.csv",
+}
 two_gtfs_outfiles = {
     "gtf1_fh": "gtf1_only.gtf",
     "gtf2_fh": "gtf2_only.gtf",
     "md_fh": "minimum_pairwise_transcript_distance.csv",
 }
-consol_outfiles = {'key_fh': 'transcript_id_2_consolidation_id.csv', 'consol_gtf_fh':
-                   'consolidated_transcriptome.gtf'}
+consol_outfiles = {
+    "key_fh": "transcript_id_2_consolidation_id.csv",
+    "consol_gtf_fh": "consolidated_transcriptome.gtf",
+}
 
 
 def parse_args(print_help=False):

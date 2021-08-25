@@ -1082,6 +1082,102 @@ def plot_complexity_violin(geneDF, transcriptDF, outdir, legendOut):
         )
         end_rtf(outFile)
 
+def plot_gene_prop_nt_variablility(ef_data, legendOut, multitranscript=False):
+    """
+    Plot distribution of proportion of nucleotide variability across all genes or
+    only multitranscript genes
+    """
+    # Get lengths of exon fragments
+    ef_data['num_nt_varying'] = np.where(
+            ef_data['ea_annotation_frequency']!="constitutive",
+            ef_data['ef_end'] - ef_data['ef_start'],
+            0,
+    )
+    ef_data['num_nt_total'] = ef_data['ef_end'] - ef_data['ef_start']
+    # For each gene, get the number of varying nucleotides (not constitutive)
+    ef_gene_data = ef_data.groupby('gene_id')[
+            [
+                    'num_nt_varying',
+                    'num_nt_total'
+            ]
+    ].sum().reset_index()
+    # Get propotion of varying nucleotides
+    ef_gene_data['prop_varying_nt'] = (
+            ef_gene_data['num_nt_varying'] / ef_gene_data['num_nt_total']
+    )
+    
+    # Check if outputting all genes or only multitranscript genes
+    if multitranscript:
+        ef_data_split = split_column_by_sep(
+                ef_data,
+                col_name="ef_transcript_ids",
+                sep="|",
+        )
+        xcrpt_per_gene = ef_data_split.groupby('gene_id')[
+                'ef_transcript_ids'
+        ].nunique().reset_index()
+        multi_xcrpt_gene = xcrpt_per_gene[
+                xcrpt_per_gene['ef_transcript_ids']>1
+        ]
+        ef_gene_data = ef_gene_data[
+                ef_gene_data['gene_id'].isin(
+                        multi_xcrpt_gene['gene_id']
+                )
+        ]
+        legendText = (
+                "Distribution of the proportion of variable "
+                "nucleotides across multi-transcript genes (n = {}).".format(
+                        len(ef_gene_data))
+        )
+    else:
+        legendText = (
+                "Distribution of the proportion of variable "
+                "nucleotides across all genes (n = {}). "
+                "Single transcript genes are assigned a proportion of 1.".format(
+                        len(ef_gene_data))
+        )
+    # Plot density
+    sns.distplot(
+            ef_gene_data['prop_varying_nt'],
+            hist=False,
+    )
+    plt.xlim(0,1)
+    plt.ylabel("Density")
+    plt.xlabel("Proportion of Variable Nucleotides")
+    plt.tight_layout()
+    with open(legendOut, "w") as outFile:
+        start_rtf(outFile)
+        outFile.write(
+            r"\b Figure. Transcriptome complexity \b0 \line {} Transcriptome analyses performed by TranD [1].".format(
+                legendText
+            )
+        )
+        outFile.write(
+            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github."
+        )
+        end_rtf(outFile)
+
+
+
+def split_column_by_sep(df, col_name=None, sep=None, sort_list=None):
+    """
+    Split variable by some character like '|' or ',' and
+    keep all other values the same
+    """
+    if col_name == None:
+        col_name = 'transcript_id'
+    if sep == None:
+        sep = "|"
+    splitList = df[col_name].str.split(sep).apply(pd.Series, 1).stack()
+    splitList.index = splitList.index.droplevel(-1)
+    tempDF = df.copy()
+    del(tempDF[col_name])
+    splitDF = tempDF.join(splitList.rename(col_name))
+    if sort_list != None:
+        splitDF = splitDF.sort_values(by=sort_list)
+    del(tempDF, splitList)
+    return splitDF
+
 
 def get_value_count(df, col, value):
     """

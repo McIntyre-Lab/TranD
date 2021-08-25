@@ -4,14 +4,29 @@
 # Copyright © 2021 Oleksandr Moskalenko <om@rc.ufl.edu>
 # Distributed under terms of the MIT license.
 """
-Event Analysis 2.0 is an evolution of the concepts in the original EA from
-https://github.com/McIntyre-Lab/events, but simplified for the task of comparing data produced by
-sequence alignment and annotation tools.
+TranD is a collection of tools to facilitate metrics of structural variation
+for whole genome transcript annotation files (GTF) that pinpoint structural
+variation to the nucleotide level.
 
-This program takes a single GTF file for all pairwise transcript comparisons within each gene or two
-GTF files for transcript comparisions between genes in both datasets, reads in exonic fragment data,
-and performs event analysis to determine transcript distance measures for the genes and transcripts
-in the data.
+TranD (Transcript Distances) can be used to calculate metrics of structural
+variation within and between annotation files (GTF). Structural variation
+reflects organismal complexity and three summary metrics for genome level
+complexity are calculated for every gene in a GTF file: 1) the number of
+transcripts per gene; 2) the number of exons per transcript; and 3) the number
+of unique exons (exons with unique genomic coordinates) per gene. From each
+these metrics distributions a summary statistics such as mean, median,
+variance, inter-quartile range are calculated. With 1GTF file input, gene mode
+can be used to generates these metrics for each gene and summary statistics and
+distributions across genes. Distributions are visualized in a series of plots.
+For 1 GTF and 2GTF a pairwise mode calculates distance metrics between 2
+transcripts to the nucleotide. In 1 GTF this is all possible pairs within the
+gene and in 2 GTF model this is all possible pairs among GTF files. The
+distribution of these metrics across genes are visualized and summary
+statistics for structural variations between pairs are calculated and reported.
+Visualizations of the distributions of the frequency of intron retention,
+alternative exon usage, donor/acceptor variation and 5', 3' variation in UTR
+regions are provided as well as tabular formatted nucleotide level distances
+for both 1GTF and 2 GTF.
 """
 
 import itertools
@@ -36,7 +51,7 @@ from . import minimum_distance as MD
 # Import plotting functions
 from . import plot_two_gtf_pairwise as P2GP
 from . import plot_one_gtf_pairwise as P1GP
-from . import plot_transcriptome as P1GG
+from . import plot_one_gtf_gene as P1GG
 
 # Import complexity calculation function
 from . import calculate_complexity as COMP
@@ -55,7 +70,8 @@ ea_df_cols = ['gene_id', 'transcript_1', 'transcript_2', 'transcript_id', 'ef_id
 ef_df_cols = ['gene_id', 'er_id', 'ef_id', 'ef_chr', 'ef_start', 'ef_end', 'ef_strand',
               'ef_exon_ids', 'ef_transcript_ids', 'exons_per_ef', 'transcripts_per_ef',
               'ef_ir_flag', 'ea_annotation_frequency']
-
+ir_df_cols = ['er_transcript_ids']
+ue_df_cols = ['gene_id', 'num_uniq_exon']
 
 # Data structures for ERs and EFs. Use a mutable dataclass, so we could add transcript names and
 # counts during EA
@@ -1029,12 +1045,16 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
         del(outfiles['er_fh'])
         del(outfiles['ef_fh'])
         del(outfiles['jc_fh'])
+        del(outfiles['ir_fh'])
+        del(outfiles['ue_fh'])
     else:
         if ea_mode == 'gene':
             del(outfiles['ea_fh'])
         else:
             del(outfiles['er_fh'])
             del(outfiles['ef_fh'])
+            del(outfiles['ir_fh'])
+            del(outfiles['ue_fh'])
 
     data = read_exon_data_from_file(infile)
     genes = data.groupby("gene_id")
@@ -1062,6 +1082,8 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
         if ea_mode == 'gene':
             out_fhs['er_fh'].write_text(",".join(er_df_cols) + '\n')
             out_fhs['ef_fh'].write_text(",".join(ef_df_cols) + '\n')
+            out_fhs['ir_fh'].write_text(",".join(ir_df_cols) + '\n')
+            out_fhs['ue_fh'].write_text(",".join(ue_df_cols) + '\n')
         else:
             out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
             out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
@@ -1106,11 +1128,15 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
                 write_output(ea_data, out_fhs, 'ea_fh')
                 write_output(jct_data, out_fhs, 'jc_fh')
                 write_output(td_data, out_fhs, 'td_fh')
+    # Output additional intermediate files for gene mode
+    if ea_mode == 'gene' and not skip_interm:
+        write_output(ir_data_cat, out_fhs, 'ir_fh')
+        write_output(ue_data_cat, out_fhs, 'ue_fh')
     if not skip_plots:
         if ea_mode == 'pairwise':
             P1GP.plot_one_gtf_pairwise(outdir, td_data_cat)
         elif ea_mode == 'gene':
-            P1GG.plot_transcriptome(er_data_cat, ef_data_cat, ir_data_cat, uniq_ex, outdir)
+            P1GG.plot_one_gtf_gene(er_data_cat, ef_data_cat, ir_data_cat, uniq_ex, outdir)
 
 
 def ea_two_files(f1_data, f2_data, gene_id, name1, name2):
@@ -1157,6 +1183,8 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
     # Do not make gene mode files (remove from outfiles)
     del(outfiles['er_fh'])
     del(outfiles['ef_fh'])
+    del(outfiles['ir_fh'])
+    del(outfiles['ue_fh'])
 
     infile_1 = infiles[0]
     infile_2 = infiles[1]

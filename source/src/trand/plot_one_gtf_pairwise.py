@@ -20,7 +20,7 @@ def plot_one_gtf_pairwise(outdir, td_data):
             alternative splicing (AS) and the distribution of the average
             nt differences between transcript pairs within each gene
     """
-# ##### Plot 1 ######
+# Plot 1
     # Upset plot for the number of genes with each kind of alternative splicing (AS)
     #   and the distribution of the average nt differences between transcript pairs
     #   within each gene
