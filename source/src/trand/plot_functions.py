@@ -816,6 +816,8 @@ def plot_gene_avg_nt_diff_pairs(md_data, name1, name2, legendOut, zoomMean=False
             "transcript_in_gene",
             "recip_min_pair_in_gene",
             "flag_recip_min_match",
+            "flag_min_match_"+name1,
+            "flag_min_match_"+name2,
             "num_nt_diff",
             "prop_nt_diff",
         ]
@@ -827,7 +829,10 @@ def plot_gene_avg_nt_diff_pairs(md_data, name1, name2, legendOut, zoomMean=False
         minPairNT["flag_recip_min_match"] == 1, minPairNT["num_nt_diff"], 0
     )
     minPairNT["num_nt_diff_extra"] = np.where(
-        minPairNT["flag_recip_min_match"] == 0, minPairNT["num_nt_diff"], 0
+        (minPairNT["flag_recip_min_match"] == 0)&
+        (minPairNT["flag_min_match_"+name1] +
+             minPairNT["flag_min_match_"+name2]==1),
+        minPairNT["num_nt_diff"], 0
     )
     minPairNTGene = (
         minPairNT.groupby("gene_id")
