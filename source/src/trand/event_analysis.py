@@ -403,12 +403,12 @@ def single_transcript_ea(gene_id, tx_name, tx_data):
     return er_out_data, ef_out_data
 
 
-def do_ea_pair(tx_pair_data):
+def do_ea_pair(tx_data):
     """
     Event Analysis on a pair of transcripts
     """
     try:
-        data = prep_bed_for_ea(tx_pair_data)
+        data = prep_bed_for_ea(tx_data)
     except ValueError:
         raise
     # logger.debug("Gene data:\n{}".format(data))
