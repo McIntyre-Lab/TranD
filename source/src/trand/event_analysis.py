@@ -446,13 +446,8 @@ def do_ea_pair(tx_data):
         tx1_max = tx1_bed_df['end'].max()
         tx2_max = tx2_bed_df['end'].max()
         # Check for non-overlapping mono-exon transcript pairs
-        if tx1_min < tx2_min and tx1_max <= tx2_min:
-            # T1 completely upstream of T2
-            tx1_bed = BedTool(tx1_bed_str).saveas()
-            tx2_bed = BedTool(tx2_bed_str).saveas()
-            ea_data = er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
-        elif tx2_min < tx1_min and tx2_max <= tx1_min:
-            # T2 completely upstream of T1
+        # when T1 is completely upstream of T2 or vice versa
+        if (tx1_max <= tx2_min) or (tx2_max <= tx1_min):
             tx1_bed = BedTool(tx1_bed_str).saveas()
             tx2_bed = BedTool(tx2_bed_str).saveas()
             ea_data = er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
