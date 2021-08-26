@@ -7,6 +7,7 @@ Created on Sat Jun 12 16:13:11 2021
 """
 
 import matplotlib.pyplot as plt
+from loguru import logger
 
 # Import plot functions
 from . import plot_functions as PF
@@ -31,9 +32,13 @@ def plot_one_gtf_gene(er_data, ef_data, ir_data, uniqex_data, outdir):
 
 # Plot 2
     # Distribution of proportion of nucleotide variability across all genes
-    PF.plot_gene_prop_nt_variablility(ef_data,"{}/all_gene_prop_nt_variablility.rtf".format(outdir))
-    plt.savefig("{}/all_gene_prop_nt_variablility.png".format(outdir), dpi=600, format="png")
-    plt.clf()
+    try:
+        PF.plot_gene_prop_nt_variablility(ef_data,"{}/all_gene_prop_nt_variablility.rtf".format(outdir))
+        plt.savefig("{}/all_gene_prop_nt_variablility.png".format(outdir), dpi=600, format="png")
+        plt.clf()
+    except ValueError as e:
+        logger.error("Not enough data to plot nt variability {}".format(e))
+        return
 
 # Plot 3
     # Distribution of proportion of nucleotide variability across multi-transcript
