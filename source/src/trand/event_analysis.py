@@ -60,6 +60,7 @@ from . import calculate_complexity as COMP
 from . import consolidation as CONSOL
 
 # CONFIGURATION
+# Output columns
 jct_df_cols = ['gene_id', 'transcript_id', 'coords']
 er_df_cols = ['gene_id', 'er_id', 'er_chr', 'er_start', 'er_end', 'er_strand', 'er_exon_ids',
               'er_transcript_ids', 'gene_transcript_ids', 'exons_per_er', 'transcripts_per_er',
@@ -72,6 +73,11 @@ ef_df_cols = ['gene_id', 'er_id', 'ef_id', 'ef_chr', 'ef_start', 'ef_end', 'ef_s
               'ef_ir_flag', 'ea_annotation_frequency']
 ir_df_cols = ['er_transcript_ids']
 ue_df_cols = ['gene_id', 'num_uniq_exon']
+# Parallelization
+ea_list = []
+jct_list = []
+td_list = []
+
 
 # Data structures for ERs and EFs. Use a mutable dataclass, so we could add transcript names and
 # counts during EA
@@ -108,12 +114,6 @@ class EF:
     tx_num: int = 0
     ir_flag: int = 0
     ef_freq: str = ''
-
-
-# TODO refactor module level variables used for first-pass parallelization
-ea_list = []
-jct_list = []
-td_list = []
 
 
 def chunks(lst, n):
