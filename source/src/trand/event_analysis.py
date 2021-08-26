@@ -215,7 +215,7 @@ def get_intron_retention_efs(ers_bed, efs_bed, common_efs):
     return ir_efs
 
 
-def remove_ir_transcripts(tx_data, introns):
+def remove_ir_transcripts(tx_data, introns, tx_names, tx_coords):
     """Remove transcripts that contain Intron Retention events i.e. an
     intron is encompassed by an exon
     """
@@ -242,7 +242,12 @@ def remove_ir_transcripts(tx_data, introns):
                         continue
     for ir_tx in to_remove:
         del tx_data[ir_tx]
-    return tx_data
+    old_tx_names = tx_names
+    tx_names = tx_data.keys()
+    tx_coords_delete = [k for k in old_tx_names if k not in tx_names]
+    for k in tx_coords_delete:
+        del tx_coords[k]
+    return tx_data, tx_names, tx_coords
 
 
 def list_ir_exon_transcript(tx_data, introns):
@@ -315,12 +320,8 @@ def do_ea_gene(tx_data, keep_ir):
         intron_data.sort(key=lambda x: x[0])
         # Removal of IR containing transcripts
         if not keep_ir:
-            tx_data = remove_ir_transcripts(tx_data, intron_data)
-            old_tx_names = tx_names
-            tx_names = tx_data.keys()
-            tx_coords_delete = [k for k in old_tx_names if k not in tx_names]
-            for k in tx_coords_delete:
-                del tx_coords[k]
+            tx_data, tx_names, tx_coords = remove_ir_transcripts(tx_data, intron_data, tx_names,
+                                                                 tx_coords)
             ir_exons = []
             ir_transcripts = []
         else:
