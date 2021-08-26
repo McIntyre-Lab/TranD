@@ -748,37 +748,12 @@ def ea_analysis(gene_id, tx_data, tx_coords, ir_exons):
     """
     Generate ERs (Exonic Regions) and EFs (Exonic Fragments) and analyze events in transcripts.
     Generalize to do both full-gene and transcript pairs to replace er_ea_analysis.
-
-    Required outputs:
-    gene_id
-    gene_transcript_ids
-    transcripts_per_gene
-    er_id
-    er_chr
-    er_start
-    er_end
-    er_strand
-    er_flag_ir ( zero if IRs were removed)
-    exons_per_er
-    er_exon_ids = Piped ("|") list of exon IDs that are contained within the exon region
-    transcripts_per_er
-    er_transcript_ids = Piped ("|") list of transcript IDs the exon region is present in
-    er_annotation_frequency = “unique”, “common”, “constitutive” (one, many, all) per txs
-    ef_id
-    ef_chr
-    ef_start
-    ef_end
-    ef_strand
-    ef_flag_ir (zero if IRs were removed)
-    ef_exon_ids
-    exons_per_ef
-    transcripts_per_ef
-    ef_transcript_ids = Piped ("|") list of transcript IDs the exon fragment is present in
-    ef_annotation_frequency = “unique”, “common”, “constitutive” (one, many, all) per txs
     """
     # Use the junction catalog and transcripts start/end to check for identical transcripts
     logger.debug("Performing EA analysis for {} gene", gene_id)
     logger.debug("TX Names: {}", list(tx_data.keys()))
+    logger.debug("EA Analysis raw data: TX Data: {}, TX Coords: {}, "
+                 "IR Exons: {}".format(tx_data, tx_coords, ir_exons))
     # logger.debug("TX Coords: {}", tx_coords)
     gene_transcript_ids = list(tx_data.keys())
     total_number_of_transcripts = len(gene_transcript_ids)
