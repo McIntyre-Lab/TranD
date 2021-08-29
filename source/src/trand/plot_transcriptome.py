@@ -214,7 +214,7 @@ def extract_genes_from_bins(geneList, data, results, types):
     results.append(each)
     
 
-def visualize_combined(list_main, list_e, list_eu, df_ratio_IR, f_donor_ratio, df_ratio_e, df_ratio_f_lensum, out, kbins=10):
+def visualize_combined(list_main, list_e, list_eu, df_ratio_IR, f_donor_ratio, df_ratio_e, df_ratio_f_lensum, out, kbins=4):
     dat = list_main
     dat2 = list_e
     dat3 = list_eu
@@ -240,11 +240,11 @@ def visualize_combined(list_main, list_e, list_eu, df_ratio_IR, f_donor_ratio, d
              'weight' : 'normal',
              'size'   : 8,
     }
-    if max(dat) > 18:
+    if max(dat) > 16:
         lastbin = max(dat)
     else:
-        lastbin = 19
-    bins = [1, 2, 3, 4, 6, 8, 10, 12, 14, 16, 18, lastbin]
+        lastbin = 17
+    bins = [1, 2, 4, 8, 16, lastbin]
 
     ticklinewidth = 0.5
     colors = sns.color_palette("hls", kbins+1)
