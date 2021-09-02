@@ -133,21 +133,6 @@ def callback_results(results):
     td_list.append(td_data_cat)
 
 
-def write_td_data(data, out_fhs):
-    """Write results of a transcript distance comparison to output files."""
-    logger.debug("Writing TD data")
-
-
-def format_ea_identical(gene, tx_names, data):
-    """Format exons as EFs for identical transcripts"""
-    # Start ef_id numbering from 1
-    # ef_id = 1
-    for feature in data:
-        pass
-    output = data
-    return(output)
-
-
 def create_junction_catalog(gene, tx, tx_data):
     """Create a junction catalog for a transcript"""
     junctions = []
@@ -986,7 +971,7 @@ def ea_pairwise(data):
 
 def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_only, skip_plots,
                         skip_interm, consolidate, consol_prefix, consol_outfiles):
-    """Compare all transcript pairs in a single GTF file."""
+    """Transcript event analysis (TranD) on a single GTF file."""
     logger.info("Input file: {}", infile)
     if skip_interm:
         del(outfiles['ea_fh'])
@@ -1043,11 +1028,14 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
         er_data_cat = pd.DataFrame(columns=er_df_cols)
         ef_data_cat = pd.DataFrame(columns=ef_df_cols)
         ir_data_cat = pd.DataFrame(columns=['er_transcript_ids'])
+    # Event analysis start
     for gene in genes.groups:
         gene_df = data[data['gene_id'] == gene]
         transcripts = gene_df.groupby("transcript_id")
         transcript_groups = transcripts.groups
         number_of_transcripts = len(transcript_groups)
+        # Event analysis type
+        # Full Gene EA
         if ea_mode == 'gene':
             try:
                 er_data, ef_data, jct_data, ir_transcripts = do_ea_gene(gene_df, keep_ir=keep_ir)
@@ -1066,6 +1054,7 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
                 logger.error(e)
                 continue
         else:
+            # Pairwise EA
             if number_of_transcripts == 1:
                 logger.info("Gene {} has a single transcript. Skipping", gene)
                 continue
