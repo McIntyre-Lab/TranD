@@ -1,0 +1,46 @@
+TranD Program Logic:
+
+CLI:
+* Command-line arguments
+* Choice between single or two gtf files
+  - Setup appropriate output files
+  -> event_analysis.process_single_file
+or
+  -> event_analysis.process_two_files
+
+EA:
+* process_single_file:
+  ea_mode: gene | pairwise
+  * Create a dataframe grouped by gene
+  -> gene:
+    - consolidate if requested
+    - complexity_only and quit if requested
+    - do_ea_gene; concatenate dataframe, return
+        -> ea_analysis(gene, data, coords, ir_exons)
+  -> pairwise:
+    - ea_pairwise; concatenate data, return
+
+* ea_pairwise:
+  * group dataframe by transcript_id
+  * create a dataframe with transcript data
+  * Calculate all combinations of transcripts
+  * do_ea_pair for each transcript pair combination
+
+* process_two_files:
+  * calculate_complexity.calculate_complexity for each file and return if requested
+  * calculate which genes are common between two files, write 'odds' to files for later review.
+  * create the gene > transcript data maps for each file as in single file processing
+  * loop_over_genes with the two lists; concatenate; return [ea_data_cat, jct_data_cat, td_data_cat]
+  -> loop_over_genes:
+    - ea_pairwise_two_files; concatenate data; return ea_df, jct_df, td_df
+        - do_ea_pair for each transcript pair combination
+          -> er_ea_analysis(tx1, tx2, tx1_name, tx2_name, gene_id)
+
+
+er_ea_analysis is the first pass bedtools based analysis
+
+ea_analysis is the second pass interval based analysis
+
+TODO:
+* Refactor er_ea_analysis to work as ea_analysis or unify them to remove excessive bed file
+  generation by bedtools.
