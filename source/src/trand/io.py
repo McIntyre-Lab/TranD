@@ -96,7 +96,6 @@ def read_exon_data_from_file(infile):
     data['seqname'] = data['seqname'].astype(str)
     data['start'] = data['start'].astype(int)
     data['end'] = data['end'].astype(int)
-    logger.debug("Raw data rows: {}", data.shape[0])
     data = data[data['feature'] == 'exon']
     data = data.drop(labels=drop_cols, axis=1)
     data.reset_index(drop=True, inplace=True)
