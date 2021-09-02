@@ -138,15 +138,6 @@ def write_td_data(data, out_fhs):
     logger.debug("Writing TD data")
 
 
-def do_td(data):
-    """Perform Transcript Distance analysis on a pair of transcripts"""
-    raise NotImplementedError
-    # tx_names = data['transcript_id'].unique()
-    # logger.debug("TD on {}", tx_names)
-    td_data = ""
-    return td_data
-
-
 def format_ea_identical(gene, tx_names, data):
     """Format exons as EFs for identical transcripts"""
     # Start ef_id numbering from 1
