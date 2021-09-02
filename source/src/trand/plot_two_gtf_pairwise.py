@@ -35,17 +35,21 @@ def plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1, name2):
             of transcripts with each kind of alternative splicing (AS)
             and the distribution of nt differences between the pairs plotted
 
-        6) Upset plot for number of genes with each kind of AS when comparing the
+        6) For all extra minimum pair transcripts: Upset plot for the number
+            of transcripts with each kind of alternative splicing (AS)
+            and the distribution of nt differences between the pairs plotted
+            
+        7) Upset plot for number of genes with each kind of AS when comparing the
             reciprocally min match pairs of the two datasets with added box plots
             of the number of min match pairs present in the gene, the number of
             transcripts in each dataset, the average number of nt different,
             and the average proportion of nt different
 
-        7) Plot average number of nt different in recip. min match pairs against
+        8) Plot average number of nt different in recip. min match pairs against
             avg number of nt different in min pairs that are extra
             (either in the greater sets of in set that do not match)
 
-        8) Same as plot (7) with zoom in axises to the mean value of non-zero
+        9) Same as plot (7) with zoom in axises to the mean value of non-zero
             nucleotide differences (max of the two means from recip. min pairs and extras)
     """
 # Plot 1
@@ -89,23 +93,34 @@ def plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1, name2):
     # For all reciprocal minimum pair transcripts:
     # Upset plot for the number of transcripts with each kind of AS and the distribution
     #   of nt differences between the pairs plotted above
-    PF.plot_recip_min_pair_AS_upset_nt_box(md_data, name1, name2,
-                                           "{}/recip_min_pair_AS_upset_nt_box.rtf".format(outdir))
+    PF.plot_min_pair_AS_upset_nt_box(md_data, name1, name2,
+                                           "{}/recip_min_pair_AS_upset_nt_box.rtf".format(outdir),
+                                           reciprocal=True)
     plt.savefig("{}/recip_min_pair_AS_upset_nt_box.png".format(outdir), dpi=600, format="png")
     plt.clf()
 
 # Plot 6
+    # For all extra minimum pair transcripts:
+    # Upset plot for the number of transcripts with each kind of AS and the distribution
+    #   of nt differences between the pairs plotted above
+    PF.plot_min_pair_AS_upset_nt_box(md_data, name1, name2,
+                                           "{}/extra_min_pair_AS_upset_nt_box.rtf".format(outdir),
+                                           reciprocal=False)
+    plt.savefig("{}/extra_min_pair_AS_upset_nt_box.png".format(outdir), dpi=600, format="png")
+    plt.clf()
+
+# Plot 7
     # Upset plot for number of genes with each kind of AS when comparing the
     #   reciprocally min match pairs of the two datasets with added box plots
     #   of the number of min match pairs present in the gene,
     #   the number of transcripts in each dataset, the avg number of nt different,
     #   and the avg proportion of nt different
-    PF.plot_gene_recip_min_AS_upset_nt_box(md_data, name1, name2,
-                                           "{}/xcrpt_gene_AS_upset_nt_box.rtf".format(outdir))
-    plt.savefig("{}/xcrpt_gene_AS_upset_nt_box.png".format(outdir), dpi=600, format="png")
+    PF.plot_gene_recip_min_AS_upset(md_data, name1, name2,
+                                           "{}/recip_min_gene_AS_upset.rtf".format(outdir))
+    plt.savefig("{}/recip_min_gene_AS_upset.png".format(outdir), dpi=600, format="png")
     plt.clf()
 
-# Plot 7
+# Plot 8
     # Plot average number of nt different in recip. min match pairs against
     #   avg number of nt different in min pairs that are extra
     #   (either in the greater sets of in set that do not match)
@@ -113,7 +128,7 @@ def plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1, name2):
     plt.savefig("{}/gene_avg_nt_diff_pairs.png".format(outdir), dpi=600, format="png")
     plt.clf()
 
-# Plot 8
+# Plot 9
     # Zoom in axises to the mean value of non-zero nt differences (max of the two means from recip. min pairs and extras)
     PF.plot_gene_avg_nt_diff_pairs(md_data, name1, name2,
                                    "{}/gene_avg_nt_diff_pairs_zoomIn.rtf".format(outdir),

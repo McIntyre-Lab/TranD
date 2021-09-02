@@ -214,7 +214,7 @@ def extract_genes_from_bins(geneList, data, results, types):
     results.append(each)
     
 
-def visualize_combined(list_main, list_e, list_eu, df_ratio_IR, f_donor_ratio, df_ratio_e, df_ratio_f_lensum, out, kbins=10):
+def visualize_combined(list_main, list_e, list_eu, df_ratio_IR, f_donor_ratio, df_ratio_e, df_ratio_f_lensum, out, kbins=4):
     dat = list_main
     dat2 = list_e
     dat3 = list_eu
@@ -227,7 +227,7 @@ def visualize_combined(list_main, list_e, list_eu, df_ratio_IR, f_donor_ratio, d
     ylabel5 = 'Proportion of exon regions\nwith alt. don/acc'
     ylabel6 = 'Proportion of variable\nexon region'
     ylabel7 = 'Proportion of variable \n nucleotides'
-    titile = 'Distribution of number of transcripts per gene'
+    titile = ''
     #lowColor = (0, 255, 0)
     lowColor = (224, 224, 224)
     highColor = (255, 0, 0)
@@ -240,11 +240,11 @@ def visualize_combined(list_main, list_e, list_eu, df_ratio_IR, f_donor_ratio, d
              'weight' : 'normal',
              'size'   : 8,
     }
-    if max(dat) > 18:
+    if max(dat) > 16:
         lastbin = max(dat)
     else:
-        lastbin = 19
-    bins = [1, 2, 3, 4, 6, 8, 10, 12, 14, 16, 18, lastbin]
+        lastbin = 17
+    bins = [1, 2, 4, 8, 16, lastbin]
 
     ticklinewidth = 0.5
     colors = sns.color_palette("hls", kbins+1)
@@ -253,7 +253,7 @@ def visualize_combined(list_main, list_e, list_eu, df_ratio_IR, f_donor_ratio, d
     
     sns.set_style("whitegrid")
     fig = plt.figure(figsize=(13,10), facecolor='white',edgecolor='black')
-    grid = plt.GridSpec(9,1 , wspace=0, hspace=0.15)
+    grid = plt.GridSpec(9, 1, wspace=0, hspace=0.15)
     y_coords = []
     x_coords = []
     ###############################
@@ -271,11 +271,12 @@ def visualize_combined(list_main, list_e, list_eu, df_ratio_IR, f_donor_ratio, d
     ax1.set_ylim(break_y_up * 0.8, max(y_coords) * 1.2)
     for i in range(0, len(bins)-1):
         if y_coords[i] >= break_y_up:
-            ax1.text(x_coords[i], y_coords[i], y_coords[i], fontsize = 10/shrink, horizontalalignment='center',verticalalignment='bottom')
+            ax1.text(x_coords[i], y_coords[i], y_coords[i], fontsize=10/shrink,
+                     horizontalalignment='center', verticalalignment='bottom')
 
     tick_pos = [1] + x_coords
     tick_pos = [i+0.5 for i in tick_pos]
-    ax1.tick_params(axis='y', which='major', pad=-2, labelsize=6, direction='in')
+    ax1.tick_params(axis='y', which='major', pad=-5, labelsize=6, direction='in')
     for tick in ax1.yaxis.get_majorticklabels():
         tick.set_horizontalalignment("left")
 
@@ -285,7 +286,8 @@ def visualize_combined(list_main, list_e, list_eu, df_ratio_IR, f_donor_ratio, d
     ax2.patch.set_facecolor('white')
     ax2.spines['top'].set_visible(False)
     ax2.spines['bottom'].set_visible(False)
-    ax2.set_ylabel(ylabel,font2)
+#    ax2.set_ylabel(ylabel,font2)
+    ax2.set_ylabel(ylabel, font3, labelpad = 50, rotation=20, verticalalignment='top')
     #ax2.plot(x_coords, y_coords, color = 'steelblue', lw = 1) # fit a line
     
     hist_plot(dat, bins, colors, text=False)
@@ -294,7 +296,7 @@ def visualize_combined(list_main, list_e, list_eu, df_ratio_IR, f_donor_ratio, d
         if y_coords[i] <= break_y_down:
             ax2.text(x_coords[i], y_coords[i], y_coords[i], fontsize = 10/shrink, horizontalalignment='center',verticalalignment='bottom')
 
-    ax2.tick_params(axis='y', which='major', pad=-2, labelsize=6, direction='in')
+    ax2.tick_params(axis='y', which='major', pad=-5, labelsize=6, direction='in')
     for tick in ax2.yaxis.get_majorticklabels():
         tick.set_horizontalalignment("left")
     ################################
@@ -332,7 +334,7 @@ def visualize_combined(list_main, list_e, list_eu, df_ratio_IR, f_donor_ratio, d
     ax3.vlines(tick_pos, 0, max(dat2), color = 'grey', linewidth=ticklinewidth)
     ax3.set_yticks([y_arrow * 0.1, round(y_arrow/2), y_arrow*0.95])
     ax3.set_yticklabels([0, round(y_arrow/2), y_arrow], ha = 'left')
-    ax3.tick_params(axis='y', which='major', pad=-2, labelsize=6, direction='in')
+    ax3.tick_params(axis='y', which='major', pad=-5, labelsize=6, direction='in')
 
     for i in range(0, len(bins)-1): 
         ax3.arrow(x_coords[i], y_arrow, 0, -y_arrow/20, overhang=y_arrow/20, head_width=0.2, head_length=1, width = 1, shape="full",fc=colors[i], ec=colors[i],alpha=0.9)
@@ -355,7 +357,7 @@ def visualize_combined(list_main, list_e, list_eu, df_ratio_IR, f_donor_ratio, d
     ax4.set_xlim(1, xlim)
     ax4.set_yticks([y_arrow * 0.1, round(y_arrow/2), y_arrow*0.95])
     ax4.set_yticklabels([0, round(y_arrow/2), y_arrow], ha = 'left')
-    ax4.tick_params(axis='y', which='major', pad=-2, labelsize=6, direction='in')
+    ax4.tick_params(axis='y', which='major', pad=-5, labelsize=6, direction='in')
     
     ax4.vlines(tick_pos, 0, max(dat3), color = 'grey', linewidth=ticklinewidth)
     for i in range(0, len(bins)-1): 
@@ -383,7 +385,7 @@ def visualize_combined(list_main, list_e, list_eu, df_ratio_IR, f_donor_ratio, d
         ax.set_ylabel(lab, font3, labelpad = 60, rotation=20, verticalalignment='top')
         ax.set_yticks([0.1, 0.5, 0.95])
         ax.set_yticklabels([0, 0.5, 1], ha = 'left')
-        ax.tick_params(axis='y', which='major', pad=-2, labelsize=6, direction='in')
+        ax.tick_params(axis='y', which='major', pad=-5, labelsize=6, direction='in')
         
         ax.set_xticklabels([])
         ax.set_xlim(1, xlim)
@@ -409,7 +411,7 @@ def visualize_combined(list_main, list_e, list_eu, df_ratio_IR, f_donor_ratio, d
     ax6.set_ylabel(ylabel7, font3, labelpad = 50, rotation=20, verticalalignment='top')
     ax6.set_yticks([0.1, 0.5, 0.95])
     ax6.set_yticklabels([0, 0.5, 1], ha = 'left')
-    ax6.tick_params(axis='y', which='major', pad=-2, labelsize=6, direction='in', length=1)
+    ax6.tick_params(axis='y', which='major', pad=-5, labelsize=6, direction='in', length=1)
     ax6.vlines(tick_pos, 0, heat_ylim-0.03, color = '#4682b4', linewidth=ticklinewidth)
     
     outfile = out + "/transcriptome_summary_plot.pdf"
