@@ -43,6 +43,7 @@ from .io import write_gtf
 from .io import open_output_files
 from .io import read_exon_data_from_file
 from .bedtools import prep_bed_for_ea
+from .bedtools import convert_tx_bed_to_coords
 
 # Import transcript distance functions and variables
 from . import transcript_distance as TD
@@ -262,7 +263,7 @@ def do_ea_gene(tx_data, keep_ir):
         raise
     # logger.debug("Gene data:\n{}".format(data))
     gene_id = data['gene_id']
-    # logger.debug(data)
+    # logger.debug("Full gene data: {}".format(data))
     tx_names = data['transcript_list']
     logger.debug("Transcripts in {}: {}", gene_id, tx_names)
     if len(tx_names) == 1:
@@ -272,28 +273,7 @@ def do_ea_gene(tx_data, keep_ir):
         junction_df = pd.DataFrame(junction_data, columns=jct_df_cols)
         ir_transcripts = []
     else:
-        tx_data = {}
-        tx_coords = {}
-        all_introns = []
-        for tx_name in tx_names:
-            tx_bed_str = data[tx_name]
-            starts = [int(x[1]) for x in tx_bed_str]
-            ends = [int(x[2]) for x in tx_bed_str]
-            chrom = data[tx_name][0][0]
-            strand = data[tx_name][0][5]
-            feature = f"{tx_name}_transcript"
-            left_edge = min(starts)
-            right_edge = max(ends)
-            tx_exons = BedTool(tx_bed_str).saveas()
-            tx_data[tx_name] = tx_exons
-            tx_coords[tx_name] = [left_edge, right_edge]
-            tx_full = BedTool(f"{chrom} {left_edge} {right_edge} {feature} 0 {strand}",
-                              from_string=True)
-            tx_introns = tx_full.subtract(tx_exons)
-            i_coords = [(int(x.start), int(x.end)) for x in tx_introns]
-            all_introns.extend(i_coords)
-        intron_data = list(set(all_introns))
-        intron_data.sort(key=lambda x: x[0])
+        tx_data, tx_coords, intron_data = convert_tx_bed_to_coords(data, tx_names)
         # Removal of IR containing transcripts
         if not keep_ir:
             tx_data, tx_names, tx_coords = remove_ir_transcripts(tx_data, intron_data, tx_names,
@@ -474,6 +454,9 @@ def er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id):
     Generate ERs (Exonic Regions) and EFs (Exonic Fragments) and analyze events in a pair of
     transcripts.
     """
+    logger.debug("Performing EA analysis for {} gene", gene_id)
+    logger.debug("TX Names: {},{}", tx1_name, tx2_name)
+    # logger.debug("EA Analysis raw data: tx1: {}, tx2: {}".format(tx1_bed, tx2_bed))
     ea_data = []
     strand = list(set([x.strand for x in tx1_bed]))[0]
     # logger.debug("TX1: {}: \n{}", tx1_name, tx1_bed)
@@ -539,7 +522,7 @@ def er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id):
                     ef.strand, ir_flag, er_name, er_data[er_name].chrom, er_data[er_name].start,
                     er_data[er_name].end, er_data[er_name].strand]
         ea_data.append(ea_datum)
-    logger.debug("Final EA data: \n{}", ea_data)
+    # logger.debug("Final EA data: \n{}", ea_data)
     return ea_data
 
 
@@ -945,8 +928,8 @@ def ea_analysis(gene_id, tx_data, tx_coords, ir_exons):
     return er_out_data, ef_out_data
 
 
-def ea_pairwise(data):
-    "Do EA (Event Analysis) for a pair of transcripts."
+def ea_pairwise(gene_id, data):
+    "EA on pairs of transcripts from a single GTF file for a given gene."
     # logger.debug("EA Pairwise input data:\n{}".format(data))
     transcripts = data.groupby("transcript_id")
     transcript_groups = transcripts.groups
@@ -955,6 +938,7 @@ def ea_pairwise(data):
         transcript_df = data[data['transcript_id'] == transcript]
         tx_data[transcript] = transcript_df
     transcript_pairs = list(itertools.combinations(tx_data.keys(), 2))
+    logger.debug("Transcript combinations to process for {}: \n{}", gene_id, transcript_pairs)
     ea_df = pd.DataFrame(columns=ea_df_cols)
     jct_df = pd.DataFrame(columns=jct_df_cols)
     td_df = pd.DataFrame(columns=TD.td_df_cols)
@@ -971,7 +955,9 @@ def ea_pairwise(data):
 
 def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_only, skip_plots,
                         skip_interm, consolidate, consol_prefix, consol_outfiles):
-    """Transcript event analysis (TranD) on a single GTF file."""
+    """
+    Pairwise or full gene transcript event analysis (TranD) on a single GTF file.
+    """
     logger.info("Input file: {}", infile)
     if skip_interm:
         del(outfiles['ea_fh'])
@@ -1058,7 +1044,7 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
             if number_of_transcripts == 1:
                 logger.info("Gene {} has a single transcript. Skipping", gene)
                 continue
-            ea_data, jct_data, td_data = ea_pairwise(gene_df)
+            ea_data, jct_data, td_data = ea_pairwise(gene, gene_df)
             td_data_cat = pd.concat([td_data_cat, td_data], ignore_index=True)
             if not skip_interm:
                 write_output(ea_data, out_fhs, 'ea_fh')
@@ -1075,8 +1061,8 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
             P1GG.plot_one_gtf_gene(er_data_cat, ef_data_cat, ir_data_cat, uniq_ex, outdir)
 
 
-def ea_two_files(f1_data, f2_data, gene_id, name1, name2):
-    "Do EA (Event Analysis) for pairs of transcripts from two files for a gene."
+def ea_pairwise_two_files(f1_data, f2_data, gene_id, name1, name2):
+    "EA on pairs of transcripts from two files for a given gene."
     f1_transcripts = list(set(f1_data['transcript_id']))
     f2_transcripts = list(set(f2_data['transcript_id']))
     transcript_combos = list(itertools.product(f1_transcripts, f2_transcripts))
@@ -1103,7 +1089,9 @@ def ea_two_files(f1_data, f2_data, gene_id, name1, name2):
 
 def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexity_only, skip_plots,
                       skip_interm, name1, name2):
-    """Compare transcript pairs between two GTF files."""
+    """
+    Pairwise transcript event analysis (TranD) on two GTF files.
+    """
     logger.debug("Input files: {}", infiles)
     if out_pairs != 'all':
         # Do not create full transcript distance output
@@ -1230,7 +1218,7 @@ def loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs, cpu_cores, name1, na
         f1_data = valid_f1[valid_f1['gene_id'] == gene]
         f2_data = valid_f2[valid_f2['gene_id'] == gene]
         try:
-            ea_data, jct_data, td_data = ea_two_files(f1_data, f2_data, gene, name1, name2)
+            ea_data, jct_data, td_data = ea_pairwise_two_files(f1_data, f2_data, gene, name1, name2)
         except ValueError as e:
             logger.error(e)
             continue
