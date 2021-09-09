@@ -427,17 +427,13 @@ def consolidate_junctions(
     )
     return consol_gene, key_gene
 
-
-def consolidate_transcripts(data, outdir, consol_prefix, consol_outfiles, genes, skip_interm):
+def consolidate_transcripts(data, outdir, consol_prefix, consol_fhs, genes, skip_interm):
     """
     If requested, consolidate junctions in input transcripts.
     """
     logger.info("Consolidation of transcript with identical junctions.")
     # Loop over genes
     consol_data = pd.DataFrame(columns=data.columns)
-    if not skip_interm:
-        consol_fhs = open_output_files(outdir, consol_outfiles)
-        consol_fhs["key_fh"].write_text(",".join(consol_key_cols) + "\n")
     for gene in genes.groups:
         # Test for single transcript gene (WBGene00000003)
         # Test gene for multiple groups with consolidation (WBGene00001574)
