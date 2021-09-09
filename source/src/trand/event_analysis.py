@@ -253,7 +253,7 @@ def list_ir_exon_transcript(tx_data, introns):
     return ir_exon_list, ir_transcript_list
 
 
-def do_ea_gene(tx_data, keep_ir):
+def ea_gene(tx_data, keep_ir):
     """
     Event Analysis on a full gene
     """
@@ -374,6 +374,7 @@ def do_ea_pair(tx_data):
     tx1_name, tx2_name = tx_names[0], tx_names[1]
     tx1_bed_str = data[tx1_name]
     tx2_bed_str = data[tx2_name]
+    logger.debug(f"TX Strings: {tx1_bed_str}; {tx2_bed_str}")
     tx1_bed_df = pd.DataFrame(tx1_bed_str, columns=['chrom', 'start', 'end', 'name', 'score',
                                                     'strand'])
     tx1_bed_df['start'] = tx1_bed_df['start'].astype(int)
@@ -1024,7 +1025,7 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
         # Full Gene EA
         if ea_mode == 'gene':
             try:
-                er_data, ef_data, jct_data, ir_transcripts = do_ea_gene(gene_df, keep_ir=keep_ir)
+                er_data, ef_data, jct_data, ir_transcripts = ea_gene(gene_df, keep_ir=keep_ir)
                 if er_data is None:
                     continue
                 if not skip_interm:
