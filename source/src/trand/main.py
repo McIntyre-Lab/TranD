@@ -23,37 +23,62 @@ from trand.event_analysis import process_two_files
 
 
 # CONFIGURATION
-# Output file selections
-# One file:
-# common, gene OR pairwise
-# Two files:
-# common, two_gtfs, pairwise
-common_outfiles = {
-    "ea_fh": "event_analysis.csv",
-    "jc_fh": "junction_catalog.csv",
-    "er_fh": "event_analysis_er.csv",
-    "ef_fh": "event_analysis_ef.csv",
-    "ir_fh": "ir_transcripts.csv",
-    "ue_fh": "uniq_exons_per_gene.csv",
-}
+# Required for pairwise analyses
 pairwise_outfiles = {
     "td_fh": "pairwise_transcript_distance.csv",
 }
-gene_outfiles = {
+# Optional, written if --skip-intermediate is not specified
+common_intermediate_outfiles = {
+    "jc_fh": "junction_catalog.csv",
+}
+gene_intermediate_outfiles = {
     "er_fh": "event_analysis_er.csv",
     "ef_fh": "event_analysis_ef.csv",
-    "ir_fh": "ir_transcripts.csv",
     "ue_fh": "uniq_exons_per_gene.csv",
+    "ir_fh": "ir_transcripts.csv",
 }
-two_gtfs_outfiles = {
+pairwise_intermediate_outfiles = {
+    "ea_fh": "event_analysis.csv",
+}
+two_gtf_intermediate_outfiles = {
     "gtf1_fh": "gtf1_only.gtf",
     "gtf2_fh": "gtf2_only.gtf",
-    "md_fh": "minimum_pairwise_transcript_distance.csv",
 }
-consol_outfiles = {
+consolidate_outfiles = {
     "key_fh": "transcript_id_2_consolidation_id.csv",
     "consol_gtf_fh": "consolidated_transcriptome.gtf",
 }
+
+
+def generate_outfile_list(input_mode, ea_mode, skip_interm, consolidate=False):
+    """
+    Generate output file list depending on whether intermediate files should be written.
+    """
+    outfiles = {}
+    # Single File
+    if input_mode == 'single':
+        if not skip_interm:
+            outfiles.update(common_intermediate_outfiles)
+        if consolidate:
+            outfiles.update(consolidate_outfiles)
+        if ea_mode == 'gene':
+            if not skip_interm:
+                outfiles.update(gene_intermediate_outfiles)
+        # Pairwise
+        else:
+            outfiles.update(pairwise_outfiles)
+            if not skip_interm:
+                outfiles.update(pairwise_intermediate_outfiles)
+    # Pair of Files
+    elif input_mode == 'pair':
+        outfiles.update(pairwise_outfiles)
+        if not skip_interm:
+            outfiles.update(common_intermediate_outfiles)
+            outfiles.update(pairwise_intermediate_outfiles)
+            outfiles.update(two_gtf_intermediate_outfiles)
+    else:
+        raise ValueError("Only two input file choices can exist: single or pair.")
+    return outfiles
 
 
 def parse_args(print_help=False):
@@ -98,8 +123,8 @@ def parse_args(print_help=False):
     )
     parser.add_argument(
         "--consolidate",
-        dest="consolidate",
         action="store_true",
+        default=False,
         help="""Used with 1 GTF input file. Consolidate transcripts remove 5'/3' transcript end
         variation in redundantly spliced transcripts) with identical junctions prior to complexity
         calculations, events and summary plotting. Default: No consolidation""",
@@ -115,8 +140,7 @@ def parse_args(print_help=False):
     )
     parser.add_argument(
         "-c",
-        "--complexityOnly",
-        dest="complexity_only",
+        "--only_complexity",
         action="store_true",
         help="""Used with 1 or 2 GTF input file(s). Output only complexity measures. If used in
         presence of the '--consolidate' flag, complexity is calculated on the consolidated GTF(s).
@@ -206,7 +230,7 @@ def parse_args(print_help=False):
         help="Skip intermediate file output (junction and exon region/fragment files).",
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
-    parser.add_argument("-d", "--debug", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--debug", action="store_true", help=argparse.SUPPRESS)
     if print_help:
         parser.print_help()
         sys.exit(0)
@@ -291,11 +315,10 @@ def cli():
     prepare_outdir(args)
     if len(args.infiles) == 1:
         logger.debug("Single file {} analysis", args.ea_mode)
-        outfiles = common_outfiles
-        if args.ea_mode == "pairwise":
-            outfiles.update(pairwise_outfiles)
+        if args.only_complexity:
+            outfiles = {}
         else:
-            outfiles.update(gene_outfiles)
+            outfiles = generate_outfile_list("single", args.ea_mode, args.skip_interm, args.consolidate)
         try:
             process_single_file(
                 args.infiles[0],
@@ -303,21 +326,18 @@ def cli():
                 args.keep_ir,
                 args.outdir,
                 outfiles,
-                args.complexity_only,
+                args.only_complexity,
                 args.skip_plots,
                 args.skip_interm,
                 args.consolidate,
-                args.consol_prefix,
-                consol_outfiles
+                args.consol_prefix
             )
         finally:
             # Only for bedtools. Remove when bedtools are refactored out.
             cleanup()
     else:
         logger.debug("Two files pairwise analysis")
-        outfiles = common_outfiles
-        outfiles.update(two_gtfs_outfiles)
-        outfiles.update(pairwise_outfiles)
+        outfiles = generate_outfile_list("pair", args.ea_mode, args.skip_interm)
         try:
             process_two_files(
                 args.infiles,
@@ -325,7 +345,7 @@ def cli():
                 outfiles,
                 args.cpu_cores,
                 args.out_pairs,
-                args.complexity_only,
+                args.only_complexity,
                 args.skip_plots,
                 args.skip_interm,
                 args.name1,
