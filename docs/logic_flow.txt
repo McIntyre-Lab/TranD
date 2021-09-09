@@ -12,19 +12,25 @@ EA:
 * process_single_file:
   ea_mode: gene | pairwise
   * Create a dataframe grouped by gene
-  -> gene:
+  -> Full Gene:
     - consolidate if requested
     - complexity_only and quit if requested
-    - do_ea_gene; concatenate dataframe, return
+    - ea_gene; concatenate dataframe, return
         -> ea_analysis(gene, data, coords, ir_exons)
-  -> pairwise:
+
+ SUM: process_single_file > ea_gene > ea_analysis
+
+  -> Pairwise:
     - ea_pairwise; concatenate data, return
+    -> do_ea_pair
 
 * ea_pairwise:
   * group dataframe by transcript_id
   * create a dataframe with transcript data
   * Calculate all combinations of transcripts
   * do_ea_pair for each transcript pair combination
+
+ SUM: process_single_file > ea_gene > ea_pairwise > do_ea_pair
 
 * process_two_files:
   * calculate_complexity.calculate_complexity for each file and return if requested
@@ -36,6 +42,7 @@ EA:
         - do_ea_pair for each transcript pair combination
           -> er_ea_analysis(tx1, tx2, tx1_name, tx2_name, gene_id)
 
+ SUM: process_two_files > loop_over_genes > ea_pairwise_two_files > do_ea_pair > er_ea_analysi
 
 er_ea_analysis is the first pass bedtools based analysis
 
@@ -44,3 +51,9 @@ ea_analysis is the second pass interval based analysis
 TODO:
 * Refactor er_ea_analysis to work as ea_analysis or unify them to remove excessive bed file
   generation by bedtools.
+
+BedTool instances:
+* do_ea_pair: 2
+* er_ea_analysis: 2
+* ea_analysis: 1
+* get_intron_retention_efs: 1
