@@ -133,6 +133,16 @@ def callback_results(results):
     jct_list.append(jct_data_cat)
     td_list.append(td_data_cat)
 
+#TODO
+def write_headers(outfiles):
+    """
+    Write standard headers into required output files. 
+    """
+    #FIXME
+    if not skip_interm:
+        consol_fhs = open_output_files(outdir, consol_outfiles)
+        consol_fhs["key_fh"].write_text(",".join(consol_key_cols) + "\n")
+
 
 def create_junction_catalog(gene, tx, tx_data):
     """Create a junction catalog for a transcript"""
@@ -954,8 +964,8 @@ def ea_pairwise(gene_id, data):
     return ea_df, jct_df, td_df
 
 
-def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_only, skip_plots,
-                        skip_interm, consolidate, consol_prefix, consol_outfiles):
+def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, only_complexity, skip_plots,
+                        skip_interm, consolidate, consol_prefix):
     """
     Pairwise or full gene transcript event analysis (TranD) on a single GTF file.
     """
@@ -984,13 +994,13 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
     # If requested, consolidate transcripts with identical junctions
     #   (remove 5'/3' variation in redundantly spliced transcripts)
     if consolidate:
-        data, genes = CONSOL.consolidate_transcripts(data,  outdir, consol_prefix, consol_outfiles,
+        data, genes = CONSOL.consolidate_transcripts(data,  outdir, consol_prefix, outfiles,
                                                      genes, skip_interm,)
     # Output complexity measures using GTF data
     uniq_ex = COMP.calculate_complexity(outdir, data, skip_plots)
 
     # If requested, skip all other functions
-    if complexity_only:
+    if only_complexity:
         logger.info("Complexity only option selected. Skipping all other functions.")
         return
 
@@ -1004,10 +1014,10 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
             out_fhs['ef_fh'].write_text(",".join(ef_df_cols) + '\n')
             out_fhs['ir_fh'].write_text(",".join(ir_df_cols) + '\n')
             out_fhs['ue_fh'].write_text(",".join(ue_df_cols) + '\n')
+            out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
         else:
             out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
-            out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
-        out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
+    out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
     # Initialize concatenated pairwise transcript distance dataframe
     if ea_mode == "pairwise":
         td_data_cat = pd.DataFrame()
@@ -1088,39 +1098,24 @@ def ea_pairwise_two_files(f1_data, f2_data, gene_id, name1, name2):
     return ea_df, jct_df, td_df
 
 
-def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexity_only, skip_plots,
+def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, only_complexity, skip_plots,
                       skip_interm, name1, name2):
     """
     Pairwise transcript event analysis (TranD) on two GTF files.
     """
     logger.debug("Input files: {}", infiles)
-    if out_pairs != 'all':
-        # Do not create full transcript distance output
-        del(outfiles['td_fh'])
-    else:
-        # Do not create subset minimum distance output
-        del(outfiles['md_fh'])
-    # Do not make gene mode files (remove from outfiles)
-    del(outfiles['er_fh'])
-    del(outfiles['ef_fh'])
-    del(outfiles['ir_fh'])
-    del(outfiles['ue_fh'])
 
-    infile_1 = infiles[0]
-    infile_2 = infiles[1]
-    in_f1 = read_exon_data_from_file(infile_1)
-    in_f2 = read_exon_data_from_file(infile_2)
+    in_f1 = read_exon_data_from_file(infiles[0])
+    in_f2 = read_exon_data_from_file(infiles[1])
 
-    # Calculate complexity of individual transcriptomes
     COMP.calculate_complexity(outdir, in_f1, skip_plots, name1)
     COMP.calculate_complexity(outdir, in_f2, skip_plots, name2)
-
-    # Complexity only processing
-    if complexity_only:
+    if only_complexity:
         logger.info("Complexity only option selected. Skipping all other functions.")
         return
 
-    # Full processing
+    if out_pairs != 'all':
+        outfiles['td_fh'] = f"minimum_{outfiles['td_fh']}"
     if skip_interm:
         # Skip junction and ER/EF files (intermediate files)
         del(outfiles['ea_fh'])
@@ -1132,19 +1127,18 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
         out_fhs = open_output_files(outdir, outfiles)
         out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
         out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
+    out_fhs['td_fh'].write_text(",".join(MD.get_md_cols(name1, name2)) + '\n')
     logger.debug("Output files: {}".format(outfiles))
-    if out_pairs == 'all':
-        out_fhs['td_fh'].write_text(",".join(MD.get_md_cols(name1, name2)) + '\n')
-    else:
-        out_fhs['md_fh'].write_text(",".join(MD.get_md_cols(name1, name2)) + '\n')
+
+    # Pre-process gene data to select genes that exist in both files, skip the odd ones.
     f1_gene_names = set(in_f1['gene_id'])
     f2_gene_names = set(in_f2['gene_id'])
-    # Record transcripts that are only in one file for review
     only_f1_genes = f1_gene_names.difference(f2_gene_names)
     only_f2_genes = f2_gene_names.difference(f1_gene_names)
     odd_genes = only_f1_genes.union(only_f2_genes)
     f1_odds = in_f1[in_f1['gene_id'].isin(only_f1_genes)].copy()
     f2_odds = in_f2[in_f2['gene_id'].isin(only_f2_genes)].copy()
+    # Record transcripts that are only in one file for later review
     if not skip_interm:
         write_gtf(f1_odds, out_fhs, 'gtf1_fh')
         write_gtf(f2_odds, out_fhs, 'gtf2_fh')
@@ -1156,11 +1150,12 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
     f2_genes = valid_f2.groupby("gene_id")
     f2_transcripts = valid_f2.groupby(["gene_id", "transcript_id"])
     logger.info("Found {} genes and {} transcripts in {} file", len(f1_genes),
-                len(f1_transcripts), infile_1)
+                len(f1_transcripts), infiles[0])
     logger.info("Found {} genes and {} transcripts in {} file", len(f2_genes),
-                len(f2_transcripts), infile_2)
+                len(f2_transcripts), infiles[1])
     gene_list = list(set(valid_f1['gene_id']))
     logger.debug("Genes to process: \n{}", gene_list)
+
     # Serial processing
     if cpu_cores == 1:
         ea_data, jct_data, td_data = loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs,
@@ -1170,10 +1165,7 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
             write_output(jct_data, out_fhs, 'jc_fh')
         # Identify minimum pairs using transcript distances
         md_data = MD.identify_min_pair(td_data, out_pairs, name1, name2)
-        if out_pairs != 'all':
-            write_output(md_data, out_fhs, 'md_fh')
-        else:
-            write_output(md_data, out_fhs, 'td_fh')
+        write_output(md_data, out_fhs, 'td_fh')
         # Generate 2 GTF pairwise plots
         if not skip_plots:
             P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1=name1,
@@ -1200,10 +1192,7 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
             write_output(jct_cat, out_fhs, 'jc_fh')
         # Identify minimum pairs using transcript distances
         md_data = MD.identify_min_pair(td_cat, out_pairs, name1, name2)
-        if out_pairs != 'all':
-            write_output(md_data, out_fhs, 'md_fh')
-        else:
-            write_output(md_data, out_fhs, 'td_fh')
+        write_output(md_data, out_fhs, 'td_fh')
         # Generate 2 GTF pairwise plots
         if not skip_plots:
             P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1=name1,
