@@ -112,10 +112,8 @@ def plot_transcript_in_gene_split_pie(
                 ignore_index=True,
                 sort=False,
             )["transcript_in_gene"].value_counts(sort=False)
-            title = (
-                "Genes with >1 Transcript\n(exclusive to one dataset, n = {})".format(
-                    geneCount.sum()
-                )
+            title = "Genes with >1 Transcript\n(exclusive to one dataset, n = {})".format(
+                geneCount.sum()
             )
         else:
             geneCount = (
@@ -454,21 +452,21 @@ def plot_transcript_in_gene_upset(md_data, f1_odds, f2_odds, name1, name2, legen
 def plot_min_pair_AS_upset_nt_box(md_data, name1, name2, legendOut, reciprocal=True):
     """
     For all reciprocal minimum pair transcripts or minimum pair of extra transcripts:
-            Upset plot for the number of transcript pairs with each kind of 
+            Upset plot for the number of transcript pairs with each kind of
             alternative splicing (AS) and the distribution of nt differences
             between the pairs plotted
     """
     if reciprocal:
         # Plot only reciprocal minimum pairs
-        minPairAS = md_data[md_data["flag_recip_min_match"]==1].copy()
+        minPairAS = md_data[md_data["flag_recip_min_match"] == 1].copy()
     else:
         # Plot only minimum pairs of extras, or those without a recip min pair
         minPairAS = md_data[
-                (md_data["flag_recip_min_match"]!=1)&
-                (
-                    (md_data["flag_min_match_"+name1]==1)|
-                    (md_data["flag_min_match_"+name2]==1)
-                )
+            (md_data["flag_recip_min_match"] != 1)
+            & (
+                (md_data["flag_min_match_" + name1] == 1)
+                | (md_data["flag_min_match_" + name2] == 1)
+            )
         ].copy()
     minPairAS = minPairAS[
         [
@@ -486,9 +484,7 @@ def plot_min_pair_AS_upset_nt_box(md_data, name1, name2, legendOut, reciprocal=T
     ]
     # Set No Shared NT genes to have np.nan nucleotide difference
     minPairAS["num_nt_diff"] = np.where(
-        minPairAS["flag_no_shared_nt"]==1,
-        np.nan,
-        minPairAS["num_nt_diff"],
+        minPairAS["flag_no_shared_nt"] == 1, np.nan, minPairAS["num_nt_diff"]
     )
     minPairAS = minPairAS.rename(
         columns={
@@ -523,9 +519,7 @@ def plot_min_pair_AS_upset_nt_box(md_data, name1, name2, legendOut, reciprocal=T
             "in the same genes but with nonoverlapping coordinates. Box plots of the "
             "number (blue) and proportion (orange) of nucleotide (NT) differences between "
             "the pairs represented in the histogram.".format(
-                name1,
-                name2,
-                len(minPairAS),
+                name1, name2, len(minPairAS)
             )
         )
     else:
@@ -542,9 +536,7 @@ def plot_min_pair_AS_upset_nt_box(md_data, name1, name2, legendOut, reciprocal=T
             "in the same genes but with nonoverlapping coordinates. Box plots of the "
             "number (blue) and proportion (orange) of nucleotide (NT) differences between "
             "the pairs represented in the histogram.".format(
-                name1,
-                name2,
-                len(minPairAS),
+                name1, name2, len(minPairAS)
             )
         )
     with open(legendOut, "w") as outFile:
@@ -650,7 +642,7 @@ def plot_gene_recip_min_AS_upset(md_data, name1, name2, legendOut):
         "below the histogram of gene counts (n = {} genes with {} reciprocal "
         "minimum pairs). Box plots represent the number of reciprocal minimum "
         "pairs (blue) and the number of transcripts in {} (orange) and {} "
-        "(green). Genes with \"No Shared NT\" have a pair of "
+        '(green). Genes with "No Shared NT" have a pair of '
         "transcripts with nonoverlapping coordinates.".format(
             name1,
             name2,
@@ -761,21 +753,13 @@ def plot_gene_AS_upset(td_data, legendOut):
         "Intron Retention",
         "No Shared NT",
     ]
-    plot_upset(
-        mergeASxcrptPerGene.set_index(AScols),
-        "",
-        [
-            "# Transcripts\nPer Gene",
-        ],
-    )
+    plot_upset(mergeASxcrptPerGene.set_index(AScols), "", ["# Transcripts\nPer Gene"])
     legendText = (
         "Number of genes with the specified types of alternative splicing indicated "
         "by the black dots below the histogram of gene counts (n = {} multi-transcript genes). "
         "The box plot represent the number of transcripts per gene (blue). "
-        "Genes with \"No Shared NT\" have a pair of transcripts with "
-        "nonoverlapping coordinates.".format(
-            len(mergeASxcrptPerGene)
-        )
+        'Genes with "No Shared NT" have a pair of transcripts with '
+        "nonoverlapping coordinates.".format(len(mergeASxcrptPerGene))
     )
     with open(legendOut, "w") as outFile:
         start_rtf(outFile)
@@ -816,9 +800,7 @@ def plot_pair_AS_upset_nt_box(td_data, legendOut):
     pairAS["prop_nt_diff"] = pairAS["prop_nt_diff"].astype(float)
     # Set No Shared NT pairs to have np.nan nucleotide difference
     pairAS["num_nt_diff"] = np.where(
-        pairAS["flag_no_shared_nt"] == 1,
-        np.nan,
-        pairAS["num_nt_diff"],
+        pairAS["flag_no_shared_nt"] == 1, np.nan, pairAS["num_nt_diff"]
     )
     # Make AS flags boolean values and rename
     xcrptFlagCols = [
@@ -853,12 +835,7 @@ def plot_pair_AS_upset_nt_box(td_data, legendOut):
         "No Shared NT",
     ]
     plot_upset(
-        pairAS.set_index(AScols),
-        "",
-        [
-            "# NT Different",
-            "Proportion\nNT Different",
-        ],
+        pairAS.set_index(AScols), "", ["# NT Different", "Proportion\nNT Different"]
     )
     legendText = (
         "Number of transcript pairs with the specified types of alternative "
@@ -866,9 +843,8 @@ def plot_pair_AS_upset_nt_box(td_data, legendOut):
         "pair counts (n = {} transcript pairs, in {} multi-transcript genes). "
         "Box plots represent the number (blue) and proportion (orange) of "
         "nucleotides different between the pair. Transcript pairs with "
-        "\"No Shared NT\" have nonoverlapping coordinates.".format(
-            len(pairAS),
-            pairAS['gene_id'].nunique()
+        '"No Shared NT" have nonoverlapping coordinates.'.format(
+            len(pairAS), pairAS["gene_id"].nunique()
         )
     )
     with open(legendOut, "w") as outFile:
@@ -925,8 +901,8 @@ def plot_gene_avg_nt_diff_pairs(md_data, name1, name2, legendOut, zoomMean=False
             "transcript_in_gene",
             "recip_min_pair_in_gene",
             "flag_recip_min_match",
-            "flag_min_match_"+name1,
-            "flag_min_match_"+name2,
+            "flag_min_match_" + name1,
+            "flag_min_match_" + name2,
             "num_nt_diff",
             "prop_nt_diff",
         ]
@@ -938,10 +914,13 @@ def plot_gene_avg_nt_diff_pairs(md_data, name1, name2, legendOut, zoomMean=False
         minPairNT["flag_recip_min_match"] == 1, minPairNT["num_nt_diff"], 0
     )
     minPairNT["num_nt_diff_extra"] = np.where(
-        (minPairNT["flag_recip_min_match"] == 0)&
-        (minPairNT["flag_min_match_"+name1] +
-             minPairNT["flag_min_match_"+name2]==1),
-        minPairNT["num_nt_diff"], 0
+        (minPairNT["flag_recip_min_match"] == 0)
+        & (
+            minPairNT["flag_min_match_" + name1] + minPairNT["flag_min_match_" + name2]
+            == 1
+        ),
+        minPairNT["num_nt_diff"],
+        0,
     )
     minPairNTGene = (
         minPairNT.groupby("gene_id")
@@ -1028,7 +1007,7 @@ def plot_gene_avg_nt_diff_pairs(md_data, name1, name2, legendOut, zoomMean=False
                     ].mean(),
                     minPairNTGene[minPairNTGene["num_nt_diff_extra"] > 0][
                         "num_nt_diff_extra"
-                    ].mean()
+                    ].mean(),
                 ]
             )
         )
@@ -1050,10 +1029,7 @@ def plot_gene_avg_nt_diff_pairs(md_data, name1, name2, legendOut, zoomMean=False
         "Each point represents a gene plotted by the average number of nucleotides "
         "different between reciprocal minimum pairs (X-axis) and minimum pairs "
         "of extras without a reciprocal minimum pair (Y-axis). Genes are colored "
-        "by categorizations of the comparison between {} and {}.".format(
-            name1,
-            name2,
-        )
+        "by categorizations of the comparison between {} and {}.".format(name1, name2)
     )
     plt.tight_layout()
     with open(legendOut, "w") as outFile:
@@ -1196,66 +1172,61 @@ def plot_complexity_violin(geneDF, transcriptDF, outdir, legendOut):
         )
         end_rtf(outFile)
 
+
 def plot_gene_prop_nt_variablility(ef_data, legendOut, multitranscript=False):
     """
     Plot distribution of proportion of nucleotide variability across all genes or
     only multitranscript genes
     """
     # Get lengths of exon fragments
-    ef_data['num_nt_varying'] = np.where(
-            ef_data['ea_annotation_frequency']!="constitutive",
-            ef_data['ef_end'] - ef_data['ef_start'],
-            0,
+    ef_data["num_nt_varying"] = np.where(
+        ef_data["ea_annotation_frequency"] != "constitutive",
+        ef_data["ef_end"] - ef_data["ef_start"],
+        0,
     )
-    ef_data['num_nt_total'] = ef_data['ef_end'] - ef_data['ef_start']
+    ef_data["num_nt_total"] = ef_data["ef_end"] - ef_data["ef_start"]
     # For each gene, get the number of varying nucleotides (not constitutive)
-    ef_gene_data = ef_data.groupby('gene_id')[
-            [
-                    'num_nt_varying',
-                    'num_nt_total'
-            ]
-    ].sum().reset_index()
-    # Get propotion of varying nucleotides
-    ef_gene_data['prop_varying_nt'] = (
-            ef_gene_data['num_nt_varying'] / ef_gene_data['num_nt_total']
+    ef_gene_data = (
+        ef_data.groupby("gene_id")[["num_nt_varying", "num_nt_total"]]
+        .sum()
+        .reset_index()
     )
-    
+    # Get propotion of varying nucleotides
+    ef_gene_data["prop_varying_nt"] = (
+        ef_gene_data["num_nt_varying"] / ef_gene_data["num_nt_total"]
+    )
+
     # Check if outputting all genes or only multitranscript genes
     if multitranscript:
         ef_data_split = split_column_by_sep(
-                ef_data,
-                col_name="ef_transcript_ids",
-                sep="|",
+            ef_data, col_name="ef_transcript_ids", sep="|"
         )
-        xcrpt_per_gene = ef_data_split.groupby('gene_id')[
-                'ef_transcript_ids'
-        ].nunique().reset_index()
-        multi_xcrpt_gene = xcrpt_per_gene[
-                xcrpt_per_gene['ef_transcript_ids']>1
-        ]
+        xcrpt_per_gene = (
+            ef_data_split.groupby("gene_id")["ef_transcript_ids"]
+            .nunique()
+            .reset_index()
+        )
+        multi_xcrpt_gene = xcrpt_per_gene[xcrpt_per_gene["ef_transcript_ids"] > 1]
         ef_gene_data = ef_gene_data[
-                ef_gene_data['gene_id'].isin(
-                        multi_xcrpt_gene['gene_id']
-                )
+            ef_gene_data["gene_id"].isin(multi_xcrpt_gene["gene_id"])
         ]
         legendText = (
-                "Distribution of the proportion of variable "
-                "nucleotides across multi-transcript genes (n = {}).".format(
-                        len(ef_gene_data))
+            "Distribution of the proportion of variable "
+            "nucleotides across multi-transcript genes (n = {}).".format(
+                len(ef_gene_data)
+            )
         )
     else:
         legendText = (
-                "Distribution of the proportion of variable "
-                "nucleotides across all genes (n = {}). "
-                "Single transcript genes are assigned a proportion of 1.".format(
-                        len(ef_gene_data))
+            "Distribution of the proportion of variable "
+            "nucleotides across all genes (n = {}). "
+            "Single transcript genes are assigned a proportion of 1.".format(
+                len(ef_gene_data)
+            )
         )
     # Plot density
-    sns.distplot(
-            ef_gene_data['prop_varying_nt'],
-            hist=False,
-    )
-    plt.xlim(0,1)
+    sns.distplot(ef_gene_data["prop_varying_nt"], hist=False)
+    plt.xlim(0, 1)
     plt.ylabel("Density")
     plt.xlabel("Proportion of Variable Nucleotides")
     plt.tight_layout()
@@ -1272,24 +1243,23 @@ def plot_gene_prop_nt_variablility(ef_data, legendOut, multitranscript=False):
         end_rtf(outFile)
 
 
-
 def split_column_by_sep(df, col_name=None, sep=None, sort_list=None):
     """
     Split variable by some character like '|' or ',' and
     keep all other values the same
     """
     if col_name == None:
-        col_name = 'transcript_id'
+        col_name = "transcript_id"
     if sep == None:
         sep = "|"
     splitList = df[col_name].str.split(sep).apply(pd.Series, 1).stack()
     splitList.index = splitList.index.droplevel(-1)
     tempDF = df.copy()
-    del(tempDF[col_name])
+    del tempDF[col_name]
     splitDF = tempDF.join(splitList.rename(col_name))
     if sort_list != None:
         splitDF = splitDF.sort_values(by=sort_list)
-    del(tempDF, splitList)
+    del (tempDF, splitList)
     return splitDF
 
 
