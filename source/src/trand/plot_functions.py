@@ -343,7 +343,8 @@ def plot_gene_stack(md_data, name1, name2, legendOut, useProp=False):
     with open(legendOut, "w") as outFile:
         start_rtf(outFile)
         outFile.write(
-            r"\b Figure. Reciprocal pairs per gene \b0 \line {} Transcriptome comparisons performed by TranD [1].".format(
+            r"\b Figure. Reciprocal pairs per gene \b0 \line {} Transcriptome comparisons performed"
+            r" by TranD [1].".format(
                 legendText
             )
         )
@@ -439,12 +440,14 @@ def plot_transcript_in_gene_upset(md_data, f1_odds, f2_odds, name1, name2, legen
     with open(legendOut, "w") as outFile:
         start_rtf(outFile)
         outFile.write(
-            r"\b Figure. Number of transcripts per gene comparison UpSet plot \b0 \line {} Transcriptome comparisons performed by TranD [1].".format(
+            r"\b Figure. Number of transcripts per gene comparison UpSet plot \b0 \line {} "
+            r"Transcriptome comparisons performed by TranD [1].".format(
                 legendText
             )
         )
         outFile.write(
-            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github."
+            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise "
+            r"nucleotide level comparison of transcript models for long reads. github."
         )
         end_rtf(outFile)
 
@@ -543,18 +546,21 @@ def plot_min_pair_AS_upset_nt_box(md_data, name1, name2, legendOut, reciprocal=T
         start_rtf(outFile)
         if reciprocal:
             outFile.write(
-                r"\b Figure. Reciprocal minimum pair alternative splicing \b0 \line {} Transcriptome comparisons performed by TranD [1].".format(
+                r"\b Figure. Reciprocal minimum pair alternative splicing \b0 \line {} "
+                r"Transcriptome comparisons performed by TranD [1].".format(
                     legendText
                 )
             )
         else:
             outFile.write(
-                r"\b Figure. Extra minimum pair alternative splicing \b0 \line {} Transcriptome comparisons performed by TranD [1].".format(
+                r"\b Figure. Extra minimum pair alternative splicing \b0 \line {} Transcriptome "
+                r"comparisons performed by TranD [1].".format(
                     legendText
                 )
             )
         outFile.write(
-            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github."
+            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise "
+            r"nucleotide level comparison of transcript models for long reads. github."
         )
         end_rtf(outFile)
 
@@ -655,12 +661,14 @@ def plot_gene_recip_min_AS_upset(md_data, name1, name2, legendOut):
     with open(legendOut, "w") as outFile:
         start_rtf(outFile)
         outFile.write(
-            r"\b Figure. Alternative splicing in reciprocal minimum pairs of genes \b0 \line {} Transcriptome comparisons performed by TranD [1].".format(
+            r"\b Figure. Alternative splicing in reciprocal minimum pairs of genes \b0 \line {} "
+            r"Transcriptome comparisons performed by TranD [1].".format(
                 legendText
             )
         )
         outFile.write(
-            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github."
+            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise "
+            r"nucleotide level comparison of transcript models for long reads. github."
         )
         end_rtf(outFile)
 
@@ -764,12 +772,14 @@ def plot_gene_AS_upset(td_data, legendOut):
     with open(legendOut, "w") as outFile:
         start_rtf(outFile)
         outFile.write(
-            r"\b Figure. Alternative splicing in genes \b0 \line {} Transcriptome comparisons performed by TranD [1].".format(
+            r"\b Figure. Alternative splicing in genes \b0 \line {} Transcriptome comparisons "
+            r"performed by TranD [1].".format(
                 legendText
             )
         )
         outFile.write(
-            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github."
+            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise "
+            r"nucleotide level comparison of transcript models for long reads. github."
         )
         end_rtf(outFile)
 
@@ -850,12 +860,14 @@ def plot_pair_AS_upset_nt_box(td_data, legendOut):
     with open(legendOut, "w") as outFile:
         start_rtf(outFile)
         outFile.write(
-            r"\b Figure. Alternative splicing between pairs of transcripts \b0 \line {} Transcriptome comparisons performed by TranD [1].".format(
+            r"\b Figure. Alternative splicing between pairs of transcripts \b0 \line {} "
+            r"Transcriptome comparisons performed by TranD [1].".format(
                 legendText
             )
         )
         outFile.write(
-            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github."
+            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise "
+            r"nucleotide level comparison of transcript models for long reads. github."
         )
         end_rtf(outFile)
 
@@ -1035,12 +1047,14 @@ def plot_gene_avg_nt_diff_pairs(md_data, name1, name2, legendOut, zoomMean=False
     with open(legendOut, "w") as outFile:
         start_rtf(outFile)
         outFile.write(
-            r"\b Figure. Number of nucleotides different between reciprocal and nonreciprocal minimum pairs \b0 \line {} Transcriptome comparisons performed by TranD [1].".format(
+            r"\b Figure. Number of nucleotides different between reciprocal and nonreciprocal "
+            r"minimum pairs \b0 \line {} Transcriptome comparisons performed by TranD [1].".format(
                 legendText
             )
         )
         outFile.write(
-            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github."
+            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise "
+            r"nucleotide level comparison of transcript models for long reads. github."
         )
         end_rtf(outFile)
 
@@ -1109,12 +1123,14 @@ def plot_complexity_box(geneDF, transcriptDF, outdir, legendOut):
     with open(legendOut, "w") as outFile:
         start_rtf(outFile)
         outFile.write(
-            r"\b Figure. Transcriptome complexity \b0 \line {} Transcriptome analyses performed by TranD [1].".format(
+            r"\b Figure. Transcriptome complexity \b0 \line {} Transcriptome analyses performed by "
+            r"TranD [1].".format(
                 legendText
             )
         )
         outFile.write(
-            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github."
+            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise "
+            r"nucleotide level comparison of transcript models for long reads. github."
         )
         end_rtf(outFile)
 
@@ -1163,12 +1179,14 @@ def plot_complexity_violin(geneDF, transcriptDF, outdir, legendOut):
     with open(legendOut, "w") as outFile:
         start_rtf(outFile)
         outFile.write(
-            r"\b Figure. Transcriptome complexity \b0 \line {} Transcriptome analyses performed by TranD [1].".format(
+            r"\b Figure. Transcriptome complexity \b0 \line {} Transcriptome analyses performed by "
+            r"TranD [1].".format(
                 legendText
             )
         )
         outFile.write(
-            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github."
+            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise "
+            r"nucleotide level comparison of transcript models for long reads. github."
         )
         end_rtf(outFile)
 
@@ -1233,12 +1251,14 @@ def plot_gene_prop_nt_variablility(ef_data, legendOut, multitranscript=False):
     with open(legendOut, "w") as outFile:
         start_rtf(outFile)
         outFile.write(
-            r"\b Figure. Transcriptome complexity \b0 \line {} Transcriptome analyses performed by TranD [1].".format(
+            r"\b Figure. Transcriptome complexity \b0 \line {} Transcriptome analyses performed by "
+            r"TranD [1].".format(
                 legendText
             )
         )
         outFile.write(
-            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github."
+            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise "
+            r"nucleotide level comparison of transcript models for long reads. github."
         )
         end_rtf(outFile)
 
@@ -1248,16 +1268,16 @@ def split_column_by_sep(df, col_name=None, sep=None, sort_list=None):
     Split variable by some character like '|' or ',' and
     keep all other values the same
     """
-    if col_name == None:
+    if col_name is None:
         col_name = "transcript_id"
-    if sep == None:
+    if sep is None:
         sep = "|"
     splitList = df[col_name].str.split(sep).apply(pd.Series, 1).stack()
     splitList.index = splitList.index.droplevel(-1)
     tempDF = df.copy()
     del tempDF[col_name]
     splitDF = tempDF.join(splitList.rename(col_name))
-    if sort_list != None:
+    if sort_list is not None:
         splitDF = splitDF.sort_values(by=sort_list)
     del (tempDF, splitList)
     return splitDF
@@ -1290,6 +1310,8 @@ def end_rtf(outFile):
     Close RTF file
     """
     outFile.write(
-        " \line \line \line \i Disclaimer:  While automated captions of TranD have been carefully constructed, users are advised to verify caption contents before use and report any errors to the TranD github.\i0 "
+        r" \line \line \line \i Disclaimer:  While automated captions of TranD have been carefully "
+        r"constructed, users are advised to verify caption contents before use and report any "
+        r"errors to the TranD github.\i0 "
     )
     outFile.write(r"}\n\x00")
