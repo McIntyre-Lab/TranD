@@ -478,3 +478,4 @@ def consolidate_transcripts(data, outdir, consol_prefix, consol_outfiles, genes,
     logger.info(
         "After consolidation: {} genes and {} transcripts", len(genes), len(num_tx)
     )
+    return data, genes
