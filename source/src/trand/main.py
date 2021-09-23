@@ -16,6 +16,7 @@ import re
 import os
 import sys
 from loguru import logger
+from pathlib import Path
 from pybedtools import cleanup
 from trand.io import prepare_outdir
 from trand.event_analysis import process_single_file
@@ -288,7 +289,10 @@ def cli():
     args = parse_args()
     setup_logging(args.debug, args.verbose, args.log_file)
     logger.debug("Args: {}", args)
-    prepare_outdir(args)
+    if not args.outdir:
+        args.outdir = str(Path.cwd())
+        args.force = True
+    prepare_outdir(args.outdir, args.force)
     if len(args.infiles) == 1:
         logger.debug("Single file {} analysis", args.ea_mode)
         outfiles = common_outfiles
