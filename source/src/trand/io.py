@@ -17,17 +17,14 @@ from loguru import logger
 from pathlib import Path
 
 
-def prepare_outdir(args):
-    if not args.outdir:
-        outdir = Path.cwd()
+def prepare_outdir(out_path, force):
+    outdir = Path(out_path)
+    logger.debug("Output directory: {}", str(outdir))
+    if outdir.exists():
+        if not force:
+            exit("Not overwriting existing output directory without -f|--force. Exiting.")
     else:
-        outdir = Path(args.outdir)
-        logger.debug("Output directory: {}", str(outdir))
-        if outdir.exists():
-            if not args.force:
-                exit("Not overwriting existing output directory without -f|--force. Exiting.")
-        else:
-            outdir.mkdir(parents=True, exist_ok=True)
+        outdir.mkdir(parents=True, exist_ok=True)
 
 
 def open_output_files(outdir, outfiles):
