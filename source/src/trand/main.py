@@ -16,6 +16,7 @@ import re
 import os
 import sys
 from loguru import logger
+from pathlib import Path
 from pybedtools import cleanup
 from trand.io import prepare_outdir
 from trand.event_analysis import process_single_file
@@ -33,16 +34,27 @@ common_outfiles = {
     "jc_fh": "junction_catalog.csv",
     "er_fh": "event_analysis_er.csv",
     "ef_fh": "event_analysis_ef.csv",
+    "ir_fh": "ir_transcripts.csv",
+    "ue_fh": "uniq_exons_per_gene.csv",
 }
-pairwise_outfiles = {"td_fh": "pairwise_transcript_distance.csv"}
-gene_outfiles = {"er_fh": "event_analysis_er.csv", "ef_fh": "event_analysis_ef.csv"}
+pairwise_outfiles = {
+    "td_fh": "pairwise_transcript_distance.csv",
+}
+gene_outfiles = {
+    "er_fh": "event_analysis_er.csv",
+    "ef_fh": "event_analysis_ef.csv",
+    "ir_fh": "ir_transcripts.csv",
+    "ue_fh": "uniq_exons_per_gene.csv",
+}
 two_gtfs_outfiles = {
     "gtf1_fh": "gtf1_only.gtf",
     "gtf2_fh": "gtf2_only.gtf",
     "md_fh": "minimum_pairwise_transcript_distance.csv",
 }
-consol_outfiles = {'key_fh': 'transcript_id_2_consolidation_id.csv', 'consol_gtf_fh':
-                   'consolidated_transcriptome.gtf'}
+consol_outfiles = {
+    "key_fh": "transcript_id_2_consolidation_id.csv",
+    "consol_gtf_fh": "consolidated_transcriptome.gtf",
+}
 
 
 def parse_args(print_help=False):
@@ -277,7 +289,10 @@ def cli():
     args = parse_args()
     setup_logging(args.debug, args.verbose, args.log_file)
     logger.debug("Args: {}", args)
-    prepare_outdir(args)
+    if not args.outdir:
+        args.outdir = str(Path.cwd())
+        args.force = True
+    prepare_outdir(args.outdir, args.force)
     if len(args.infiles) == 1:
         logger.debug("Single file {} analysis", args.ea_mode)
         outfiles = common_outfiles

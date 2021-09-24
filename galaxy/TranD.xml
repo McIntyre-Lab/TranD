@@ -1,4 +1,4 @@
-<tool id="transcript_distances" name="TranD" version="@WRAPPER_VERSION@">
+<tool id="transcript_distance" name="TranD" version="@WRAPPER_VERSION@">
   <description></description> 
   <macros>
     <import>macros.xml</import>
