@@ -17,17 +17,14 @@ from loguru import logger
 from pathlib import Path
 
 
-def prepare_outdir(args):
-    if not args.outdir:
-        outdir = Path.cwd()
+def prepare_outdir(out_path, force):
+    outdir = Path(out_path)
+    logger.debug("Output directory: {}", str(outdir))
+    if outdir.exists():
+        if not force:
+            exit("Not overwriting existing output directory without -f|--force. Exiting.")
     else:
-        outdir = Path(args.outdir)
-        logger.debug("Output directory: {}", str(outdir))
-        if outdir.exists():
-            if not args.force:
-                exit("Not overwriting existing output directory without -f|--force. Exiting.")
-        else:
-            outdir.mkdir(parents=True, exist_ok=True)
+        outdir.mkdir(parents=True, exist_ok=True)
 
 
 def open_output_files(outdir, outfiles):
@@ -96,7 +93,6 @@ def read_exon_data_from_file(infile):
     data['seqname'] = data['seqname'].astype(str)
     data['start'] = data['start'].astype(int)
     data['end'] = data['end'].astype(int)
-    logger.debug("Raw data rows: {}", data.shape[0])
     data = data[data['feature'] == 'exon']
     data = data.drop(labels=drop_cols, axis=1)
     data.reset_index(drop=True, inplace=True)

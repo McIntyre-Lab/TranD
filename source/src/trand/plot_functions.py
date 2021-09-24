@@ -112,10 +112,8 @@ def plot_transcript_in_gene_split_pie(
                 ignore_index=True,
                 sort=False,
             )["transcript_in_gene"].value_counts(sort=False)
-            title = (
-                "Genes with >1 Transcript\n(exclusive to one dataset, n = {})".format(
-                    geneCount.sum()
-                )
+            title = "Genes with >1 Transcript\n(exclusive to one dataset, n = {})".format(
+                geneCount.sum()
             )
         else:
             geneCount = (
@@ -345,7 +343,8 @@ def plot_gene_stack(md_data, name1, name2, legendOut, useProp=False):
     with open(legendOut, "w") as outFile:
         start_rtf(outFile)
         outFile.write(
-            r"\b Figure. Reciprocal pairs per gene \b0 \line {} Transcriptome comparisons performed by TranD [1].".format(
+            r"\b Figure. Reciprocal pairs per gene \b0 \line {} Transcriptome comparisons performed"
+            r" by TranD [1].".format(
                 legendText
             )
         )
@@ -441,52 +440,65 @@ def plot_transcript_in_gene_upset(md_data, f1_odds, f2_odds, name1, name2, legen
     with open(legendOut, "w") as outFile:
         start_rtf(outFile)
         outFile.write(
-            r"\b Figure. Number of transcripts per gene comparison UpSet plot \b0 \line {} Transcriptome comparisons performed by TranD [1].".format(
+            r"\b Figure. Number of transcripts per gene comparison UpSet plot \b0 \line {} "
+            r"Transcriptome comparisons performed by TranD [1].".format(
                 legendText
             )
         )
         outFile.write(
-            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github."
+            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise "
+            r"nucleotide level comparison of transcript models for long reads. github."
         )
         end_rtf(outFile)
 
 
-def plot_recip_min_pair_AS_upset_nt_box(md_data, name1, name2, legendOut):
+def plot_min_pair_AS_upset_nt_box(md_data, name1, name2, legendOut, reciprocal=True):
     """
-    For all reciprocal minimum pair transcripts: Upset plot for the number
-            of transcripts with each kind of alternative splicing (AS)
-            and the distribution of nt differences between the pairs plotted
+    For all reciprocal minimum pair transcripts or minimum pair of extra transcripts:
+            Upset plot for the number of transcript pairs with each kind of
+            alternative splicing (AS) and the distribution of nt differences
+            between the pairs plotted
     """
-    recipMinPairAS = md_data[md_data["flag_recip_min_match"] == 1][
+    if reciprocal:
+        # Plot only reciprocal minimum pairs
+        minPairAS = md_data[md_data["flag_recip_min_match"] == 1].copy()
+    else:
+        # Plot only minimum pairs of extras, or those without a recip min pair
+        minPairAS = md_data[
+            (md_data["flag_recip_min_match"] != 1)
+            & (
+                (md_data["flag_min_match_" + name1] == 1)
+                | (md_data["flag_min_match_" + name2] == 1)
+            )
+        ].copy()
+    minPairAS = minPairAS[
         [
             "transcript_1",
             "transcript_2",
-            "flag_alt_exon_recip_min_match",
-            "flag_alt_donor_acceptor_recip_min_match",
-            "flag_IR_recip_min_match",
-            "flag_5_variation_recip_min_match",
-            "flag_3_variation_recip_min_match",
-            "flag_no_shared_nt_recip_min_match",
+            "flag_alt_exon",
+            "flag_alt_donor_acceptor",
+            "flag_IR",
+            "flag_5_variation",
+            "flag_3_variation",
+            "flag_no_shared_nt",
             "num_nt_diff",
             "prop_nt_diff",
         ]
-    ].copy()
+    ]
     # Set No Shared NT genes to have np.nan nucleotide difference
-    recipMinPairAS["num_nt_diff"] = np.where(
-        recipMinPairAS["flag_no_shared_nt_recip_min_match"] == 1,
-        np.nan,
-        recipMinPairAS["num_nt_diff"],
+    minPairAS["num_nt_diff"] = np.where(
+        minPairAS["flag_no_shared_nt"] == 1, np.nan, minPairAS["num_nt_diff"]
     )
-    recipMinPairAS = recipMinPairAS.rename(
+    minPairAS = minPairAS.rename(
         columns={
-            "flag_alt_exon_recip_min_match": "Alt. Exon",
-            "flag_alt_donor_acceptor_recip_min_match": "Alt. Donor/Acceptor",
-            "flag_IR_recip_min_match": "Intron Retention",
-            "flag_5_variation_recip_min_match": "5' Variation",
-            "flag_3_variation_recip_min_match": "3' Variation",
-            "flag_no_shared_nt_recip_min_match": "No Shared NT",
-            "num_nt_diff": "Number NT Different",
-            "prop_nt_diff": "Proportion NT Different",
+            "flag_alt_exon": "Alt. Exon",
+            "flag_alt_donor_acceptor": "Alt. Donor/Acceptor",
+            "flag_IR": "Intron Retention",
+            "flag_5_variation": "5' Variation",
+            "flag_3_variation": "3' Variation",
+            "flag_no_shared_nt": "No Shared NT",
+            "num_nt_diff": "# NT Different",
+            "prop_nt_diff": "Proportion\nNT Different",
         }
     )
     AScols = [
@@ -497,43 +509,68 @@ def plot_recip_min_pair_AS_upset_nt_box(md_data, name1, name2, legendOut):
         "Intron Retention",
         "No Shared NT",
     ]
-    plot_upset(
-        recipMinPairAS.set_index(AScols),
-        "Number of Reciprocal Minimum Pairs with AS Categories",
-        ["Number NT Different", "Proportion NT Different"],
-    )
-    legendText = (
-        "Number of reciprocal minimum pairs with the specified types of alternative "
-        "splicing between {} and {} indicated by the black dots below the histogram "
-        "of pair counts (n = {} total pairs). Pairs with no shared nucleotides are "
-        "in the same genes but with nonoverlapping coordinates. Box plots of the "
-        "number (blue) and proportion (orange) of nucleotide (NT) differences between "
-        "the pairs represented in the histogram.".format(
-            name1,
-            name2,
-            len(recipMinPairAS),
+    if reciprocal:
+        plot_upset(
+            minPairAS.set_index(AScols),
+            "Number of Reciprocal Minimum Pairs with AS Categories",
+            ["# NT Different", "Proportion\nNT Different"],
         )
-    )
-    with open(legendOut, "w") as outFile:
-        start_rtf(outFile)
-        outFile.write(
-            r"\b Figure. Reciprocal minimum pair alternative splicing \b0 \line {} Transcriptome comparisons performed by TranD [1].".format(
-                legendText
+        legendText = (
+            "Number of reciprocal minimum pairs with the specified types of alternative "
+            "splicing between {} and {} indicated by the black dots below the histogram "
+            "of pair counts (n = {} total pairs). Pairs with no shared nucleotides are "
+            "in the same genes but with nonoverlapping coordinates. Box plots of the "
+            "number (blue) and proportion (orange) of nucleotide (NT) differences between "
+            "the pairs represented in the histogram.".format(
+                name1, name2, len(minPairAS)
             )
         )
+    else:
+        plot_upset(
+            minPairAS.set_index(AScols),
+            "Number of Extra Minimum Pairs with AS Categories",
+            ["# NT Different", "Proportion\nNT Different"],
+        )
+        legendText = (
+            "Number of extra minimum pairs, or pairs without recirpocal minimums, "
+            "with the specified types of alternative splicing between {} and {} "
+            "indicated by the black dots below the histogram of pair counts "
+            "(n = {} total pairs). Pairs with no shared nucleotides are "
+            "in the same genes but with nonoverlapping coordinates. Box plots of the "
+            "number (blue) and proportion (orange) of nucleotide (NT) differences between "
+            "the pairs represented in the histogram.".format(
+                name1, name2, len(minPairAS)
+            )
+        )
+    with open(legendOut, "w") as outFile:
+        start_rtf(outFile)
+        if reciprocal:
+            outFile.write(
+                r"\b Figure. Reciprocal minimum pair alternative splicing \b0 \line {} "
+                r"Transcriptome comparisons performed by TranD [1].".format(
+                    legendText
+                )
+            )
+        else:
+            outFile.write(
+                r"\b Figure. Extra minimum pair alternative splicing \b0 \line {} Transcriptome "
+                r"comparisons performed by TranD [1].".format(
+                    legendText
+                )
+            )
         outFile.write(
-            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github."
+            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise "
+            r"nucleotide level comparison of transcript models for long reads. github."
         )
         end_rtf(outFile)
 
 
-def plot_gene_recip_min_AS_upset_nt_box(md_data, name1, name2, legendOut):
+def plot_gene_recip_min_AS_upset(md_data, name1, name2, legendOut):
     """
     Upset plot for number of genes with each kind of AS when comparing the
             reciprocally min match pairs of the two datasets with added box plots
-            of the number of min match pairs present in the gene, the number of
-            transcripts in each dataset, the average number of nt different,
-            and the average proportion of nt different
+            of the number of min match pairs present in the gene and the number
+            of transcripts in each dataset
     """
     recipMinPairAS = md_data[md_data["flag_recip_min_match"] == 1][
         [
@@ -547,13 +584,8 @@ def plot_gene_recip_min_AS_upset_nt_box(md_data, name1, name2, legendOut):
             "num_recip_min_match_in_gene",
             "num_transcript_in_gene_" + name1,
             "num_transcript_in_gene_" + name2,
-            "num_nt_diff",
-            "prop_nt_diff",
         ]
     ].copy()
-    # Ensure number of nt different are int and float values
-    recipMinPairAS["num_nt_diff"] = recipMinPairAS["num_nt_diff"].astype(int)
-    recipMinPairAS["prop_nt_diff"] = recipMinPairAS["prop_nt_diff"].astype(float)
     geneRecipMatchAS = (
         recipMinPairAS.groupby("gene_id")
         .agg(
@@ -567,17 +599,9 @@ def plot_gene_recip_min_AS_upset_nt_box(md_data, name1, name2, legendOut):
                 "num_recip_min_match_in_gene": "max",
                 "num_transcript_in_gene_" + name1: "max",
                 "num_transcript_in_gene_" + name2: "max",
-                "num_nt_diff": "mean",
-                "prop_nt_diff": "mean",
             }
         )
         .reset_index()
-    )
-    # Set No Shared NT genes to have np.nan nucleotide difference
-    geneRecipMatchAS["num_nt_diff"] = np.where(
-        geneRecipMatchAS["flag_no_shared_nt_recip_min_match"] == 1,
-        np.nan,
-        geneRecipMatchAS["num_nt_diff"],
     )
     geneFlagCols = [
         "flag_alt_exon_recip_min_match",
@@ -599,8 +623,6 @@ def plot_gene_recip_min_AS_upset_nt_box(md_data, name1, name2, legendOut):
             "num_recip_min_match_in_gene": "# Recip. Min.\nTranscript Pairs",
             "num_transcript_in_gene_" + name1: "# Transcripts\nin " + name1,
             "num_transcript_in_gene_" + name2: "# Transcripts\nin " + name2,
-            "num_nt_diff": "Avg #\nNT Different",
-            "prop_nt_diff": "Avg Proportion\nNT Different",
         }
     )
     AScols = [
@@ -618,8 +640,6 @@ def plot_gene_recip_min_AS_upset_nt_box(md_data, name1, name2, legendOut):
             "# Recip. Min.\nTranscript Pairs",
             "# Transcripts\nin " + name1,
             "# Transcripts\nin " + name2,
-            "Avg #\nNT Different",
-            "Avg Proportion\nNT Different",
         ],
     )
     legendText = (
@@ -627,9 +647,8 @@ def plot_gene_recip_min_AS_upset_nt_box(md_data, name1, name2, legendOut):
         "reciprocal minimum pairs between {} and {} indicated by the black dots "
         "below the histogram of gene counts (n = {} genes with {} reciprocal "
         "minimum pairs). Box plots represent the number of reciprocal minimum "
-        "pairs (blue), number of transcripts in {} (orange) and {} (green), "
-        "and the average number (brown) and proportion (purple) of nucleotides "
-        "different between the pairs. Genes with \"No Shared NT\" have a pair of "
+        "pairs (blue) and the number of transcripts in {} (orange) and {} "
+        '(green). Genes with "No Shared NT" have a pair of '
         "transcripts with nonoverlapping coordinates.".format(
             name1,
             name2,
@@ -642,22 +661,23 @@ def plot_gene_recip_min_AS_upset_nt_box(md_data, name1, name2, legendOut):
     with open(legendOut, "w") as outFile:
         start_rtf(outFile)
         outFile.write(
-            r"\b Figure. Alternative splicing in reciprocal minimum pairs of genes \b0 \line {} Transcriptome comparisons performed by TranD [1].".format(
+            r"\b Figure. Alternative splicing in reciprocal minimum pairs of genes \b0 \line {} "
+            r"Transcriptome comparisons performed by TranD [1].".format(
                 legendText
             )
         )
         outFile.write(
-            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github."
+            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise "
+            r"nucleotide level comparison of transcript models for long reads. github."
         )
         end_rtf(outFile)
 
 
-def plot_gene_AS_upset_nt_box(td_data, legendOut):
+def plot_gene_AS_upset(td_data, legendOut):
     """
     Upset plot for number of genes with each kind of AS when comparing all
-            transcript pairs within each gene of a single transcriptome with added box plots
-            of the number transcripts per gene, the average number of nt different,
-            and the average proportion of nt different
+            transcript pairs within each gene of a single transcriptome with added box plot
+            of the number transcripts per gene
     """
     pairAS = td_data[
         [
@@ -670,13 +690,9 @@ def plot_gene_AS_upset_nt_box(td_data, legendOut):
             "flag_5_variation",
             "flag_3_variation",
             "flag_no_shared_nt",
-            "num_nt_diff",
-            "prop_nt_diff",
         ]
     ].copy()
-    # Ensure number of nt different are int and float values
-    pairAS["num_nt_diff"] = pairAS["num_nt_diff"].astype(int)
-    pairAS["prop_nt_diff"] = pairAS["prop_nt_diff"].astype(float)
+    # Get AS flags at the gene level
     geneAS = (
         pairAS.groupby("gene_id")
         .agg(
@@ -687,12 +703,12 @@ def plot_gene_AS_upset_nt_box(td_data, legendOut):
                 "flag_5_variation": "max",
                 "flag_3_variation": "max",
                 "flag_no_shared_nt": "max",
-                "num_nt_diff": "mean",
-                "prop_nt_diff": "mean",
             }
         )
         .reset_index()
     )
+    # Get the number of transcripts per gene by getting the unique list
+    #   of transcript_1 and transcript_2
     transcriptPerGene = (
         pd.concat(
             [
@@ -709,9 +725,11 @@ def plot_gene_AS_upset_nt_box(td_data, legendOut):
         .reset_index()
         .rename(columns={"transcript_id": "num_transcript_per_gene"})
     )
+    # Merge transcripts per gene with AS flags
     mergeASxcrptPerGene = pd.merge(
         geneAS, transcriptPerGene, how="outer", on="gene_id", indicator="merge_check"
     )
+    # Set AS flags to boolean values and rename
     geneFlagCols = [
         "gene_id",
         "flag_alt_exon",
@@ -743,34 +761,113 @@ def plot_gene_AS_upset_nt_box(td_data, legendOut):
         "Intron Retention",
         "No Shared NT",
     ]
-    plot_upset(
-        mergeASxcrptPerGene.set_index(AScols),
-        "",
-        [
-            "# Transcripts\nPer Gene",
-            "Avg #\nNT Different",
-            "Avg Proportion\nNT Different",
-        ],
-    )
+    plot_upset(mergeASxcrptPerGene.set_index(AScols), "", ["# Transcripts\nPer Gene"])
     legendText = (
         "Number of genes with the specified types of alternative splicing indicated "
         "by the black dots below the histogram of gene counts (n = {} multi-transcript genes). "
-        "Box plots represent the number of transcripts per gene (blue) and the "
-        "average number (orange) and proportion (green) of nucleotides different "
-        "between the pairs of transcripts within the gene. Genes with \"No Shared NT\" "
-        "have a pair of transcripts with nonoverlapping coordinates.".format(
-            len(mergeASxcrptPerGene)
+        "The box plot represent the number of transcripts per gene (blue). "
+        'Genes with "No Shared NT" have a pair of transcripts with '
+        "nonoverlapping coordinates.".format(len(mergeASxcrptPerGene))
+    )
+    with open(legendOut, "w") as outFile:
+        start_rtf(outFile)
+        outFile.write(
+            r"\b Figure. Alternative splicing in genes \b0 \line {} Transcriptome comparisons "
+            r"performed by TranD [1].".format(
+                legendText
+            )
+        )
+        outFile.write(
+            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise "
+            r"nucleotide level comparison of transcript models for long reads. github."
+        )
+        end_rtf(outFile)
+
+
+def plot_pair_AS_upset_nt_box(td_data, legendOut):
+    """
+    Upset plot for the number of transcript pairs with each kind of AS
+            for a single transcriptome with added box plots
+            of the number of nt different and the proportion of nt different
+    """
+    pairAS = td_data[
+        [
+            "gene_id",
+            "transcript_1",
+            "transcript_2",
+            "flag_alt_exon",
+            "flag_alt_donor_acceptor",
+            "flag_IR",
+            "flag_5_variation",
+            "flag_3_variation",
+            "flag_no_shared_nt",
+            "num_nt_diff",
+            "prop_nt_diff",
+        ]
+    ].copy()
+    # Ensure number of nt different are int and float values
+    pairAS["num_nt_diff"] = pairAS["num_nt_diff"].astype(int)
+    pairAS["prop_nt_diff"] = pairAS["prop_nt_diff"].astype(float)
+    # Set No Shared NT pairs to have np.nan nucleotide difference
+    pairAS["num_nt_diff"] = np.where(
+        pairAS["flag_no_shared_nt"] == 1, np.nan, pairAS["num_nt_diff"]
+    )
+    # Make AS flags boolean values and rename
+    xcrptFlagCols = [
+        "transcript_1",
+        "transcript_2",
+        "flag_alt_exon",
+        "flag_alt_donor_acceptor",
+        "flag_IR",
+        "flag_5_variation",
+        "flag_3_variation",
+        "flag_no_shared_nt",
+    ]
+    pairAS[xcrptFlagCols] = pairAS[xcrptFlagCols].astype(bool)
+    pairAS = pairAS.rename(
+        columns={
+            "flag_alt_exon": "Alt. Exon",
+            "flag_alt_donor_acceptor": "Alt. Donor/Acceptor",
+            "flag_IR": "Intron Retention",
+            "flag_5_variation": "5' Variation",
+            "flag_3_variation": "3' Variation",
+            "flag_no_shared_nt": "No Shared NT",
+            "num_nt_diff": "# NT Different",
+            "prop_nt_diff": "Proportion\nNT Different",
+        }
+    )
+    AScols = [
+        "5' Variation",
+        "3' Variation",
+        "Alt. Donor/Acceptor",
+        "Alt. Exon",
+        "Intron Retention",
+        "No Shared NT",
+    ]
+    plot_upset(
+        pairAS.set_index(AScols), "", ["# NT Different", "Proportion\nNT Different"]
+    )
+    legendText = (
+        "Number of transcript pairs with the specified types of alternative "
+        "splicing indicated by the black dots below the histogram of transcript "
+        "pair counts (n = {} transcript pairs, in {} multi-transcript genes). "
+        "Box plots represent the number (blue) and proportion (orange) of "
+        "nucleotides different between the pair. Transcript pairs with "
+        '"No Shared NT" have nonoverlapping coordinates.'.format(
+            len(pairAS), pairAS["gene_id"].nunique()
         )
     )
     with open(legendOut, "w") as outFile:
         start_rtf(outFile)
         outFile.write(
-            r"\b Figure. Alternative splicing in genes \b0 \line {} Transcriptome comparisons performed by TranD [1].".format(
+            r"\b Figure. Alternative splicing between pairs of transcripts \b0 \line {} "
+            r"Transcriptome comparisons performed by TranD [1].".format(
                 legendText
             )
         )
         outFile.write(
-            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github."
+            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise "
+            r"nucleotide level comparison of transcript models for long reads. github."
         )
         end_rtf(outFile)
 
@@ -816,6 +913,8 @@ def plot_gene_avg_nt_diff_pairs(md_data, name1, name2, legendOut, zoomMean=False
             "transcript_in_gene",
             "recip_min_pair_in_gene",
             "flag_recip_min_match",
+            "flag_min_match_" + name1,
+            "flag_min_match_" + name2,
             "num_nt_diff",
             "prop_nt_diff",
         ]
@@ -827,7 +926,13 @@ def plot_gene_avg_nt_diff_pairs(md_data, name1, name2, legendOut, zoomMean=False
         minPairNT["flag_recip_min_match"] == 1, minPairNT["num_nt_diff"], 0
     )
     minPairNT["num_nt_diff_extra"] = np.where(
-        minPairNT["flag_recip_min_match"] == 0, minPairNT["num_nt_diff"], 0
+        (minPairNT["flag_recip_min_match"] == 0)
+        & (
+            minPairNT["flag_min_match_" + name1] + minPairNT["flag_min_match_" + name2]
+            == 1
+        ),
+        minPairNT["num_nt_diff"],
+        0,
     )
     minPairNTGene = (
         minPairNT.groupby("gene_id")
@@ -914,7 +1019,7 @@ def plot_gene_avg_nt_diff_pairs(md_data, name1, name2, legendOut, zoomMean=False
                     ].mean(),
                     minPairNTGene[minPairNTGene["num_nt_diff_extra"] > 0][
                         "num_nt_diff_extra"
-                    ].mean()
+                    ].mean(),
                 ]
             )
         )
@@ -936,21 +1041,20 @@ def plot_gene_avg_nt_diff_pairs(md_data, name1, name2, legendOut, zoomMean=False
         "Each point represents a gene plotted by the average number of nucleotides "
         "different between reciprocal minimum pairs (X-axis) and minimum pairs "
         "of extras without a reciprocal minimum pair (Y-axis). Genes are colored "
-        "by categorizations of the comparison between {} and {}.".format(
-            name1,
-            name2,
-        )
+        "by categorizations of the comparison between {} and {}.".format(name1, name2)
     )
     plt.tight_layout()
     with open(legendOut, "w") as outFile:
         start_rtf(outFile)
         outFile.write(
-            r"\b Figure. Number of nucleotides different between reciprocal and nonreciprocal minimum pairs \b0 \line {} Transcriptome comparisons performed by TranD [1].".format(
+            r"\b Figure. Number of nucleotides different between reciprocal and nonreciprocal "
+            r"minimum pairs \b0 \line {} Transcriptome comparisons performed by TranD [1].".format(
                 legendText
             )
         )
         outFile.write(
-            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github."
+            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise "
+            r"nucleotide level comparison of transcript models for long reads. github."
         )
         end_rtf(outFile)
 
@@ -1019,12 +1123,14 @@ def plot_complexity_box(geneDF, transcriptDF, outdir, legendOut):
     with open(legendOut, "w") as outFile:
         start_rtf(outFile)
         outFile.write(
-            r"\b Figure. Transcriptome complexity \b0 \line {} Transcriptome analyses performed by TranD [1].".format(
+            r"\b Figure. Transcriptome complexity \b0 \line {} Transcriptome analyses performed by "
+            r"TranD [1].".format(
                 legendText
             )
         )
         outFile.write(
-            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github."
+            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise "
+            r"nucleotide level comparison of transcript models for long reads. github."
         )
         end_rtf(outFile)
 
@@ -1073,14 +1179,108 @@ def plot_complexity_violin(geneDF, transcriptDF, outdir, legendOut):
     with open(legendOut, "w") as outFile:
         start_rtf(outFile)
         outFile.write(
-            r"\b Figure. Transcriptome complexity \b0 \line {} Transcriptome analyses performed by TranD [1].".format(
+            r"\b Figure. Transcriptome complexity \b0 \line {} Transcriptome analyses performed by "
+            r"TranD [1].".format(
                 legendText
             )
         )
         outFile.write(
-            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise nucleotide level comparison of transcript models for long reads. github."
+            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise "
+            r"nucleotide level comparison of transcript models for long reads. github."
         )
         end_rtf(outFile)
+
+
+def plot_gene_prop_nt_variablility(ef_data, legendOut, multitranscript=False):
+    """
+    Plot distribution of proportion of nucleotide variability across all genes or
+    only multitranscript genes
+    """
+    # Get lengths of exon fragments
+    ef_data["num_nt_varying"] = np.where(
+        ef_data["ea_annotation_frequency"] != "constitutive",
+        ef_data["ef_end"] - ef_data["ef_start"],
+        0,
+    )
+    ef_data["num_nt_total"] = ef_data["ef_end"] - ef_data["ef_start"]
+    # For each gene, get the number of varying nucleotides (not constitutive)
+    ef_gene_data = (
+        ef_data.groupby("gene_id")[["num_nt_varying", "num_nt_total"]]
+        .sum()
+        .reset_index()
+    )
+    # Get propotion of varying nucleotides
+    ef_gene_data["prop_varying_nt"] = (
+        ef_gene_data["num_nt_varying"] / ef_gene_data["num_nt_total"]
+    )
+
+    # Check if outputting all genes or only multitranscript genes
+    if multitranscript:
+        ef_data_split = split_column_by_sep(
+            ef_data, col_name="ef_transcript_ids", sep="|"
+        )
+        xcrpt_per_gene = (
+            ef_data_split.groupby("gene_id")["ef_transcript_ids"]
+            .nunique()
+            .reset_index()
+        )
+        multi_xcrpt_gene = xcrpt_per_gene[xcrpt_per_gene["ef_transcript_ids"] > 1]
+        ef_gene_data = ef_gene_data[
+            ef_gene_data["gene_id"].isin(multi_xcrpt_gene["gene_id"])
+        ]
+        legendText = (
+            "Distribution of the proportion of variable "
+            "nucleotides across multi-transcript genes (n = {}).".format(
+                len(ef_gene_data)
+            )
+        )
+    else:
+        legendText = (
+            "Distribution of the proportion of variable "
+            "nucleotides across all genes (n = {}). "
+            "Single transcript genes are assigned a proportion of 1.".format(
+                len(ef_gene_data)
+            )
+        )
+    # Plot density
+    sns.distplot(ef_gene_data["prop_varying_nt"], hist=False)
+    plt.xlim(0, 1)
+    plt.ylabel("Density")
+    plt.xlabel("Proportion of Variable Nucleotides")
+    plt.tight_layout()
+    with open(legendOut, "w") as outFile:
+        start_rtf(outFile)
+        outFile.write(
+            r"\b Figure. Transcriptome complexity \b0 \line {} Transcriptome analyses performed by "
+            r"TranD [1].".format(
+                legendText
+            )
+        )
+        outFile.write(
+            r" \line \line 1. Nanni A., et al. (2021). TranD: Transcript Distance a precise "
+            r"nucleotide level comparison of transcript models for long reads. github."
+        )
+        end_rtf(outFile)
+
+
+def split_column_by_sep(df, col_name=None, sep=None, sort_list=None):
+    """
+    Split variable by some character like '|' or ',' and
+    keep all other values the same
+    """
+    if col_name is None:
+        col_name = "transcript_id"
+    if sep is None:
+        sep = "|"
+    splitList = df[col_name].str.split(sep).apply(pd.Series, 1).stack()
+    splitList.index = splitList.index.droplevel(-1)
+    tempDF = df.copy()
+    del tempDF[col_name]
+    splitDF = tempDF.join(splitList.rename(col_name))
+    if sort_list is not None:
+        splitDF = splitDF.sort_values(by=sort_list)
+    del (tempDF, splitList)
+    return splitDF
 
 
 def get_value_count(df, col, value):
@@ -1110,6 +1310,8 @@ def end_rtf(outFile):
     Close RTF file
     """
     outFile.write(
-        " \line \line \line \i Disclaimer:  While automated captions of TranD have been carefully constructed, users are advised to verify caption contents before use and report any errors to the TranD github.\i0 "
+        r" \line \line \line \i Disclaimer:  While automated captions of TranD have been carefully "
+        r"constructed, users are advised to verify caption contents before use and report any "
+        r"errors to the TranD github.\i0 "
     )
     outFile.write(r"}\n\x00")

@@ -4,14 +4,29 @@
 # Copyright © 2021 Oleksandr Moskalenko <om@rc.ufl.edu>
 # Distributed under terms of the MIT license.
 """
-Event Analysis 2.0 is an evolution of the concepts in the original EA from
-https://github.com/McIntyre-Lab/events, but simplified for the task of comparing data produced by
-sequence alignment and annotation tools.
+TranD is a collection of tools to facilitate metrics of structural variation
+for whole genome transcript annotation files (GTF) that pinpoint structural
+variation to the nucleotide level.
 
-This program takes a single GTF file for all pairwise transcript comparisons within each gene or two
-GTF files for transcript comparisions between genes in both datasets, reads in exonic fragment data,
-and performs event analysis to determine transcript distance measures for the genes and transcripts
-in the data.
+TranD (Transcript Distances) can be used to calculate metrics of structural
+variation within and between annotation files (GTF). Structural variation
+reflects organismal complexity and three summary metrics for genome level
+complexity are calculated for every gene in a GTF file: 1) the number of
+transcripts per gene; 2) the number of exons per transcript; and 3) the number
+of unique exons (exons with unique genomic coordinates) per gene. From each
+these metrics distributions a summary statistics such as mean, median,
+variance, inter-quartile range are calculated. With 1GTF file input, gene mode
+can be used to generates these metrics for each gene and summary statistics and
+distributions across genes. Distributions are visualized in a series of plots.
+For 1 GTF and 2GTF a pairwise mode calculates distance metrics between 2
+transcripts to the nucleotide. In 1 GTF this is all possible pairs within the
+gene and in 2 GTF model this is all possible pairs among GTF files. The
+distribution of these metrics across genes are visualized and summary
+statistics for structural variations between pairs are calculated and reported.
+Visualizations of the distributions of the frequency of intron retention,
+alternative exon usage, donor/acceptor variation and 5', 3' variation in UTR
+regions are provided as well as tabular formatted nucleotide level distances
+for both 1GTF and 2 GTF.
 """
 
 import itertools
@@ -28,6 +43,7 @@ from .io import write_gtf
 from .io import open_output_files
 from .io import read_exon_data_from_file
 from .bedtools import prep_bed_for_ea
+from .bedtools import convert_tx_bed_to_coords
 
 # Import transcript distance functions and variables
 from . import transcript_distance as TD
@@ -36,7 +52,7 @@ from . import minimum_distance as MD
 # Import plotting functions
 from . import plot_two_gtf_pairwise as P2GP
 from . import plot_one_gtf_pairwise as P1GP
-from . import plot_transcriptome as P1GG
+from . import plot_one_gtf_gene as P1GG
 
 # Import complexity calculation function
 from . import calculate_complexity as COMP
@@ -45,6 +61,7 @@ from . import calculate_complexity as COMP
 from . import consolidation as CONSOL
 
 # CONFIGURATION
+# Output columns
 jct_df_cols = ['gene_id', 'transcript_id', 'coords']
 er_df_cols = ['gene_id', 'er_id', 'er_chr', 'er_start', 'er_end', 'er_strand', 'er_exon_ids',
               'er_transcript_ids', 'gene_transcript_ids', 'exons_per_er', 'transcripts_per_er',
@@ -55,6 +72,12 @@ ea_df_cols = ['gene_id', 'transcript_1', 'transcript_2', 'transcript_id', 'ef_id
 ef_df_cols = ['gene_id', 'er_id', 'ef_id', 'ef_chr', 'ef_start', 'ef_end', 'ef_strand',
               'ef_exon_ids', 'ef_transcript_ids', 'exons_per_ef', 'transcripts_per_ef',
               'ef_ir_flag', 'ea_annotation_frequency']
+ir_df_cols = ['er_transcript_ids']
+ue_df_cols = ['gene_id', 'num_uniq_exon']
+# Parallelization
+ea_list = []
+jct_list = []
+td_list = []
 
 
 # Data structures for ERs and EFs. Use a mutable dataclass, so we could add transcript names and
@@ -94,12 +117,6 @@ class EF:
     ef_freq: str = ''
 
 
-# TODO refactor module level variables used for first-pass parallelization
-ea_list = []
-jct_list = []
-td_list = []
-
-
 def chunks(lst, n):
     # Split list into n chunks and return list of lists
     splitSize = (len(lst)//n) + ((len(lst) % n) > 0)
@@ -115,30 +132,6 @@ def callback_results(results):
     ea_list.append(ea_data_cat)
     jct_list.append(jct_data_cat)
     td_list.append(td_data_cat)
-
-
-def write_td_data(data, out_fhs):
-    """Write results of a transcript distance comparison to output files."""
-    logger.debug("Writing TD data")
-
-
-def do_td(data):
-    """Perform Transcript Distance analysis on a pair of transcripts"""
-    raise NotImplementedError
-    # tx_names = data['transcript_id'].unique()
-    # logger.debug("TD on {}", tx_names)
-    td_data = ""
-    return td_data
-
-
-def format_ea_identical(gene, tx_names, data):
-    """Format exons as EFs for identical transcripts"""
-    # Start ef_id numbering from 1
-    # ef_id = 1
-    for feature in data:
-        pass
-    output = data
-    return(output)
 
 
 def create_junction_catalog(gene, tx, tx_data):
@@ -199,7 +192,7 @@ def get_intron_retention_efs(ers_bed, efs_bed, common_efs):
     return ir_efs
 
 
-def remove_ir_transcripts(tx_data, introns):
+def remove_ir_transcripts(tx_data, introns, tx_names, tx_coords):
     """Remove transcripts that contain Intron Retention events i.e. an
     intron is encompassed by an exon
     """
@@ -226,7 +219,12 @@ def remove_ir_transcripts(tx_data, introns):
                         continue
     for ir_tx in to_remove:
         del tx_data[ir_tx]
-    return tx_data
+    old_tx_names = tx_names
+    tx_names = tx_data.keys()
+    tx_coords_delete = [k for k in old_tx_names if k not in tx_names]
+    for k in tx_coords_delete:
+        del tx_coords[k]
+    return tx_data, tx_names, tx_coords
 
 
 def list_ir_exon_transcript(tx_data, introns):
@@ -255,13 +253,17 @@ def list_ir_exon_transcript(tx_data, introns):
     return ir_exon_list, ir_transcript_list
 
 
-def do_ea_gene(data, keep_ir):
+def do_ea_gene(tx_data, keep_ir):
     """
     Event Analysis on a full gene
     """
+    try:
+        data = prep_bed_for_ea(tx_data)
+    except ValueError:
+        raise
+    # logger.debug("Gene data:\n{}".format(data))
     gene_id = data['gene_id']
-    logger.debug("Gene EA on {}", gene_id)
-    # logger.debug(data)
+    # logger.debug("Full gene data: {}".format(data))
     tx_names = data['transcript_list']
     logger.debug("Transcripts in {}: {}", gene_id, tx_names)
     if len(tx_names) == 1:
@@ -271,36 +273,11 @@ def do_ea_gene(data, keep_ir):
         junction_df = pd.DataFrame(junction_data, columns=jct_df_cols)
         ir_transcripts = []
     else:
-        tx_data = {}
-        tx_coords = {}
-        all_introns = []
-        for tx_name in tx_names:
-            tx_bed_str = data[tx_name]
-            starts = [int(x[1]) for x in tx_bed_str]
-            ends = [int(x[2]) for x in tx_bed_str]
-            chrom = data[tx_name][0][0]
-            strand = data[tx_name][0][5]
-            feature = f"{tx_name}_transcript"
-            left_edge = min(starts)
-            right_edge = max(ends)
-            tx_exons = BedTool(tx_bed_str).saveas()
-            tx_data[tx_name] = tx_exons
-            tx_coords[tx_name] = [left_edge, right_edge]
-            tx_full = BedTool(f"{chrom} {left_edge} {right_edge} {feature} 0 {strand}",
-                              from_string=True)
-            tx_introns = tx_full.subtract(tx_exons)
-            i_coords = [(int(x.start), int(x.end)) for x in tx_introns]
-            all_introns.extend(i_coords)
-        intron_data = list(set(all_introns))
-        intron_data.sort(key=lambda x: x[0])
+        tx_data, tx_coords, intron_data = convert_tx_bed_to_coords(data, tx_names)
         # Removal of IR containing transcripts
         if not keep_ir:
-            tx_data = remove_ir_transcripts(tx_data, intron_data)
-            old_tx_names = tx_names
-            tx_names = tx_data.keys()
-            tx_coords_delete = [k for k in old_tx_names if k not in tx_names]
-            for k in tx_coords_delete:
-                del tx_coords[k]
+            tx_data, tx_names, tx_coords = remove_ir_transcripts(tx_data, intron_data, tx_names,
+                                                                 tx_coords)
             ir_exons = []
             ir_transcripts = []
         else:
@@ -382,12 +359,18 @@ def single_transcript_ea(gene_id, tx_name, tx_data):
     return er_out_data, ef_out_data
 
 
-def do_ea_pair(data):
+def do_ea_pair(tx_data):
     """
     Event Analysis on a pair of transcripts
     """
+    try:
+        data = prep_bed_for_ea(tx_data)
+    except ValueError:
+        raise
+    # logger.debug("Gene data:\n{}".format(data))
     gene_id = data['gene_id']
     tx_names = data['transcript_list']
+    logger.debug("Transcripts in {}: {}", gene_id, tx_names)
     tx1_name, tx2_name = tx_names[0], tx_names[1]
     tx1_bed_str = data[tx1_name]
     tx2_bed_str = data[tx2_name]
@@ -419,13 +402,8 @@ def do_ea_pair(data):
         tx1_max = tx1_bed_df['end'].max()
         tx2_max = tx2_bed_df['end'].max()
         # Check for non-overlapping mono-exon transcript pairs
-        if tx1_min < tx2_min and tx1_max <= tx2_min:
-            # T1 completely upstream of T2
-            tx1_bed = BedTool(tx1_bed_str).saveas()
-            tx2_bed = BedTool(tx2_bed_str).saveas()
-            ea_data = er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
-        elif tx2_min < tx1_min and tx2_max <= tx1_min:
-            # T2 completely upstream of T1
+        # when T1 is completely upstream of T2 or vice versa
+        if (tx1_max <= tx2_min) or (tx2_max <= tx1_min):
             tx1_bed = BedTool(tx1_bed_str).saveas()
             tx2_bed = BedTool(tx2_bed_str).saveas()
             ea_data = er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
@@ -476,6 +454,9 @@ def er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id):
     Generate ERs (Exonic Regions) and EFs (Exonic Fragments) and analyze events in a pair of
     transcripts.
     """
+    logger.debug("Performing EA analysis for {} gene", gene_id)
+    logger.debug("TX Names: {},{}", tx1_name, tx2_name)
+    # logger.debug("EA Analysis raw data: tx1: {}, tx2: {}".format(tx1_bed, tx2_bed))
     ea_data = []
     strand = list(set([x.strand for x in tx1_bed]))[0]
     # logger.debug("TX1: {}: \n{}", tx1_name, tx1_bed)
@@ -541,7 +522,7 @@ def er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id):
                     ef.strand, ir_flag, er_name, er_data[er_name].chrom, er_data[er_name].start,
                     er_data[er_name].end, er_data[er_name].strand]
         ea_data.append(ea_datum)
-    logger.debug("Final EA data: \n{}", ea_data)
+    # logger.debug("Final EA data: \n{}", ea_data)
     return ea_data
 
 
@@ -726,37 +707,12 @@ def ea_analysis(gene_id, tx_data, tx_coords, ir_exons):
     """
     Generate ERs (Exonic Regions) and EFs (Exonic Fragments) and analyze events in transcripts.
     Generalize to do both full-gene and transcript pairs to replace er_ea_analysis.
-
-    Required outputs:
-    gene_id
-    gene_transcript_ids
-    transcripts_per_gene
-    er_id
-    er_chr
-    er_start
-    er_end
-    er_strand
-    er_flag_ir ( zero if IRs were removed)
-    exons_per_er
-    er_exon_ids = Piped ("|") list of exon IDs that are contained within the exon region
-    transcripts_per_er
-    er_transcript_ids = Piped ("|") list of transcript IDs the exon region is present in
-    er_annotation_frequency = “unique”, “common”, “constitutive” (one, many, all) per txs
-    ef_id
-    ef_chr
-    ef_start
-    ef_end
-    ef_strand
-    ef_flag_ir (zero if IRs were removed)
-    ef_exon_ids
-    exons_per_ef
-    transcripts_per_ef
-    ef_transcript_ids = Piped ("|") list of transcript IDs the exon fragment is present in
-    ef_annotation_frequency = “unique”, “common”, “constitutive” (one, many, all) per txs
     """
     # Use the junction catalog and transcripts start/end to check for identical transcripts
     logger.debug("Performing EA analysis for {} gene", gene_id)
     logger.debug("TX Names: {}", list(tx_data.keys()))
+    logger.debug("EA Analysis raw data: TX Data: {}, TX Coords: {}, "
+                 "IR Exons: {}".format(tx_data, tx_coords, ir_exons))
     # logger.debug("TX Coords: {}", tx_coords)
     gene_transcript_ids = list(tx_data.keys())
     total_number_of_transcripts = len(gene_transcript_ids)
@@ -972,26 +928,9 @@ def ea_analysis(gene_id, tx_data, tx_coords, ir_exons):
     return er_out_data, ef_out_data
 
 
-def do_ea(tx_data, mode='pairwise', keep_ir=False):
-    """Perform event analysis using pybedtools on bed string data"""
-    try:
-        bed_data = prep_bed_for_ea(tx_data)
-    except ValueError:
-        raise
-    if mode == 'pairwise':
-        ea_results, jct_catalog, transcript_distance = do_ea_pair(bed_data)
-        return ea_results, jct_catalog, transcript_distance
-    # full-gene, more transcripts than two
-    elif mode == 'gene':
-        # full-gene, all transcripts
-        er_df, ef_df, jct_catalog, ir_transcripts = do_ea_gene(bed_data, keep_ir)
-        return er_df, ef_df, jct_catalog, ir_transcripts
-    else:
-        raise ValueError("Wrong EA mode")
-
-
-def ea_pairwise(data):
-    "Do EA (Event Analysis) for a pair transcripts."
+def ea_pairwise(gene_id, data):
+    "EA on pairs of transcripts from a single GTF file for a given gene."
+    # logger.debug("EA Pairwise input data:\n{}".format(data))
     transcripts = data.groupby("transcript_id")
     transcript_groups = transcripts.groups
     tx_data = {}
@@ -999,42 +938,42 @@ def ea_pairwise(data):
         transcript_df = data[data['transcript_id'] == transcript]
         tx_data[transcript] = transcript_df
     transcript_pairs = list(itertools.combinations(tx_data.keys(), 2))
+    logger.debug("Transcript combinations to process for {}: \n{}", gene_id, transcript_pairs)
     ea_df = pd.DataFrame(columns=ea_df_cols)
     jct_df = pd.DataFrame(columns=jct_df_cols)
     td_df = pd.DataFrame(columns=TD.td_df_cols)
     for tx_pair in transcript_pairs:
-        # try:
         tx_df_1 = tx_data[tx_pair[0]]
         tx_df_2 = tx_data[tx_pair[1]]
         tx_pair_data = pd.concat([tx_df_1, tx_df_2])
-        # try:
-        ea_data, jct_data, td_data = do_ea(tx_pair_data, mode='pairwise')
+        ea_data, jct_data, td_data = do_ea_pair(tx_pair_data)
         ea_df = ea_df.append(ea_data)
         jct_df = jct_df.append(jct_data)
         td_df = td_df.append(td_data)
-        # except ValueError as e:
-        #     logger.error(e)
-        #     exit(1)
-        #     #     # DEBUG, exit for now, just write to rejects later
-        #     #     # continue
     return ea_df, jct_df, td_df
 
 
 def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_only, skip_plots,
                         skip_interm, consolidate, consol_prefix, consol_outfiles):
-    """Compare all transcript pairs in a single GTF file."""
+    """
+    Pairwise or full gene transcript event analysis (TranD) on a single GTF file.
+    """
     logger.info("Input file: {}", infile)
     if skip_interm:
         del(outfiles['ea_fh'])
         del(outfiles['er_fh'])
         del(outfiles['ef_fh'])
         del(outfiles['jc_fh'])
+        del(outfiles['ir_fh'])
+        del(outfiles['ue_fh'])
     else:
         if ea_mode == 'gene':
             del(outfiles['ea_fh'])
         else:
             del(outfiles['er_fh'])
             del(outfiles['ef_fh'])
+            del(outfiles['ir_fh'])
+            del(outfiles['ue_fh'])
 
     data = read_exon_data_from_file(infile)
     genes = data.groupby("gene_id")
@@ -1062,6 +1001,8 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
         if ea_mode == 'gene':
             out_fhs['er_fh'].write_text(",".join(er_df_cols) + '\n')
             out_fhs['ef_fh'].write_text(",".join(ef_df_cols) + '\n')
+            out_fhs['ir_fh'].write_text(",".join(ir_df_cols) + '\n')
+            out_fhs['ue_fh'].write_text(",".join(ue_df_cols) + '\n')
         else:
             out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
             out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
@@ -1073,15 +1014,17 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
         er_data_cat = pd.DataFrame(columns=er_df_cols)
         ef_data_cat = pd.DataFrame(columns=ef_df_cols)
         ir_data_cat = pd.DataFrame(columns=['er_transcript_ids'])
+    # Event analysis start
     for gene in genes.groups:
         gene_df = data[data['gene_id'] == gene]
         transcripts = gene_df.groupby("transcript_id")
         transcript_groups = transcripts.groups
         number_of_transcripts = len(transcript_groups)
+        # Event analysis type
+        # Full Gene EA
         if ea_mode == 'gene':
             try:
-                er_data, ef_data, jct_data, ir_transcripts = do_ea(gene_df, mode='gene',
-                                                                   keep_ir=keep_ir)
+                er_data, ef_data, jct_data, ir_transcripts = do_ea_gene(gene_df, keep_ir=keep_ir)
                 if er_data is None:
                     continue
                 if not skip_interm:
@@ -1097,24 +1040,29 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
                 logger.error(e)
                 continue
         else:
+            # Pairwise EA
             if number_of_transcripts == 1:
                 logger.info("Gene {} has a single transcript. Skipping", gene)
                 continue
-            ea_data, jct_data, td_data = ea_pairwise(gene_df)
+            ea_data, jct_data, td_data = ea_pairwise(gene, gene_df)
             td_data_cat = pd.concat([td_data_cat, td_data], ignore_index=True)
             if not skip_interm:
                 write_output(ea_data, out_fhs, 'ea_fh')
                 write_output(jct_data, out_fhs, 'jc_fh')
                 write_output(td_data, out_fhs, 'td_fh')
+    # Output additional intermediate files for gene mode
+    if ea_mode == 'gene' and not skip_interm:
+        write_output(ir_data_cat, out_fhs, 'ir_fh')
+        write_output(uniq_ex, out_fhs, 'ue_fh')
     if not skip_plots:
         if ea_mode == 'pairwise':
             P1GP.plot_one_gtf_pairwise(outdir, td_data_cat)
         elif ea_mode == 'gene':
-            P1GG.plot_transcriptome(er_data_cat, ef_data_cat, ir_data_cat, uniq_ex, outdir)
+            P1GG.plot_one_gtf_gene(er_data_cat, ef_data_cat, ir_data_cat, uniq_ex, outdir)
 
 
-def ea_two_files(f1_data, f2_data, gene_id, name1, name2):
-    "Do EA (Event Analysis) for pairs of transcripts from two files for a gene."
+def ea_pairwise_two_files(f1_data, f2_data, gene_id, name1, name2):
+    "EA on pairs of transcripts from two files for a given gene."
     f1_transcripts = list(set(f1_data['transcript_id']))
     f2_transcripts = list(set(f2_data['transcript_id']))
     transcript_combos = list(itertools.product(f1_transcripts, f2_transcripts))
@@ -1130,23 +1078,20 @@ def ea_two_files(f1_data, f2_data, gene_id, name1, name2):
         tx_df_2_s = tx_df_2.assign(transcript_id=lambda x: x.transcript_id + '_' + name2)
         tx_pair_data = pd.concat([tx_df_1_s, tx_df_2_s])
         try:
-            ea_data, jct_data, td_data = do_ea(tx_pair_data, mode='pairwise')
+            ea_data, jct_data, td_data = do_ea_pair(tx_pair_data)
             ea_df = ea_df.append(ea_data)
             jct_df = jct_df.append(jct_data)
             td_df = td_df.append(td_data)
         except ValueError:
             raise
-        # except ValueError as e:
-        #     logger.error(e)
-        #     exit(1)
-        #     #     # DEBUG, exit for now, just write to rejects later
-        #     #     # continue
     return ea_df, jct_df, td_df
 
 
 def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexity_only, skip_plots,
                       skip_interm, name1, name2):
-    """Compare transcript pairs between two GTF files."""
+    """
+    Pairwise transcript event analysis (TranD) on two GTF files.
+    """
     logger.debug("Input files: {}", infiles)
     if out_pairs != 'all':
         # Do not create full transcript distance output
@@ -1157,6 +1102,8 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
     # Do not make gene mode files (remove from outfiles)
     del(outfiles['er_fh'])
     del(outfiles['ef_fh'])
+    del(outfiles['ir_fh'])
+    del(outfiles['ue_fh'])
 
     infile_1 = infiles[0]
     infile_2 = infiles[1]
@@ -1191,6 +1138,7 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
         out_fhs['md_fh'].write_text(",".join(MD.get_md_cols(name1, name2)) + '\n')
     f1_gene_names = set(in_f1['gene_id'])
     f2_gene_names = set(in_f2['gene_id'])
+    # Record transcripts that are only in one file for review
     only_f1_genes = f1_gene_names.difference(f2_gene_names)
     only_f2_genes = f2_gene_names.difference(f1_gene_names)
     odd_genes = only_f1_genes.union(only_f2_genes)
@@ -1265,12 +1213,12 @@ def loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs, cpu_cores, name1, na
     ea_data_list = []
     jct_data_list = []
     td_data_list = []
-    # Loop over genes in provided gene list
+    # Loop over genes in a provided gene list
     for gene in gene_list:
         f1_data = valid_f1[valid_f1['gene_id'] == gene]
         f2_data = valid_f2[valid_f2['gene_id'] == gene]
         try:
-            ea_data, jct_data, td_data = ea_two_files(f1_data, f2_data, gene, name1, name2)
+            ea_data, jct_data, td_data = ea_pairwise_two_files(f1_data, f2_data, gene, name1, name2)
         except ValueError as e:
             logger.error(e)
             continue
