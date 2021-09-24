@@ -7,7 +7,7 @@
   <command detect_errors="exit_code"><![CDATA[
   mkdir outputs;
   cd outputs;
-  main.py
+  python '$__tool_directory__/main.py'
     #if $dataSets.gtfNum == "gtf1":
       --infiles=$dataSets.gtf1Dataset
       --consolidate $dataSets.consolidate
@@ -29,6 +29,7 @@
       --skipInterm $skipInterm
     #end if
       --outdir=`pwd`
+
   ]]></command>
   <inputs>
     <conditional name="dataSets">
@@ -75,8 +76,9 @@
     </conditional>
   </inputs>
   <outputs>
-    <data format="tabular" name="geneOutput" label="${tool.name} on ${on_string}: Gene to KEGGID link">
-      <filter>(dataSets['whichDataSet'] == 'geneDataset') or (dataSets['whichDataSet'] == 'geneDataset,metDataset')</filter>
+    <!-- The discover datasets parameter is needed to dynamically collect the output datasets --> 
+    <data format= "tabular" name="complexity">
+      <discover_datasets pattern="(?P&lt;name&gt;.*)" ext="tabular" directory="outputs" />
     </data>
   </outputs>
   <tests>
