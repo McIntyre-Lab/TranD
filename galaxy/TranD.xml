@@ -10,8 +10,10 @@
   python '$__tool_directory__/main.py'
     #if $dataSets.gtfNum == "gtf1":
       --infiles=$dataSets.gtf1Dataset
-      --consolidate $dataSets.consolidate
-      --consolPrefix "dataSets.$consolPrefix"
+      #if $datasets.consolidate == "True":
+        --consolidate $dataSets.consolidate
+        --consolPrefix "dataSets.$consolPrefix"
+      #end if
       --ea_mode=$dataSets.eaMode
       --keep_ir=$dataSets.keepIR
       --skip-plots $skipPlots
