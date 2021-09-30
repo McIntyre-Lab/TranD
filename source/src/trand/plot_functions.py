@@ -509,6 +509,7 @@ def plot_min_pair_AS_upset_nt_box(md_data, name1, name2, legendOut, reciprocal=T
         "Intron Retention",
         "No Shared NT",
     ]
+    minPairAS[AScols] = minPairAS[AScols].astype(int)
     if reciprocal:
         plot_upset(
             minPairAS.set_index(AScols),
