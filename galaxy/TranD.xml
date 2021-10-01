@@ -5,82 +5,54 @@
   </macros>
   <expand macro="requirements" />
   <command detect_errors="exit_code"><![CDATA[
+## Begin TranD Command Line
   mkdir outputs;
   cd outputs;
-  python '$__tool_directory__/main.py'
-    #if $dataSets.gtfNum == "gtf1":
-      --infiles=$dataSets.gtf1Dataset
-      #if $datasets.consolidate == "True":
-        --consolidate $dataSets.consolidate
-        --consolPrefix "dataSets.$consolPrefix"
+  trand
+      $gtf1Dataset
+      #if $consolidate
+        --consolidate 
+        --consolPrefix 
       #end if
-      --ea_mode=$dataSets.eaMode
-      --keep_ir=$dataSets.keepIR
-      --skip-plots $skipPlots
-      --skipInterm $skip_interm
-      #if $datasets.consolidateTranscripts.consolidate == "True":
-        --complexityOnly=$datasets.consolidateTranscripts.complexityOnly
+      #if $complexityOnly
+        --complexityOnly
       #end if
-    #end if
-    #if $dataSets.whichDataSet == "gtf2":
-      --infiles=$dataSets.gtf2Dataset
-      --ea_mode="$eaMode"
-      --keep_ir $keepIR
-      --pairs "$pairs"
-      --skip-plots $skipPlots
-      --skipInterm $skipInterm
-    #end if
-      --outdir=`pwd`
+      --ea=$eaMode
+      #if $keepIR
+        --keepir
+      #end if
+      #if $skipPlots     
+        --skip-plots 
+      #end if
+      #if $skipInterm
+        --skip-intermediate
+      #end if
+      --force
 
   ]]></command>
   <inputs>
-    <conditional name="dataSets">
-      <param name="gtfNum" type="select" display="radio" label="Select the amount of GTF files you have as input for TranD processing">
-        <option value="gtf1">One GTF File</option>
-        <option value="gtf2">Two GTF Files</option>
-        <validator type="no_options" message="You must select at least one option." /> 
-      </param>
-      <when value="gtf1">
-        <param name="gtf1Dataset" type="data" format="tabular" label="Select GTF file containing transcriptomes of interest from your history" help="File must contain “exon” features with transcript_id and gene_id values indicated in attributes"/>
-        <conditional name="consolidateTranscripts">
-          <param name="consolidate" type="select" display="radio" label="Select 'Yes' to consolidate transcripts" help="Consolidating transcripts remove 5'/3' transcript end variation in redundantly spliced transcripts) with identical junctions prior to complexity calculations, events and summary plotting">
-            <option value="True">Yes</option>
-            <option value="False">No</option>
-          </param>
-          <when value="True">
-            <param name="consolPrefix" type="text" value="tr" label="Specify the prefix to use for consolidated transcript_id values. Prefix must be alphanumeric with no spaces. An underscore is the only allowed special character"/> 
-          </when>
-        </conditional>
+        <param name="gtf1Dataset" type="data" format="gtf" label="Select GTF file containing transcriptomes of interest from your history" help="File must contain “exon” features with transcript_id and gene_id values indicated in attributes"/>
+        <param name="consolidate" type="boolean" display="radio" label="Select 'Yes' to consolidate transcripts" help="Consolidating transcripts remove 5'/3' transcript end variation in redundantly spliced transcripts) with identical junctions prior to complexity calculations, events and summary plotting"/>
+        <param name="consolPrefix" type="text" value="tr" label="Specify the prefix to use for consolidated transcript_id values. Prefix must be alphanumeric with no spaces. An underscore is the only allowed special character"/> 
         <param name="complexityOnly" type="boolean" label="Select to output only complexity calculations" help="Select this parameter if you only want complexity measures as opposed to outputting performance of all analyses (ie event analysis, etc)"/>
         <param name="eaMode" size="30" type="select" value="" display="radio" label="Choose type of comparison to do within gene transcript" help="Compare pairs of transcripts within a gene (Pairwise) or compare all transcripts within a gene (Gene)">
-          <option value="Pairwise" selected="true">Pairwise</option>
-          <option value="Gene" selected="true">Gene</option>
+          <option value="pairwise" selected="true">Pairwise</option>
+          <option value="gene" selected="true">Gene</option>
         </param>
         <param name="keepIR" type="boolean" label="Set to 'Yes' if you want to keep transcripts with Intron Retention regions when generating transcript events"/>
         <param name="skipPlots" type="boolean" label="Skip generation of all plots" help="If 'Yes', TranD will not produce any plots"/>
         <param name="skipInterm" type="boolean" label="Skip output of intermediate files" help="If 'Yes', the TranD program will not output intermediate files (such as junction and exon region/fragment files)."/>
-      </when>
-      <when value="gtf2">
-        <param name="gtf2Datset" type="data" format="tabular" label="Select your two GTF files containing transcriptomes of interest from the drop-down menu" help="File must contain “exon” features with transcript_id and gene_id values indicated in attributes"/>
-        <param name="ea_mode" type="select" display="radio" label="Select whether you want a pairwise comparison" help="Compare pairs of transcripts within a gene ">
-          <option value="pairwise">Yes</option>
-          <option value="">No</option>
-        </param>
-        <param name="pairs" type="select" display="radio" value="" label="Select the TranD metrics to be applied to the GTF files" help="The TranD metrics can be for all transcript pairs in both GTF files or for a subset of transcript pairs">
-          <option value="first">TranD metrics for the minimum pairs in the first GTF file</option>
-          <option value="second">TranD metrics for the minimum pairs in the second GTF file</option>
-          <option value="both">TranD metrics for the minimum pairs in both GTF files</option>
-          <option value="all">TranD metrics for all transcript pairs in both GTF files</option>
-        </param>
-        <param name="skipPlots" type="boolean" label="Skip generation of all plots" help="If 'Yes', TranD will not produce any plots"/>
-        <param name="skipInterm" type="boolean" label="Skip output of intermediate files" help="If 'Yes', the TranD program will not output intermediate files (such as junction and exon region/fragment files)."/>
-      </when>
-    </conditional>
   </inputs>
   <outputs>
     <!-- The discover datasets parameter is needed to dynamically collect the output datasets --> 
-    <data format= "tabular" name="complexity">
-      <discover_datasets pattern="(?P&lt;name&gt;.*)" ext="tabular" directory="outputs" />
+    <data format= "csv" name="counts" label="${tool.name} on ${on_string}: Complexity Counts" >
+      <discover_datasets pattern="(?P&lt;name&gt;.*)\.csv" ext="csv" directory="outputs" visible="true" />
+    </data>
+    <data format= "png" name="boxplots" label="${tool.name} on ${on_string}: Complexity Plots" >
+      <discover_datasets pattern="(?P&lt;name&gt;.*)\.png" ext="png" directory="outputs" visible="true" />
+    </data>
+    <data format= "txt" name="figureLegend" label="${tool.name} on ${on_string}: Complexity Legend" >
+      <discover_datasets pattern="(?P&lt;name&gt;.*)\.rtf" ext="rtf" directory="outputs" visible="true" />
     </data>
   </outputs>
   <tests>
