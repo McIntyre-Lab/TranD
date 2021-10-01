@@ -10,6 +10,7 @@
   cd outputs;
   trand
       $gtf1Dataset
+      $gtf2Dataset
       #if $consolidate
         --consolidate 
         --consolPrefix 
@@ -32,6 +33,7 @@
   ]]></command>
   <inputs>
         <param name="gtf1Dataset" type="data" format="gtf" label="Select GTF file containing transcriptomes of interest from your history" help="File must contain “exon” features with transcript_id and gene_id values indicated in attributes"/>
+        <param name="gtf2Dataset" type="data" format="gtf" label="Select 2nd GTF file containing transcriptomes of interest from your history" help="File must contain “exon” features with transcript_id and gene_id values indicated in attributes"/>
         <param name="consolidate" type="boolean" display="radio" label="Select 'Yes' to consolidate transcripts" help="Consolidating transcripts remove 5'/3' transcript end variation in redundantly spliced transcripts) with identical junctions prior to complexity calculations, events and summary plotting"/>
         <param name="consolPrefix" type="text" value="tr" label="Specify the prefix to use for consolidated transcript_id values. Prefix must be alphanumeric with no spaces. An underscore is the only allowed special character"/> 
         <param name="complexityOnly" type="boolean" label="Select to output only complexity calculations" help="Select this parameter if you only want complexity measures as opposed to outputting performance of all analyses (ie event analysis, etc)"/>
@@ -45,15 +47,15 @@
   </inputs>
   <outputs>
     <!-- The discover datasets parameter is needed to dynamically collect the output datasets --> 
-    <data format= "csv" name="counts" label="${tool.name} on ${on_string}: Complexity Counts" >
-      <discover_datasets pattern="(?P&lt;name&gt;.*)\.csv" ext="csv" directory="outputs" visible="true" />
-    </data>
-    <data format= "png" name="boxplots" label="${tool.name} on ${on_string}: Complexity Plots" >
-      <discover_datasets pattern="(?P&lt;name&gt;.*)\.png" ext="png" directory="outputs" visible="true" />
-    </data>
-    <data format= "txt" name="figureLegend" label="${tool.name} on ${on_string}: Complexity Legend" >
-      <discover_datasets pattern="(?P&lt;name&gt;.*)\.rtf" ext="rtf" directory="outputs" visible="true" />
-    </data>
+    <collection format= "csv" type="list" name="counts" label="${tool.name} on ${on_string}: Complexity Counts" >
+      <discover_datasets pattern="(?P&lt;name&gt;.*)\.csv" ext="csv" directory="outputs" visible="true"/>
+    </collection>
+    <collection format= "png" type="list" name="boxplots" label="${tool.name} on ${on_string}: Complexity Plots" >
+      <discover_datasets pattern="(?P&lt;name&gt;.*)\.png" ext="png" directory="outputs"/>
+    </collection>
+    <collection format= "txt" type="list" name="figureLegend" label="${tool.name} on ${on_string}: Complexity Legend" >
+      <discover_datasets pattern="(?P&lt;name&gt;.*)\.rtf" ext="rtf" directory="outputs" />
+    </collection>
   </outputs>
   <tests>
   </tests>
