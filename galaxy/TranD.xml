@@ -26,6 +26,7 @@
     #end if
 
 ##Set parameters when running with two GTF files 
+
     #if str( $gtf_input.gtfNum ) == "gtf2":
       $gtf1Dataset
       $gtf2Dataset
@@ -36,6 +37,7 @@
     #end if
 
 ##Run rest of arguments 
+
     #if $complexityOnly
       --complexityOnly
     #end if
@@ -94,16 +96,16 @@
   </inputs>
   <outputs>
     <!-- The discover datasets parameter is needed to dynamically collect the output datasets --> 
-    <data format= "csv" type="list" name="counts" label="${tool.name} on ${on_string}: Complexity Counts" >
+    <collection format= "csv" type="list" name="counts" label="${tool.name} on ${on_string}: Summary Counts and Intermediate Files" >
       <discover_datasets pattern="(?P&lt;name&gt;.*)\.csv" ext="csv" directory="outputs"/>
-    </data>
+    </collection>
     <collection format= "gtf" type="list" name="gtf" label="${tool.name} on ${on_string}: Consolidated GTF" >
       <discover_datasets pattern="(?P&lt;name&gt;.*)\.gtf" ext="gtf" directory="outputs"/>
     </collection>
-    <collection format= "png" type="list" name="boxplots" label="${tool.name} on ${on_string}: Complexity Plots" >
+    <collection format= "png" type="list" name="boxplots" label="${tool.name} on ${on_string}: Plots" >
       <discover_datasets pattern="(?P&lt;name&gt;.*)\.png" ext="png" directory="outputs"/>
     </collection>
-    <collection format= "txt" type="list" name="figureLegend" label="${tool.name} on ${on_string}: Complexity Legend" >
+    <collection format= "txt" type="list" name="figureLegend" label="${tool.name} on ${on_string}: Plot Legends" >
       <discover_datasets pattern="(?P&lt;name&gt;.*)\.rtf" ext="rtf" directory="outputs" />
     </collection>
   </outputs>
