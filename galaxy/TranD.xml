@@ -9,33 +9,58 @@
   mkdir outputs;
   cd outputs;
   trand
+    #if str( $gtf_input.gtfNum ) == "gtf1":
+      $gtf1Dataset
+    #end if
+    #if str( $gtf_input.gtfNum ) == "gtf2":
       $gtf1Dataset
       $gtf2Dataset
-      #if $consolidate
-        --consolidate 
-        --consolPrefix 
-      #end if
-      #if $complexityOnly
-        --complexityOnly
-      #end if
-      --ea=$eaMode
-      #if $keepIR
-        --keepir
-      #end if
-      #if $skipPlots     
-        --skip-plots 
-      #end if
-      #if $skipInterm
-        --skip-intermediate
-      #end if
-      --force
+    #end if
+    #if $gtf_input.consolidateCheck.consolidate == 'True'
+      --consolidate 
+      --consolPrefix=$gtf_input.consolidateCheck.consolPrefix
+    #end if
+    #if $complexityOnly
+      --complexityOnly
+    #end if
+    --ea=$eaMode
+    #if $keepIR
+      --keepir
+    #end if
+    #if $skipPlots     
+      --skip-plots 
+    #end if
+    #if $skipInterm
+      --skip-intermediate
+    #end if
+    --force
 
   ]]></command>
   <inputs>
+    <conditional name="gtf_input">
+      <param name="gtfNum" type="select" display="radio" label="Select the amount of GTF files you have as input for TranD processing">
+        <option value="gtf1">One GTF File</option>
+        <option value="gtf2">Two GTF Files</option>
+        <validator type="no_options" message="You must select at least one option." /> 
+      </param>
+      <when value="gtf1">
         <param name="gtf1Dataset" type="data" format="gtf" label="Select GTF file containing transcriptomes of interest from your history" help="File must contain “exon” features with transcript_id and gene_id values indicated in attributes"/>
-        <param name="gtf2Dataset" type="data" format="gtf" label="Select 2nd GTF file containing transcriptomes of interest from your history" help="File must contain “exon” features with transcript_id and gene_id values indicated in attributes"/>
-        <param name="consolidate" type="boolean" display="radio" label="Select 'Yes' to consolidate transcripts" help="Consolidating transcripts remove 5'/3' transcript end variation in redundantly spliced transcripts) with identical junctions prior to complexity calculations, events and summary plotting"/>
-        <param name="consolPrefix" type="text" value="tr" label="Specify the prefix to use for consolidated transcript_id values. Prefix must be alphanumeric with no spaces. An underscore is the only allowed special character"/> 
+        <conditional name="consolidateCheck">
+          <param name="consolidate" type="select" display="radio" label="Select 'Yes' to consolidate transcripts" help="Consolidating transcripts remove 5'/3' transcript end variation in redundantly spliced transcripts) with identical junctions prior to complexity calculations, events and summary plotting">
+            <option value="True">Yes</option>
+            <option value="False">No</option>
+          </param>
+          <when value="True">
+            <param name="consolPrefix" type="text" value="tr" label="Specify the prefix to use for consolidated transcript_id values. Prefix must be alphanumeric with no spaces. An underscore is the only allowed special character"/> 
+          </when>
+        </conditional>
+        <param name="keepIR" type="boolean" label="Set to 'Yes' if you want to keep transcripts with Intron Retention regions when generating transcript events"/>
+      </when>
+      <when value="gtf2">
+        <param name="gtf1Dataset" type="data" format="gtf" label="Select GTF file containing transcriptomes of interest from your history" help="File must contain “exon” features with transcript_id and gene_id values indicated in attributes"/>
+        <param name="gtf2Dataset" type="data" format="gtf" label="Select 2nd GTF file containing transcriptomes of interest from your history" />
+      </when>
+     </conditional>
         <param name="complexityOnly" type="boolean" label="Select to output only complexity calculations" help="Select this parameter if you only want complexity measures as opposed to outputting performance of all analyses (ie event analysis, etc)"/>
         <param name="eaMode" size="30" type="select" value="" display="radio" label="Choose type of comparison to do within gene transcript" help="Compare pairs of transcripts within a gene (Pairwise) or compare all transcripts within a gene (Gene)">
           <option value="pairwise" selected="true">Pairwise</option>
@@ -48,7 +73,7 @@
   <outputs>
     <!-- The discover datasets parameter is needed to dynamically collect the output datasets --> 
     <collection format= "csv" type="list" name="counts" label="${tool.name} on ${on_string}: Complexity Counts" >
-      <discover_datasets pattern="(?P&lt;name&gt;.*)\.csv" ext="csv" directory="outputs" visible="true"/>
+      <discover_datasets pattern="(?P&lt;name&gt;.*)\.csv" ext="csv" directory="outputs"/>
     </collection>
     <collection format= "png" type="list" name="boxplots" label="${tool.name} on ${on_string}: Complexity Plots" >
       <discover_datasets pattern="(?P&lt;name&gt;.*)\.png" ext="png" directory="outputs"/>
