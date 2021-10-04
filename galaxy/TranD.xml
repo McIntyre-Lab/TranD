@@ -11,15 +11,17 @@
   trand
     #if str( $gtf_input.gtfNum ) == "gtf1":
       $gtf1Dataset
+      #if $gtf_input.consolidateCheck.consolidate == 'True'
+        --consolidate 
+        --consolPrefix=$gtf_input.consolidateCheck.consolPrefix
+      #end if
     #end if
     #if str( $gtf_input.gtfNum ) == "gtf2":
       $gtf1Dataset
       $gtf2Dataset
+      --pairs=$gtf_num.transcriptPairs
     #end if
-    #if $gtf_input.consolidateCheck.consolidate == 'True'
-      --consolidate 
-      --consolPrefix=$gtf_input.consolidateCheck.consolPrefix
-    #end if
+
     #if $complexityOnly
       --complexityOnly
     #end if
@@ -59,6 +61,12 @@
       <when value="gtf2">
         <param name="gtf1Dataset" type="data" format="gtf" label="Select GTF file containing transcriptomes of interest from your history" help="File must contain “exon” features with transcript_id and gene_id values indicated in attributes"/>
         <param name="gtf2Dataset" type="data" format="gtf" label="Select 2nd GTF file containing transcriptomes of interest from your history" />
+        <param name="transcriptPairs" type="select" display="radio" label="Select desired transcript pairs" help="The TranD metrics can be output for all transcript pairs in both GTF files or for a subset of transcript pairs">
+            <option value="first">TranD metrics for the minimum pairs in the first GTF file</option>
+            <option value="second">TranD metrics for the minimum pairs in the second GTF file</option>  
+            <option value="both">TranD metrics for the minimum pairs in both GTF files</option>
+            <option value="all">TranD metrics for all transcript pairs in both GTF files</option>
+        </param> 
       </when>
      </conditional>
         <param name="complexityOnly" type="boolean" label="Select to output only complexity calculations" help="Select this parameter if you only want complexity measures as opposed to outputting performance of all analyses (ie event analysis, etc)"/>
