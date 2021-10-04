@@ -11,6 +11,10 @@
   trand
     #if str( $gtf_input.gtfNum ) == "gtf1":
       $gtf1Dataset
+      --ea=$gtf_input.eaMode
+      #if $gtf_input.keepIR:
+         --keepir
+      #end if
       #if $gtf_input.consolidateCheck.consolidate == 'True'
         --consolidate 
         --consolPrefix=$gtf_input.consolidateCheck.consolPrefix
@@ -19,15 +23,11 @@
     #if str( $gtf_input.gtfNum ) == "gtf2":
       $gtf1Dataset
       $gtf2Dataset
-      --pairs=$gtf_num.transcriptPairs
+      --pairs=$gtf_input.transcriptPairs
     #end if
 
     #if $complexityOnly
       --complexityOnly
-    #end if
-    --ea=$eaMode
-    #if $keepIR
-      --keepir
     #end if
     #if $skipPlots     
       --skip-plots 
@@ -56,6 +56,10 @@
             <param name="consolPrefix" type="text" value="tr" label="Specify the prefix to use for consolidated transcript_id values. Prefix must be alphanumeric with no spaces. An underscore is the only allowed special character"/> 
           </when>
         </conditional>
+        <param name="eaMode" size="30" type="select" value="" display="radio" label="Choose type of comparison to do within gene transcript" help="Compare pairs of transcripts within a gene (Pairwise) or compare all transcripts within a gene (Gene)">
+          <option value="pairwise" selected="true">Pairwise</option>
+          <option value="gene" selected="true">Gene</option>
+        </param>
         <param name="keepIR" type="boolean" label="Set to 'Yes' if you want to keep transcripts with Intron Retention regions when generating transcript events"/>
       </when>
       <when value="gtf2">
@@ -70,11 +74,6 @@
       </when>
      </conditional>
         <param name="complexityOnly" type="boolean" label="Select to output only complexity calculations" help="Select this parameter if you only want complexity measures as opposed to outputting performance of all analyses (ie event analysis, etc)"/>
-        <param name="eaMode" size="30" type="select" value="" display="radio" label="Choose type of comparison to do within gene transcript" help="Compare pairs of transcripts within a gene (Pairwise) or compare all transcripts within a gene (Gene)">
-          <option value="pairwise" selected="true">Pairwise</option>
-          <option value="gene" selected="true">Gene</option>
-        </param>
-        <param name="keepIR" type="boolean" label="Set to 'Yes' if you want to keep transcripts with Intron Retention regions when generating transcript events"/>
         <param name="skipPlots" type="boolean" label="Skip generation of all plots" help="If 'Yes', TranD will not produce any plots"/>
         <param name="skipInterm" type="boolean" label="Skip output of intermediate files" help="If 'Yes', the TranD program will not output intermediate files (such as junction and exon region/fragment files)."/>
   </inputs>
@@ -82,6 +81,9 @@
     <!-- The discover datasets parameter is needed to dynamically collect the output datasets --> 
     <collection format= "csv" type="list" name="counts" label="${tool.name} on ${on_string}: Complexity Counts" >
       <discover_datasets pattern="(?P&lt;name&gt;.*)\.csv" ext="csv" directory="outputs"/>
+    </collection>
+    <collection format= "gtf" type="list" name="gtf" label="${tool.name} on ${on_string}: Consolidated GTF" >
+      <discover_datasets pattern="(?P&lt;name&gt;.*)\.gtf" ext="gtf" directory="outputs"/>
     </collection>
     <collection format= "png" type="list" name="boxplots" label="${tool.name} on ${on_string}: Complexity Plots" >
       <discover_datasets pattern="(?P&lt;name&gt;.*)\.png" ext="png" directory="outputs"/>
