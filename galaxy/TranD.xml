@@ -82,7 +82,6 @@
             <option value="first">TranD metrics for the minimum pairs in the first GTF file</option>
             <option value="second">TranD metrics for the minimum pairs in the second GTF file</option>  
             <option value="both">TranD metrics for the minimum pairs in both GTF files</option>
-
         </param> 
         <param name="gtf1Name" type="text" label="Name to give GTF 1. Default: d1" help="User-specified name to be used for labeling output files related to first GTF file. Must be alphanumeric, cannot include any special characters except for underscores ‘_’, and cannot contain any spaces" value="d1"/>
         <param name="gtf2Name" type="text" label="Name to give GTF 2. Default: d2" value="d2" help="User-specified name to be used for output files related to second GTF file"/>
@@ -111,6 +110,34 @@
     </collection>
   </outputs>
   <tests>
+    <test>
+       <!-- Calculate complexity measures only (do not generate events) on a GTF file after consolidation -->
+       <param name="gtf1Dataset" value="cel_adult_FLAIR_chr4.gtf"/>
+       <param name="consolidate" value="True" />
+       <param name="consolPrefix" value="tr" />
+       <param name="keepir" value="True" />
+    </test>
+    <test>
+       <!-- Compare pairs of transcripts within a gene -->
+       <param name="gtf1Dataset" value="cel_adult_FLAIR_chr4.gtf"/>
+       <param name="eaMode" value="pairwise" />
+       <param name="keepir" value="True" />
+    </test>
+    <test>
+      <!-- Calculate complexity measures on consolidated GTF file -->
+      <!-- Generate event file by comparing all transcripts for a gene and create a transcriptome summary plot -->
+      <param name="gtf1Dataset" value="cel_adult_FLAIR_chr4.gtf"/>
+      <param name="consolidate" value="True" />
+      <param name="consolPrefix" value="tr" />
+      <param name="eaMode" value="gene" />
+      <param name="keepir" value="True" />
+    </test>
+    <test>
+      <!-- Test TranD on two GTF files and output metrics for all transcript pairs-->
+      <param name="gtf1Dataset" value="cel_adult_FLAIR_chr4.gtf"/>
+      <param name="gtf2Dataset" value="cel_L1_FLAIR_chr4.gtf" />
+      <param name="transcriptPairs" value="all" /> 
+    </test>
   </tests>
   <help><![CDATA[
 
@@ -122,7 +149,7 @@
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-*INPUTS**
+**INPUTS**
 
 - At least one GTF File is required as input into TranD
 
