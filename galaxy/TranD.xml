@@ -1,5 +1,5 @@
 <tool id="transcript_distance" name="TranD" version="@WRAPPER_VERSION@">
-  <description></description> 
+  <description>Perform transcript distance, complexity and transcriptome comparison analyses</description> 
   <macros>
     <import>macros.xml</import>
   </macros>
@@ -77,11 +77,12 @@
       <when value="gtf2">
         <param name="gtf1Dataset" type="data" format="gtf" label="Select GTF file containing transcriptomes of interest from your history"/>
         <param name="gtf2Dataset" type="data" format="gtf" label="Select 2nd GTF file containing transcriptomes of interest from your history" help="Files must contain “exon” features with transcript_id and gene_id values indicated in attributes" />
-        <param name="transcriptPairs" type="select" display="radio" label="Select desired transcript pairs" help="The TranD metrics can be output for all transcript pairs in both GTF files or for a subset of transcript pairs">
+        <param name="transcriptPairs" type="select" display="radio" label="Select desired transcript pairs" help="The TranD metrics can be output for all transcript pairs in both GTF files or for a subset of transcript pairs">           
+            <option value="all">TranD metrics for all transcript pairs in both GTF files</option>
             <option value="first">TranD metrics for the minimum pairs in the first GTF file</option>
             <option value="second">TranD metrics for the minimum pairs in the second GTF file</option>  
             <option value="both">TranD metrics for the minimum pairs in both GTF files</option>
-            <option value="all">TranD metrics for all transcript pairs in both GTF files</option>
+
         </param> 
         <param name="gtf1Name" type="text" label="Name to give GTF 1. Default: d1" help="User-specified name to be used for labeling output files related to first GTF file. Must be alphanumeric, cannot include any special characters except for underscores ‘_’, and cannot contain any spaces" value="d1"/>
         <param name="gtf2Name" type="text" label="Name to give GTF 2. Default: d2" value="d2" help="User-specified name to be used for output files related to second GTF file"/>
@@ -113,7 +114,105 @@
   </tests>
   <help><![CDATA[
 
-**Tool Description*
+**Tool Description** 
+
+    TranD is a collection of tools to facilitate metrics of structural variation for whole genome transcript annotation files (GTF) that pinpoint structural variation to the nucleotide level.
+
+    TranD (Transcript Distances) can be used to calculate metrics of structural variation within and between annotation files (GTF). Structural variation reflects organismal complexity and three summary metrics for genome level complexity are calculated for every gene in a GTF file: 1) the number of transcripts per gene; 2) the number of exons per transcript; and 3) the number of unique exons (exons with unique genomic coordinates) per gene. From each these metrics distributions a summary statistics such as mean, median, variance, inter-quartile range are calculated. With 1GTF file input, gene mode can be used to generates these metrics for each gene and summary statistics and distributions across genes. Distributions are visualized in a series of plots. For 1 GTF and 2GTF a pairwise mode calculates distance metrics between 2 transcripts to the nucleotide. In 1 GTF this is all possible pairs within the gene and in 2 GTF model this is all possible pairs among GTF files. The distribution of these metrics across genes are visualized and summary statistics for structural variations between pairs are calculated and reported. Visualizations of the distributions of the frequency of intron retention, alternative exon usage, donor/acceptor variation and 5', 3' variation in UTR regions are provided as well as tabular formatted nucleotide level distances for both 1GTF and 2 GTF.
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+*INPUTS**
+
+- At least one GTF File is required as input into TranD
+
+See the following link for an example of what a GTF file is and how it should be formatted:
+https://mblab.wustl.edu/GTF22.html
+
+-------------------------------------------------------------------------------------------------
+
+*When running with One GTF:*
+
+TranD can be used to ‘consolidate’ an individual transcriptome GTF.  Here, ‘consolidate’ means to combine, by gene, those transcripts that vary only in the length of the TSS or TTS (all other splice junctions are identical). The representative transcript that is returned contains the longest TSS and the longest TTS among the transcripts with identical splice junctions.  
+
+TranD generates complexity measures from the input GTF file or, if specified, from the consolidated GTF file.  Gene level complexity measures can be calculated by comparing pairs of transcripts within a gene (‘pairwise’) or by comparing all transcripts within a gene (‘gene’). If ‘gene’ mode is selected then a CSV file containing all possible exon regions and exon fragments is created along with a summary plot describing the transcriptome.
+
+**GTF File [REQUIRED]**: User must upload a GTF file containing of transcriptome of interest. File must contain “exon” features with transcript_id and gene_id values indicated in attributes.
+
+**Consolidation Flag**: Set to 'Yes' consolidate transcripts prior to generating complexity measures.  If omitted, the tool will not consolidate transcripts in the input GTF file.  Complexity measure and events will be generated on the input GTF file directly.
+
+**WARNING**: If consolidating transcripts, user must set a user-specified prefix to be added to consolidated transcript_id values (default: “tr”)
+
+**Keep Intron Retention Regions**: If 'Yes', transcripts with Intron Retention(s) will be kept when generating transcript events
+
+
+
+------------------------------------------------------
+
+
+*When running with Two GTF:*
+
+Compare two transcriptomes that are from the same genomic coordinates (both sets of transcript coordinates map to the same genome). 
+  
+**WARNING:** Transcriptomes must have shared gene_id values for transcripts to be compared within each shared gene 
+
+**NOTE**: When running with two GTF files, user may toggle the settings in Galaxy in order to utilize parallelization to allow faster job processing. See TranD User Guide for more information. 
+
+**Two GTF Files [REQUIRED]**: Two GTF files corresponding to the transcriptomes of interest are required. Files must contain “exon” features with transcript_id and gene_id values indicated in attributes.
+
+**Names of Output Files:** Set desired names that will associated with each transcriptome to be used in output tables and plots (default: “d1” and “d2”). Names must be alphanumeric with no spaces or special characters other than “_”.
+
+**Set Transcript Pairs:** Output category option allows user to select the output table of transcript pairs to only be minimum pairs from the “first” transcriptome, only minimum pairs from the “second” transcriptome, minimum pairs for “both” transcriptomes (minimum pair in either), or output “all” pairwise transcript pairs regardless of minimum pair classification. (Default: “both”)
+
+**NOTE**: When running TranD with two GTF files, pairs of transcripts will be compared within a gene
+
+-----------------------------------------------------------
+
+
+Other Parameters that be set regardless of amount of GTF files: 
+
+**Complexity Only Flag**:  Set to 'Yes' to generate complexity measures and exit before generating events
+
+**Skip Generation of All plots:** If 'Yes', TranD will not produce any plots
+
+**Skip output of intermediate files:** If 'Yes', the TranD program will not output intermediate files (such as junction and exon region/fragment files)
+
+-----------------------------------------------------------
+
+**OUTPUTS**
+
+**NOTE**: Different outputs are generated depending on the parameters set and the amount of GTF files input
+
+*When running with one GTF, the following outputs are generated:*
+
+- Boxplots containing the following complexity metrics:
+
+  1. number of transcripts per gene
+  2. number of unique exons per gene
+  3. number of exons per transcript
+
+- Figure legend(s) for complexity metrics box plots saved in .rtf format
+
+- Full table of complexity counts for the transcriptome. See TranD User Guide for more details on the columns in the output file 
+
+- Key file connecting each transcript_id value in the input GTF to the transcript_id value in the consolidated output GTF:
+		a.  gene_id
+		b.  transcript_id: The transcript_id in the starting GTF file
+		c.  consolidation_transcript_id: The transcript_id in the output consolidation GTF file
+
+- A consolidated GTF file: transcript_id values contain the user-specified prefix (or default “tr” prefix). Each transcript_id value is in the 	format [prefix]_[gene_id]_[number], where number is a by gene enumeration value set after sorting by gene and transcript length. (**NOTE:** the consolidated GTF file contains only “exon” features).
+
+--------------------------------------------------------------------
+
+*When running with two GTF, the following outputs are generated:*
+
+- One output CSV file which includes the transcript distance and minimum distance output for all pairwise transcripts pairs (“all”), all minimum pairs of the first transcriptome to the second transcriptome (“first”), all minimum pairs of the second transcriptome to the frist transcriptome (“second”), or the minimum pairs for either the first transcriptome and/or the second transcriptome (“both”)
+
+- Box plots of complexity metrics (saved as .png file) and automatically generated figure legend (saved as .rtf) for each transcriptome, where [name] represents the names given to each transcriptome (or “d1” and “d2” as default
+
+- Various plots described in TranD manuscript and automatically generated figure legends for each
+
+- If intermediate files are output, CSV file of pairwise events generated for each pair is output 
 
   ]]>
   </help>
