@@ -97,7 +97,7 @@
         <param name="skipPlots" type="boolean" label="Skip generation of all plots" help="If 'Yes', TranD will not produce any plots"/>
         <param name="skipInterm" type="boolean" label="Skip output of intermediate files" help="If 'Yes', the TranD program will not output intermediate files (such as junction and exon region/fragment files)."/>
      <conditional name="logCond">
-       <param name="logfile_selector" type="select" display="radio" label="Indicate whether you want a log file to be output that contains information about how the input files were processed" help="NOTE: A log file may not be generated if there are no warnings to be noted in data"> 
+       <param name="logfile_selector" type="select" display="radio" label="Indicate whether you want a log file (if any) to be output that contains information about how the input files were processed" help="NOTE: A log file may not be generated if there are no warnings to be noted in data"> 
          <option value="No">No</option> 
          <option value="Yes">Yes</option>
        </param> 
@@ -128,35 +128,6 @@
        <param name="consolidate" value="True" />
        <param name="consolPrefix" value="tr" />
        <param name="keepir" value="True" />
-       <output name="counts">
-        <assert_contents>
-          <has_line line="Hello" />
-        </assert_contents>
-        <discovered_dataset designation="this" ftype="txt">
-          <assert_contents><has_line line="This" /></assert_contents>
-        </discovered_dataset>
-        <discovered_dataset designation="that" ftype="txt">
-          <assert_contents><has_line line="That" /></assert_contents>
-        </discovered_dataset>
-        <discovered_dataset designation="1" ftype="txt">
-          <assert_contents><has_line line="1" /></assert_contents>
-        </discovered_dataset>
-        <discovered_dataset designation="2" ftype="tabular">
-          <assert_contents><has_line line="2" /></assert_contents>
-        </discovered_dataset>
-        <discovered_dataset designation="Foo" ftype="txt">
-          <assert_contents><has_line line="Foo" /></assert_contents>
-        </discovered_dataset>
-        <discovered_dataset designation="MAPPED" ftype="txt">
-          <assert_contents><has_line line="mapped reads" /></assert_contents>
-        </discovered_dataset>
-        <discovered_dataset designation="UNMAPPED" ftype="txt">
-          <assert_contents><has_line line="unmapped reads" /></assert_contents>
-        </discovered_dataset>
-        <discovered_dataset designation="sample1" ftype="tabular">
-          <assert_contents><has_line line="1" /></assert_contents>
-        </discovered_dataset>
-      </output>
     </test>
     <test>
        <!-- Compare pairs of transcripts within a gene -->
@@ -244,6 +215,9 @@ Other Parameters that be set regardless of amount of GTF files:
 **Skip Generation of All plots:** If 'Yes', TranD will not produce any plots
 
 **Skip output of intermediate files:** If 'Yes', the TranD program will not output intermediate files (such as junction and exon region/fragment files)
+
+**Generate Log File**: Indicate whether a log file (if any) that contains information about how the input data was run is desired as output. 
+
 
 -----------------------------------------------------------
 
