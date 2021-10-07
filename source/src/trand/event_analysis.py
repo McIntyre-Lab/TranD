@@ -224,6 +224,7 @@ def remove_ir_transcripts(tx_data, introns, tx_names, tx_coords):
     tx_coords_delete = [k for k in old_tx_names if k not in tx_names]
     for k in tx_coords_delete:
         del tx_coords[k]
+    logger.debug("TX coords: {}", tx_coords)
     return tx_data, tx_names, tx_coords
 
 
@@ -364,7 +365,7 @@ def get_ef_frequences(ef_data, total_number_of_transcripts):
 def match_efs_with_exs(ef_data, tx_ranges, tx_exon_map, identical_transcripts):
     """Match EFx against Exons"""
     for ex_id in tx_ranges:
-        logger.debug("EX {} range: {}", ex_id, tx_ranges[ex_id])
+        # logger.debug("EX {} range: {}", ex_id, tx_ranges[ex_id])
         ex_range = tx_ranges[ex_id]
         ex_start = ex_range[0]
         ex_end = ex_range[1]
@@ -372,8 +373,8 @@ def match_efs_with_exs(ef_data, tx_ranges, tx_exon_map, identical_transcripts):
             ef_start = ef_data[ef_id].start
             if ex_start <= ef_start < ex_end:
                 # EF is a part of an exon - are there any duplicate exons and transcripts?
-                logger.debug("EF {} starts at {} in EX {} ({}-{})", ef_id, ef_start, ex_id,
-                             ex_start, ex_end)
+                # logger.debug("EF {} starts at {} in EX {} ({}-{})", ef_id, ef_start, ex_id,
+                #             ex_start, ex_end)
                 tx_id = tx_exon_map[ex_id]
                 if ex_id not in ef_data[ef_id].ex_ids:
                     ef_data[ef_id].ex_ids.append(ex_id)
@@ -517,7 +518,7 @@ def do_ea_gene(tx_data, keep_ir):
     else:
         # Multiple transcripts per gene
         tx_data, tx_coords, intron_data = convert_tx_bed_to_coords(data, tx_names)
-        # logger.debug("Intron data: {}", intron_data)
+        logger.debug("Intron data: {}", intron_data)
         # Removal of IR containing transcripts
         if not keep_ir:
             tx_data, tx_names, tx_coords = remove_ir_transcripts(tx_data, intron_data, tx_names,
@@ -525,7 +526,7 @@ def do_ea_gene(tx_data, keep_ir):
             ir_exons = []
             ir_transcripts = []
         else:
-            ir_exons, ir_transcripts, ir_coords = get_ir_exon_transcript(tx_data, intron_data)
+            ir_exons, ir_transcripts = get_ir_exon_transcript(tx_data, intron_data)
             logger.debug("IR containing exons: {}", ir_exons)
             logger.info("Not attempting to remove IR-containing transcripts")
         # Junction Catalog creation
@@ -540,7 +541,7 @@ def do_ea_gene(tx_data, keep_ir):
         if not tx_data:
             logger.warning("Missing transcript data for {} gene, skipping", gene_id)
             return None, None, None
-        er_data, ef_data = ea_analysis(gene_id, tx_data, tx_coords, ir_exons)
+        er_data, ef_data = ea_analysis(gene_id, tx_data, tx_coords, ir_exons, intron_data)
     er_df = pd.DataFrame(er_data, columns=er_df_cols)
     ef_df = pd.DataFrame(ef_data, columns=ef_df_cols)
     return er_df, ef_df, junction_df, ir_transcripts
@@ -948,7 +949,7 @@ def format_fsm_pair_ea(tx1_bed_df, tx2_bed_df, tx1_name, tx2_name, gene_id, side
     return ea_df
 
 
-def ea_analysis(gene_id, tx_data, tx_coords, ir_exons):
+def ea_analysis(gene_id, tx_data, tx_coords, ir_exons, intron_coords):
     """
     Generate ERs (Exonic Regions) and EFs (Exonic Fragments) and analyze events in transcripts.
     Generalize to do both full-gene and transcript pairs to replace er_ea_analysis.
@@ -991,12 +992,13 @@ def ea_analysis(gene_id, tx_data, tx_coords, ir_exons):
                             "|".join(er.ex_ids), "|".join(er.tx_ids), "|".join(er.gene_tx_ids),
                             er.ex_num, er.tx_num, er.gene_tx_num, er.ir_flag, er.er_freq])
     ef_out_data = []
+    # logger.debug("Intron coords: {}", intron_coords)
+    intron_set = set(intron_coords)
     for ef_id in ef_data:
         ef = ef_data[ef_id]
-        # Flag exon fragments that contain IR exons.
-        # FIXME this is wrong since EFs can be a part of IR ER, but not all EFs are part of the IR
-        # We need to set the IR range earlier and carry it forward to here.
-        if len(ir_exons) != 0 and len(set(ef.ex_ids).intersection(set(ir_exons))) > 0:
+        # Flag exon fragments that match intron coordinates (intron_coords)
+        ef_coords = (ef.start, ef.end)
+        if ef_coords in intron_set:
             ef.ir_flag = 1
         else:
             ef.ir_flag = 0
