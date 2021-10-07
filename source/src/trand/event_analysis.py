@@ -227,14 +227,16 @@ def remove_ir_transcripts(tx_data, introns, tx_names, tx_coords):
     return tx_data, tx_names, tx_coords
 
 
-def list_ir_exon_transcript(tx_data, introns):
-    """List exons that contain Intron Retention events i.e. an
-    intron is encompassed by an exon
+def get_ir_exon_transcript(tx_data, introns):
+    """
+    List exons and transcriptts that contain Intron Retention events where an intron is encompassed
+    by an exon. Also return intron coords for flagging IR EFs.
     """
     ir_exon_list = []
     ir_transcript_list = []
     for e_tx in tx_data:
         e_ints = [(int(x.start), int(x.end), x.name) for x in tx_data[e_tx]]
+        # logger.debug("Exon coords: {}", e_ints)
         e_ints.sort(key=lambda x: x[0])
         for i in introns:
             for e in e_ints:
@@ -246,11 +248,251 @@ def list_ir_exon_transcript(tx_data, introns):
                     if i[0] >= e[0] and i[0] <= e[1]:
                         # Intron is fully encompassed within the exon
                         if i[1] <= e[1]:
-                            logger.debug("IR detected, {}", e)
+                            logger.debug("IR detected, exon {} contains intron {}", e, i)
                             ir_exon_list.append(e[2])
                             if e_tx not in ir_transcript_list:
                                 ir_transcript_list.append(e_tx)
     return ir_exon_list, ir_transcript_list
+
+
+def get_strand(tx_data):
+    """Get the stand and verify that it's unique"""
+    strands = []
+    all_tx = None
+    for tx_id in tx_data:
+        tx = tx_data[tx_id]
+        if not all_tx:
+            all_tx = tx
+            # logger.debug("Transcript {}:\n{}", tx_id, all_tx)
+        else:
+            all_tx = all_tx.cat(tx, postmerge=True)
+            # logger.debug("Transcript {}:\n{}", tx_id, all_tx)
+        strand = list(set([x.strand for x in tx]))[0]
+        strands.append(strand)
+    strand = list(set(strands))[0]
+    if len(strand) > 1:
+        raise ValueError("Multiple strands detected when there should be one")
+    return all_tx, strand
+
+
+def check_for_tx_duplicates(tx_data, tx_coords):
+    """Check for and stash duplicate transcripts in a separate data structure"""
+    tx_ident_check = {}
+    for i in tx_coords:
+        tx_structure_str_list = [str(x) for x in tx_coords[i]]
+        tx_structure = ",".join(tx_structure_str_list)
+        if tx_structure in tx_ident_check:
+            tx_ident_check[tx_structure].append(i)
+        else:
+            tx_ident_check[tx_structure] = [i]
+    identical_tx_list = [x for x in tx_ident_check.values() if len(x) > 1]
+    identical_transcripts = {x[0]: x[1:] for x in identical_tx_list}
+    if identical_transcripts:
+        logger.debug("Identical records: {}", identical_transcripts)
+    # Stash names for EA output, but remove duplicate data
+    duplicate_txs = [x[1:] for x in identical_tx_list]
+    if duplicate_txs:
+        logger.debug("Duplicate records: {}", duplicate_txs)
+    for dupe_list in duplicate_txs:
+        for item in dupe_list:
+            del tx_data[item]
+    return(tx_data, identical_transcripts)
+
+
+def retrieve_duplicates(er_data, tx_ranges, tx_exon_map, er_range_sets,
+                        identical_transcripts):
+    """Check that EXs are in ERs and retrieve duplicate IDs"""
+    for er_id in er_data:
+        for ex_id in tx_exon_map:
+            exon_data = tx_ranges[ex_id]
+            # Check if exon start is in the ER
+            if exon_data[0] in er_range_sets[er_id]:
+                # Exon is in the ER, record exon, tx, and duplicates if any
+                tx_id = exon_data[2]
+                if ex_id not in er_data[er_id].ex_ids:
+                    er_data[er_id].ex_ids.append(ex_id)
+                if tx_id not in er_data[er_id].tx_ids:
+                    er_data[er_id].tx_ids.append(tx_id)
+                # Add duplicate txs and their exons if exist
+                if tx_id in identical_transcripts:
+                    duplicate_tx_list = identical_transcripts[tx_id]
+                    for duplicate_tx in duplicate_tx_list:
+                        if duplicate_tx not in er_data[er_id].tx_ids:
+                            er_data[er_id].tx_ids.append(duplicate_tx)
+                        ex_number = ex_id.split('_exon_')[1]
+                        duplicate_ex = f"{duplicate_tx}_exon_{ex_number}"
+                        if duplicate_ex not in er_data[er_id].ex_ids:
+                            er_data[er_id].ex_ids.append(ex_id)
+    # logger.debug("ER data after retrieving duplicates:\n{}", er_data)
+    return er_data
+
+
+def get_er_frequences(er_data, total_number_of_transcripts):
+    """Determine ER frequencies"""
+    for er in er_data:
+        ex_num = len(er_data[er].ex_ids)
+        tx_num = len(er_data[er].tx_ids)
+        er_data[er].ex_num = ex_num
+        er_data[er].tx_num = tx_num
+        er_data[er].gene_tx_num = total_number_of_transcripts
+        if tx_num == 1:
+            er_data[er].er_freq = 'unique'
+        elif tx_num == total_number_of_transcripts:
+            er_data[er].er_freq = 'constitutive'
+        else:
+            er_data[er].er_freq = 'common'
+    # logger.debug("ER data with frequencies:\n {}", er_data)
+    return er_data
+
+
+def get_ef_frequences(ef_data, total_number_of_transcripts):
+    """Determine EF frequencies"""
+    for ef in ef_data:
+        ex_num = len(ef_data[ef].ex_ids)
+        tx_num = len(ef_data[ef].tx_ids)
+        ef_data[ef].ex_num = ex_num
+        ef_data[ef].tx_num = tx_num
+        if tx_num == 1:
+            ef_data[ef].ef_freq = 'unique'
+        elif tx_num == total_number_of_transcripts:
+            ef_data[ef].ef_freq = 'constitutive'
+        else:
+            ef_data[ef].ef_freq = 'common'
+    return ef_data
+
+
+def match_efs_with_exs(ef_data, tx_ranges, tx_exon_map, identical_transcripts):
+    """Match EFx against Exons"""
+    for ex_id in tx_ranges:
+        logger.debug("EX {} range: {}", ex_id, tx_ranges[ex_id])
+        ex_range = tx_ranges[ex_id]
+        ex_start = ex_range[0]
+        ex_end = ex_range[1]
+        for ef_id in ef_data:
+            ef_start = ef_data[ef_id].start
+            if ex_start <= ef_start < ex_end:
+                # EF is a part of an exon - are there any duplicate exons and transcripts?
+                logger.debug("EF {} starts at {} in EX {} ({}-{})", ef_id, ef_start, ex_id,
+                             ex_start, ex_end)
+                tx_id = tx_exon_map[ex_id]
+                if ex_id not in ef_data[ef_id].ex_ids:
+                    ef_data[ef_id].ex_ids.append(ex_id)
+                if tx_id not in ef_data[ef_id].tx_ids:
+                    ef_data[ef_id].tx_ids.append(tx_id)
+                # Add duplicate txs and their exons if exist
+                if tx_id in identical_transcripts:
+                    duplicate_tx_ids = identical_transcripts[tx_id]
+                    ex_number = ex_id.split('_exon_')[1]
+                    for dupe_tx_id in duplicate_tx_ids:
+                        if dupe_tx_id not in ef_data[ef_id].tx_ids:
+                            ef_data[ef_id].tx_ids.append(dupe_tx_id)
+                        dupe_ex_id = f"{dupe_tx_id}_exon_{ex_number}"
+                        if dupe_ex_id not in ef_data[ef_id].ex_ids:
+                            ef_data[ef_id].ex_ids.append(dupe_ex_id)
+    # logger.debug("EF data after EX matching:\n{}", ef_data)
+    return ef_data
+
+
+def generate_efs(tx_data, er_ends):
+    """Generate a list of all Exone Fragments (EFs)"""
+    # Catalog starting and ending points (0-coordinate as we go from left side only)
+    sts_ends = []
+    tx_ranges = {}
+    for tx_id in tx_data:
+        tx = tx_data[tx_id]
+        for ex in tx:
+            # logger.debug(f"{ex.name}: {ex.start}/{ex.end}")
+            # There are many ways to check if exon start is in ER, pick one at random
+            if tx_id in tx_ranges:
+                tx_ranges[ex.name].append(ex.start, ex.end, tx_id)
+            else:
+                tx_ranges[ex.name] = (ex.start, ex.end, tx_id)
+            if ex.start not in sts_ends:
+                sts_ends.append(ex.start)
+            if (ex.end) not in sts_ends:
+                sts_ends.append(ex.end)
+    # logger.debug("TX coordinate ranges:\n{}", tx_ranges)
+    sts_ends.sort()
+    tx_range_sets = {}
+    tx_exon_map = {}
+    for ex_id in tx_ranges:
+        tx = tx_ranges[ex_id]
+        tx_range_set = set(range(tx[0], tx[1] + 1))
+        tx_range_sets[ex_id] = tx_range_set
+        tx_exon_map[ex_id] = tx[2]
+    # Define EFs
+    ef_list = []
+    ef_start = sts_ends[0]
+    ef_end = None
+    for edge in sts_ends[1:]:
+        # Start of an ER
+        if not ef_start and not ef_end:
+            ef_start = edge
+            continue
+        ef_end = edge
+        ef_list.append((ef_start, ef_end))
+        if ef_end in er_ends:
+            # Skip the intron
+            ef_start = None
+            ef_end = None
+            continue
+        else:
+            ef_start = ef_end
+    # logger.debug("EF list:\n{}", ef_list)
+    return tx_exon_map, tx_ranges, ef_list
+
+
+def generate_ers(gene_id, tx_data, gene_transcript_ids):
+    """Generate Exonic Regions"""
+    all_tx, strand = get_strand(tx_data)
+    raw_ers_list = [str(x).split() for x in all_tx]
+    er_id = 1
+    ers_list = []
+    for er in raw_ers_list:
+        er.extend([f"{gene_id}:ER{er_id}", '0', strand])
+        ers_list.append("\t".join(er))
+        er_id += 1
+    ers_str = "\n".join(ers_list)
+    # logger.debug("Merged ERs:\n{}", ers_str)
+    ers_bed = BedTool(ers_str, from_string=True)
+    er_data = {}
+    # Coordinates of ER ends to check when creating EFs
+    er_ends = []
+    er_range_sets = {}
+    for er in ers_bed:
+        er_data[er.name] = ER(gene_id=gene_id, id=er.name, chrom=er.chrom, start=er.start,
+                              end=er.end, strand=er.strand, ex_ids=[], tx_ids=[],
+                              gene_tx_ids=gene_transcript_ids)
+        er_ends.append(er.end)
+        er_range_sets[er.name] = set(range(er.start, er.end + 1))
+    # logger.debug("ER data:\n{}", er_data)
+    return er_data, er_ends, er_range_sets
+
+
+def create_ef_data(gene_id, er_data, ef_list, er_range_sets):
+    """Create EF data structures"""
+    ef_data = {}
+    ef_start_set = set([x[0] for x in ef_list])
+    ef_start_end_map = {x[0]: x[1] for x in ef_list}
+    er_ef_map = {}
+    # Match agains ERs to get id and common data
+    for er in er_range_sets:
+        er_set = er_range_sets[er]
+        er_ef_starts = list(er_set.intersection(ef_start_set))
+        for ef_start in er_ef_starts:
+            er_ef_map[er] = sorted(er_ef_starts)
+    for er_id in er_ef_map:
+        ef_id_ord = 1
+        for ef_start in er_ef_map[er_id]:
+            ef_id = f"{er_id}:EF{ef_id_ord}"
+            ef_id_ord += 1
+            ef_data[ef_id] = EF(gene_id=gene_id, er_id=er_id, ef_id=ef_id,
+                                chrom=er_data[er_id].chrom, start=ef_start,
+                                end=ef_start_end_map[ef_start], strand=er_data[er_id].strand,
+                                ex_ids=[], tx_ids=[])
+    # logger.debug("ER:EF map:\n{}", er_ef_map)
+    # logger.debug("ER:EF data:\n{}", ef_data)
+    return ef_data
 
 
 def do_ea_gene(tx_data, keep_ir):
@@ -273,7 +515,9 @@ def do_ea_gene(tx_data, keep_ir):
         junction_df = pd.DataFrame(junction_data, columns=jct_df_cols)
         ir_transcripts = []
     else:
+        # Multiple transcripts per gene
         tx_data, tx_coords, intron_data = convert_tx_bed_to_coords(data, tx_names)
+        # logger.debug("Intron data: {}", intron_data)
         # Removal of IR containing transcripts
         if not keep_ir:
             tx_data, tx_names, tx_coords = remove_ir_transcripts(tx_data, intron_data, tx_names,
@@ -281,7 +525,8 @@ def do_ea_gene(tx_data, keep_ir):
             ir_exons = []
             ir_transcripts = []
         else:
-            ir_exons, ir_transcripts = list_ir_exon_transcript(tx_data, intron_data)
+            ir_exons, ir_transcripts, ir_coords = get_ir_exon_transcript(tx_data, intron_data)
+            logger.debug("IR containing exons: {}", ir_exons)
             logger.info("Not attempting to remove IR-containing transcripts")
         # Junction Catalog creation
         junction_data = []
@@ -454,8 +699,8 @@ def er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id):
     Generate ERs (Exonic Regions) and EFs (Exonic Fragments) and analyze events in a pair of
     transcripts.
     """
-    logger.debug("Performing EA analysis for {} gene", gene_id)
-    logger.debug("TX Names: {},{}", tx1_name, tx2_name)
+    # logger.debug("Performing EA analysis for {} gene", gene_id)
+    # logger.debug("TX Names: {},{}", tx1_name, tx2_name)
     # logger.debug("EA Analysis raw data: tx1: {}, tx2: {}".format(tx1_bed, tx2_bed))
     ea_data = []
     strand = list(set([x.strand for x in tx1_bed]))[0]
@@ -709,222 +954,55 @@ def ea_analysis(gene_id, tx_data, tx_coords, ir_exons):
     Generalize to do both full-gene and transcript pairs to replace er_ea_analysis.
     """
     # Use the junction catalog and transcripts start/end to check for identical transcripts
-    logger.debug("Performing EA analysis for {} gene", gene_id)
-    logger.debug("TX Names: {}", list(tx_data.keys()))
-    logger.debug("EA Analysis raw data: TX Data: {}, TX Coords: {}, "
-                 "IR Exons: {}".format(tx_data, tx_coords, ir_exons))
-    # logger.debug("TX Coords: {}", tx_coords)
+    # logger.debug("Performing EA analysis for {} gene", gene_id)
+    # logger.debug("TX Names: {}", list(tx_data.keys()))
+    # logger.debug("EA Analysis raw data:\nTX Data: {},\nTX Coords: {}, "
+    #             "\nIR Exons: {}".format(tx_data, tx_coords, ir_exons))
     gene_transcript_ids = list(tx_data.keys())
     total_number_of_transcripts = len(gene_transcript_ids)
-    tx_ident_check = {}
-    for i in tx_coords:
-        tx_structure_str_list = [str(x) for x in tx_coords[i]]
-        tx_structure = ",".join(tx_structure_str_list)
-        if tx_structure in tx_ident_check:
-            tx_ident_check[tx_structure].append(i)
-        else:
-            tx_ident_check[tx_structure] = [i]
-    identical_tx_list = [x for x in tx_ident_check.values() if len(x) > 1]
-    identical_transcripts = {x[0]: x[1:] for x in identical_tx_list}
-    if identical_transcripts:
-        logger.debug("Identical records: {}", identical_transcripts)
-    # Stash names for EA output, but remove duplicate data
-    duplicate_txs = [x[1:] for x in identical_tx_list]
-    if duplicate_txs:
-        logger.debug("Duplicate records: {}", duplicate_txs)
-    for dupe_list in duplicate_txs:
-        for item in dupe_list:
-            del tx_data[item]
-    logger.debug("Unique TX Data: {}", list(tx_data.keys()))
+    # Check for and stash away duplicates
+    tx_data, identical_transcripts = check_for_tx_duplicates(tx_data, tx_coords)
     # Combine transcripts and generate ERs
-    strands = []
-    all_tx = None
-    for i in tx_data:
-        tx = tx_data[i]
-        if not all_tx:
-            all_tx = tx
-        else:
-            all_tx = all_tx.cat(tx, postmerge=True)
-        strand = list(set([x.strand for x in tx]))[0]
-        strands.append(strand)
-    strand = list(set(strands))[0]
-    # Is this a valid check?
-    if len(strand) > 1:
-        raise ValueError("Multiple strands detected when there should be one")
-    logger.debug("Strand: '{}'", strand)
-    raw_ers_list = [str(x).split() for x in all_tx]
-    er_id = 1
-    ers_list = []
-    for i in raw_ers_list:
-        i.extend([f"{gene_id}:ER{er_id}", '0', strand])
-        ers_list.append("\t".join(i))
-        er_id += 1
-    ers_str = "\n".join(ers_list)
-    ers_bed = BedTool(ers_str, from_string=True)
-    er_data = {}
-    # Coordinates of ER ends to check when creating EFs
-    er_ends = []
-    er_range_sets = {}
-    for er in ers_bed:
-        er_data[er.name] = ER(gene_id=gene_id, id=er.name, chrom=er.chrom, start=er.start,
-                              end=er.end, strand=er.strand, ex_ids=[], tx_ids=[],
-                              gene_tx_ids=gene_transcript_ids)
-        er_ends.append(er.end)
-        er_range_sets[er.name] = set(range(er.start, er.end + 1))
+    er_data, er_ends, er_range_sets = generate_ers(gene_id, tx_data, gene_transcript_ids)
     # Generate EFs
-    # Catalog starting and ending points (0-coordinate as we go from left side only)
-    sts_ends = []
-    tx_ranges = {}
-    for i in tx_data:
-        tx = tx_data[i]
-        for ex in tx:
-            # logger.debug(f"{ex.name}: {ex.start}/{ex.end}")
-            # There are many ways to check if exon start is in ER, pick one at random
-            if i in tx_ranges:
-                tx_ranges[ex.name].append(ex.start, ex.end, i)
-            else:
-                tx_ranges[ex.name] = (ex.start, ex.end, i)
-            if ex.start not in sts_ends:
-                sts_ends.append(ex.start)
-            if (ex.end) not in sts_ends:
-                sts_ends.append(ex.end)
-    sts_ends.sort()
-    tx_range_sets = {}
-    tx_exon_map = {}
-    for i in tx_ranges:
-        tx = tx_ranges[i]
-        tx_range_set = set(range(tx[0], tx[1] + 1))
-        tx_range_sets[i] = tx_range_set
-        tx_exon_map[i] = tx[2]
-    # Define EFs
-    ef_list = []
-    ef_start = sts_ends[0]
-    ef_end = None
-    for i in sts_ends[1:]:
-        # Start of an ER
-        if not ef_start and not ef_end:
-            ef_start = i
-            continue
-        ef_end = i
-        ef_list.append((ef_start, ef_end))
-        if ef_end in er_ends:
-            # Skip the intron
-            ef_start = None
-            ef_end = None
-            continue
-        else:
-            ef_start = ef_end
+    tx_exon_map, tx_ranges, ef_list = generate_efs(tx_data, er_ends)
     # Process all ERs and EFs vs transcript exons/transcripts to generate requested EA output
     # Sets are in 'er_range_sets' and 'tx_range_sets'
-    for er_id in er_data:
-        for ex_id in tx_exon_map:
-            exon_data = tx_ranges[ex_id]
-            # Check if exon start is in the ER
-            if exon_data[0] in er_range_sets[er_id]:
-                # Exon is in the ER, record exon, tx, and duplicates if any
-                tx_id = exon_data[2]
-                if ex_id not in er_data[er_id].ex_ids:
-                    er_data[er_id].ex_ids.append(ex_id)
-                if tx_id not in er_data[er_id].tx_ids:
-                    er_data[er_id].tx_ids.append(tx_id)
-                # Add duplicate txs and their exons if exist
-                if tx_id in identical_transcripts:
-                    duplicate_tx_list = identical_transcripts[tx_id]
-                    for duplicate_tx in duplicate_tx_list:
-                        if duplicate_tx not in er_data[er_id].tx_ids:
-                            er_data[er_id].tx_ids.append(duplicate_tx)
-                        ex_number = ex_id.split('_exon_')[1]
-                        duplicate_ex = f"{duplicate_tx}_exon_{ex_number}"
-                        if duplicate_ex not in er_data[er_id].ex_ids:
-                            er_data[er_id].ex_ids.append(ex_id)
-    for er in er_data:
-        ex_num = len(er_data[er].ex_ids)
-        tx_num = len(er_data[er].tx_ids)
-        er_data[er].ex_num = ex_num
-        er_data[er].tx_num = tx_num
-        er_data[er].gene_tx_num = total_number_of_transcripts
-        if tx_num == 1:
-            er_data[er].er_freq = 'unique'
-        elif tx_num == total_number_of_transcripts:
-            er_data[er].er_freq = 'constitutive'
-        else:
-            er_data[er].er_freq = 'common'
-
+    # Check EX ER identity and duplicate retrieval
+    er_data = retrieve_duplicates(er_data, tx_ranges, tx_exon_map, er_range_sets,
+                                  identical_transcripts)
+    # Set ER Frequences
+    er_data = get_er_frequences(er_data, total_number_of_transcripts)
     # Process EFs vs Exons and Transcripts
-    ef_data = {}
-    ef_start_set = set([x[0] for x in ef_list])
-    ef_start_end_map = {x[0]: x[1] for x in ef_list}
-    er_ef_map = {}
-    # Match agains ERs to get id and common data
-    for er in er_range_sets:
-        er_set = er_range_sets[er]
-        er_ef_starts = list(er_set.intersection(ef_start_set))
-        for ef_start in er_ef_starts:
-            er_ef_map[er] = er_ef_starts
-    for er_id in er_ef_map:
-        ef_id_ord = 1
-        for ef_start in er_ef_map[er_id]:
-            ef_id = f"{er_id}:EF{ef_id_ord}"
-            ef_id_ord += 1
-            ef_data[ef_id] = EF(gene_id=gene_id, er_id=er_id, ef_id=ef_id,
-                                chrom=er_data[er_id].chrom, start=ef_start,
-                                end=ef_start_end_map[ef_start], strand=er_data[er_id].strand,
-                                ex_ids=[], tx_ids=[])
-    # Match against exons
-    for ex_id in tx_ranges:
-        ex_set = set(range(tx_ranges[ex_id][0], tx_ranges[ex_id][1] + 1))
-        for ef_id in ef_data:
-            ef_start = ef_data[ef_id].start
-            if ef_start in ex_set:
-                # EF is a part of an exon - are there any duplicate exons and transcripts?
-                tx_id = tx_exon_map[ex_id]
-                if ex_id not in ef_data[ef_id].ex_ids:
-                    ef_data[ef_id].ex_ids.append(ex_id)
-                if tx_id not in ef_data[ef_id].tx_ids:
-                    ef_data[ef_id].tx_ids.append(tx_id)
-                # Add duplicate txs and their exons if exist
-                if tx_id in identical_transcripts:
-                    duplicate_tx_ids = identical_transcripts[tx_id]
-                    ex_number = ex_id.split('_exon_')[1]
-                    for dupe_tx_id in duplicate_tx_ids:
-                        if dupe_tx_id not in ef_data[ef_id].tx_ids:
-                            ef_data[ef_id].tx_ids.append(dupe_tx_id)
-                        dupe_ex_id = f"{dupe_tx_id}_exon_{ex_number}"
-                        if dupe_ex_id not in ef_data[ef_id].ex_ids:
-                            ef_data[ef_id].ex_ids.append(dupe_ex_id)
-    for ef in ef_data:
-        ex_num = len(ef_data[ef].ex_ids)
-        tx_num = len(ef_data[ef].tx_ids)
-        ef_data[ef].ex_num = ex_num
-        ef_data[ef].tx_num = tx_num
-        if tx_num == 1:
-            ef_data[ef].ef_freq = 'unique'
-        elif tx_num == total_number_of_transcripts:
-            ef_data[ef].ef_freq = 'constitutive'
-        else:
-            ef_data[ef].ef_freq = 'common'
+    # Create the EF data structure
+    ef_data = create_ef_data(gene_id, er_data, ef_list, er_range_sets)
+    # Match EFs against exons
+    ef_data = match_efs_with_exs(ef_data, tx_ranges, tx_exon_map, identical_transcripts)
+    ef_data = get_ef_frequences(ef_data, total_number_of_transcripts)
     er_out_data = []
-    for er in er_data:
-        i = er_data[er]
+    for er_id in er_data:
+        er = er_data[er_id]
         # Flag exon regions that contain IR exons
-        if len(ir_exons) != 0 and len(set(i.ex_ids).intersection(set(ir_exons))) > 0:
-            i.ir_flag = 1
+        if len(ir_exons) != 0 and len(set(er.ex_ids).intersection(set(ir_exons))) > 0:
+            er.ir_flag = 1
         else:
-            i.ir_flag = 0
-        er_out_data.append([i.gene_id, i.id, i.chrom, i.start, i.end, i.strand, "|".join(i.ex_ids),
-                            "|".join(i.tx_ids), "|".join(i.gene_tx_ids), i.ex_num, i.tx_num,
-                            i.gene_tx_num, i.ir_flag, i.er_freq])
+            er.ir_flag = 0
+        er_out_data.append([er.gene_id, er.id, er.chrom, er.start, er.end, er.strand,
+                            "|".join(er.ex_ids), "|".join(er.tx_ids), "|".join(er.gene_tx_ids),
+                            er.ex_num, er.tx_num, er.gene_tx_num, er.ir_flag, er.er_freq])
     ef_out_data = []
-    for ef in ef_data:
-        i = ef_data[ef]
-        # Flag exon fragments that contain IR exons
-        if len(ir_exons) != 0 and len(set(i.ex_ids).intersection(set(ir_exons))) > 0:
-            i.ir_flag = 1
+    for ef_id in ef_data:
+        ef = ef_data[ef_id]
+        # Flag exon fragments that contain IR exons.
+        # FIXME this is wrong since EFs can be a part of IR ER, but not all EFs are part of the IR
+        # We need to set the IR range earlier and carry it forward to here.
+        if len(ir_exons) != 0 and len(set(ef.ex_ids).intersection(set(ir_exons))) > 0:
+            ef.ir_flag = 1
         else:
-            i.ir_flag = 0
-        ef_out_data.append([i.gene_id, i.er_id, i.ef_id, i.chrom, i.start, i.end, i.strand,
-                            "|".join(i.ex_ids), "|".join(i.tx_ids), i.ex_num, i.tx_num, i.ir_flag,
-                            i.ef_freq])
+            ef.ir_flag = 0
+        ef_out_data.append([ef.gene_id, ef.er_id, ef.ef_id, ef.chrom, ef.start, ef.end, ef.strand,
+                            "|".join(ef.ex_ids), "|".join(ef.tx_ids), ef.ex_num, ef.tx_num,
+                            ef.ir_flag, ef.ef_freq])
     return er_out_data, ef_out_data
 
 
@@ -995,7 +1073,7 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_o
 
     # Full processing
     out_fhs = open_output_files(outdir, outfiles)
-    logger.debug("Output files: {}".format(outfiles))
+    # logger.debug("Output files: {}".format(outfiles))
     # Write out csv file headers
     if not skip_interm:
         if ea_mode == 'gene':
