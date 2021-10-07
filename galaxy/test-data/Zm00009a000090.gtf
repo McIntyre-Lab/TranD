@@ -1,0 +1,13 @@
+1	.	exon	4448854	4449338	.	+	.	transcript_id "Zm00009a000090_T001"; gene_id "Zm00009a000090"; gene_name "Zm00009a000090";
+1	.	exon	4449495	4449625	.	+	.	transcript_id "Zm00009a000090_T001"; gene_id "Zm00009a000090"; gene_name "Zm00009a000090";
+1	.	exon	4450740	4450897	.	+	.	transcript_id "Zm00009a000090_T001"; gene_id "Zm00009a000090"; gene_name "Zm00009a000090";
+1	.	exon	4450978	4452027	.	+	.	transcript_id "Zm00009a000090_T001"; gene_id "Zm00009a000090"; gene_name "Zm00009a000090";
+1	.	CDS	4449174	4449338	.	+	0	transcript_id "Zm00009a000090_T001"; gene_id "Zm00009a000090"; gene_name "Zm00009a000090";
+1	.	CDS	4449495	4449625	.	+	0	transcript_id "Zm00009a000090_T001"; gene_id "Zm00009a000090"; gene_name "Zm00009a000090";
+1	.	CDS	4450740	4450897	.	+	1	transcript_id "Zm00009a000090_T001"; gene_id "Zm00009a000090"; gene_name "Zm00009a000090";
+1	.	CDS	4450978	4451363	.	+	2	transcript_id "Zm00009a000090_T001"; gene_id "Zm00009a000090"; gene_name "Zm00009a000090";
+1	.	exon	4448854	4449338	.	+	.	transcript_id "Zm00009a000090_T002"; gene_id "Zm00009a000090"; gene_name "Zm00009a000090";
+1	.	exon	4449495	4450897	.	+	.	transcript_id "Zm00009a000090_T002"; gene_id "Zm00009a000090"; gene_name "Zm00009a000090";
+1	.	exon	4450978	4452027	.	+	.	transcript_id "Zm00009a000090_T002"; gene_id "Zm00009a000090"; gene_name "Zm00009a000090";
+1	.	CDS	4450684	4450897	.	+	0	transcript_id "Zm00009a000090_T002"; gene_id "Zm00009a000090"; gene_name "Zm00009a000090";
+1	.	CDS	4450978	4451363	.	+	2	transcript_id "Zm00009a000090_T002"; gene_id "Zm00009a000090"; gene_name "Zm00009a000090";
