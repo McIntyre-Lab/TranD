@@ -1031,8 +1031,9 @@ def ea_pairwise(gene_id, data):
     return ea_df, jct_df, td_df
 
 
-def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, complexity_only, skip_plots,
-                        skip_interm, consolidate, consol_prefix, consol_outfiles):
+def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
+                        complexity_only, skip_plots, skip_interm, consolidate,
+                        consol_prefix, consol_outfiles):
     """
     Pairwise or full gene transcript event analysis (TranD) on a single GTF file.
     """
@@ -1240,8 +1241,15 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
     logger.debug("Genes to process: \n{}", gene_list)
     # Serial processing
     if cpu_cores == 1:
-        ea_data, jct_data, td_data = loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs,
-                                                     cpu_cores, name1, name2)
+        ea_data, jct_data, td_data = loop_over_genes(
+                gene_list,
+                out_fhs,
+                "pairwise",
+                valid_f1,
+                valid_f2,
+                name1,
+                name2
+            )
         if not skip_interm:
             write_output(ea_data, out_fhs, 'ea_fh')
             write_output(jct_data, out_fhs, 'jc_fh')
@@ -1265,8 +1273,15 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
         for genes in geneLists:
             subset_f1 = valid_f1[valid_f1['gene_id'].isin(genes)]
             subset_f2 = valid_f2[valid_f2['gene_id'].isin(genes)]
-            pool.apply_async(loop_over_genes, args=(genes, subset_f1, subset_f2, out_fhs, cpu_cores,
-                                                    name1, name2), callback=callback_results)
+            pool.apply_async(loop_over_genes, args=(
+                    genes,
+                    out_fhs,
+                    "pairwise",
+                    subset_f1,
+                    subset_f2,
+                    name1,
+                    name2
+                ), callback=callback_results)
         pool.close()
         pool.join()
         ea_cat = pd.concat(ea_list)
@@ -1287,25 +1302,43 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
                                        name2=name2)
 
 
-def loop_over_genes(gene_list, valid_f1, valid_f2, out_fhs, cpu_cores, name1, name2):
-    ea_data_list = []
-    jct_data_list = []
-    td_data_list = []
-    # Loop over genes in a provided gene list
-    for gene in gene_list:
-        f1_data = valid_f1[valid_f1['gene_id'] == gene]
-        f2_data = valid_f2[valid_f2['gene_id'] == gene]
-        try:
-            ea_data, jct_data, td_data = ea_pairwise_two_files(f1_data, f2_data, gene, name1, name2)
-        except ValueError as e:
-            logger.error(e)
-            continue
-        # Append output to list
-        ea_data_list.append(ea_data)
-        jct_data_list.append(jct_data)
-        td_data_list.append(td_data)
-    # Concatenate outputs
-    ea_data_cat = pd.concat(ea_data_list)
-    jct_data_cat = pd.concat(jct_data_list)
-    td_data_cat = pd.concat(td_data_list)
-    return [ea_data_cat, jct_data_cat, td_data_cat]
+def loop_over_genes(gene_list, out_fhs, ea_mode, data1, data2=None,
+                    name1=None, name2=None):
+    """
+    Loop over genes in given gene list and process based on the files input:
+        1. If data1, data2, name1, and name2 provided then do 2 GTF analysis
+        2. If data1 provided and not data2 then do 1 GTF analysis based on ea_mode
+    """
+    if data2 is not None:
+        ea_data_list = []
+        jct_data_list = []
+        td_data_list = []
+        # Loop over genes in a provided gene list
+        for gene in gene_list:
+            f1_data = data1[data1['gene_id'] == gene]
+            f2_data = data2[data2['gene_id'] == gene]
+            try:
+                ea_data, jct_data, td_data = ea_pairwise_two_files(
+                        f1_data,
+                        f2_data,
+                        gene,
+                        name1,
+                        name2
+                    )
+            except ValueError as e:
+                logger.error(e)
+                continue
+            # Append output to list
+            ea_data_list.append(ea_data)
+            jct_data_list.append(jct_data)
+            td_data_list.append(td_data)
+        # Concatenate outputs
+        ea_data_cat = pd.concat(ea_data_list)
+        jct_data_cat = pd.concat(jct_data_list)
+        td_data_cat = pd.concat(td_data_list)
+        return [ea_data_cat, jct_data_cat, td_data_cat]
+    else:
+        if ea_mode == "gene":
+            pass
+        else:
+            pass
