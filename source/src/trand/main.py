@@ -307,6 +307,7 @@ def cli():
                 args.keep_ir,
                 args.outdir,
                 outfiles,
+                args.cpu_cores,
                 args.complexity_only,
                 args.skip_plots,
                 args.skip_interm,
