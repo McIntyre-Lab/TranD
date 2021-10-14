@@ -82,6 +82,7 @@ er_list = []
 ef_list = []
 ir_list = []
 
+
 # Data structures for ERs and EFs. Use a mutable dataclass, so we could add transcript names and
 # counts during EA
 @dataclass
@@ -1303,6 +1304,7 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
                 gene_list,
                 out_fhs,
                 "pairwise",
+                True,
                 valid_f1,
                 valid_f2,
                 name1,
