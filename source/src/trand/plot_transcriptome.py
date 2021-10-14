@@ -414,9 +414,9 @@ def visualize_combined(list_main, list_e, list_eu, df_ratio_IR, f_donor_ratio, d
     ax6.tick_params(axis='y', which='major', pad=-5, labelsize=6, direction='in', length=1)
     ax6.vlines(tick_pos, 0, heat_ylim-0.03, color = '#4682b4', linewidth=ticklinewidth)
     
-    outfile = out + "/transcriptome_summary_plot.pdf"
+#    outfile = out + "/transcriptome_summary_plot.pdf"
     outfile2 = out + "/transcriptome_summary_plot.png" 
-    plt.savefig(outfile, dpi=600, format='pdf')
+#    plt.savefig(outfile, dpi=600, format='pdf')
     plt.savefig(outfile2, dpi=600, format='png')
     return
 
@@ -463,7 +463,16 @@ def plot_transcriptome(er_data, ef_data, ir_data, uniqex_data, outdir):
     df_ratio_IR.columns = ['name', 'num_transcript', 'num_IR_transcript', 'ratio']
     del(er_data)
 
-    visualize_combined(num_list_main, num_list_e, num_list_ue, df_ratio_IR, f_donor_ratio, df_ratio_e, df_ratio_f_lensum, out = os.path.normpath(outdir))
+    visualize_combined(
+        num_list_main,
+        num_list_e,
+        num_list_ue,
+        df_ratio_IR,
+        f_donor_ratio,
+        df_ratio_e,
+        df_ratio_f_lensum,
+        out = os.path.normpath(outdir)
+    )
 
 
 
