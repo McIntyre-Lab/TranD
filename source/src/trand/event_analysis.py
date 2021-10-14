@@ -146,40 +146,29 @@ def callback_gene_results(results):
     ir_list.append(ir_data_cat)
 
 
-def create_junction_catalog(gene, tx, tx_data):
+def _create_bed_df(tx_str):
+    """Create a data structure resembling a bed record for a transcript"""
+    logger.debug("TX STR: {}", tx_str)
+    bed_df = pd.DataFrame(tx_str, columns=['chrom', 'start', 'end', 'name', 'score', 'strand'])
+    bed_df['start'] = bed_df['start'].astype(int)
+    bed_df['end'] = bed_df['end'].astype(int)
+    bed_df = bed_df.sort_values('start')
+    return bed_df
+
+
+def create_junction_catalog(gene, tx, tx_bed_df):
     """Create a junction catalog for a transcript"""
     junctions = []
     id = 0
-    for e in tx_data:
+    for index, exon in tx_bed_df.iterrows():
         id += 1
         if id == 1:
-            left_end = int(e.end) - 10
+            left_end = int(exon.end) - 10
             continue
-        right_start = int(e.start + 10)
-        jct_coords = f"{e.chrom}:{left_end}:{right_start}:{e.strand}"
+        right_start = int(exon.start + 10)
+        jct_coords = f"{exon.chrom}:{left_end}:{right_start}:{exon.strand}"
         junctions.append([gene, tx, jct_coords])
-        left_end = int(e.end) - 10
-    return junctions
-
-
-def create_junction_catalog_str(gene, tx, tx_data):
-    """Create a junction catalog for a transcript"""
-    junctions = []
-    id = 0
-    tx_data_df = pd.DataFrame(tx_data, columns=['chrom', 'start', 'end', 'name',
-                              'score', 'strand'])
-    tx_data_df['start'] = tx_data_df['start'].astype(int)
-    tx_data_df['end'] = tx_data_df['end'].astype(int)
-    tx_data_df = tx_data_df.sort_values('start')
-    for index, e in tx_data_df.iterrows():
-        id += 1
-        if id == 1:
-            left_end = int(e.end) - 10
-            continue
-        right_start = int(e.start + 10)
-        jct_coords = f"{e.chrom}:{left_end}:{right_start}:{e.strand}"
-        junctions.append([gene, tx, jct_coords])
-        left_end = int(e.end) - 10
+        left_end = int(exon.end) - 10
     return junctions
 
 
@@ -508,12 +497,12 @@ def create_ef_data(gene_id, er_data, ef_list, er_range_sets):
     return ef_data
 
 
-def do_ea_gene(tx_data, keep_ir):
+def do_ea_gene(raw_tx_data, keep_ir):
     """
     Event Analysis on a full gene
     """
     try:
-        data = prep_bed_for_ea(tx_data)
+        data = prep_bed_for_ea(raw_tx_data)
     except ValueError:
         raise
     # logger.debug("Gene data:\n{}".format(data))
@@ -523,8 +512,10 @@ def do_ea_gene(tx_data, keep_ir):
     logger.debug("Transcripts in {}: {}", gene_id, tx_names)
     if len(tx_names) == 1:
         logger.info("Gene {} has a single transcript.", gene_id)
+        tx_bed_str = data[tx_names[0]]
+        tx_bed_df = _create_bed_df(tx_bed_str)
         er_data, ef_data = single_transcript_ea(gene_id, tx_names[0], data[tx_names[0]])
-        junction_data = create_junction_catalog_str(gene_id, tx_names[0], data[tx_names[0]])
+        junction_data = create_junction_catalog(gene_id, tx_names[0], tx_bed_df)
         junction_df = pd.DataFrame(junction_data, columns=jct_df_cols)
         ir_transcripts = []
     else:
@@ -544,7 +535,9 @@ def do_ea_gene(tx_data, keep_ir):
         # Junction Catalog creation
         junction_data = []
         for tx_name in tx_names:
-            tx_jc_data = create_junction_catalog(gene_id, tx_name, tx_data[tx_name])
+            tx_bed_str = data[tx_name]
+            tx_bed_df = _create_bed_df(tx_bed_str)
+            tx_jc_data = create_junction_catalog(gene_id, tx_name, tx_bed_df)
             junction_data.extend(tx_jc_data)
             for jc in tx_jc_data:
                 tx_coords[tx_name].append(jc[2])
@@ -628,23 +621,13 @@ def do_ea_pair(tx_data):
     # logger.debug("Gene data:\n{}".format(data))
     gene_id = data['gene_id']
     tx_names = data['transcript_list']
-    logger.debug("Transcripts in {}: {}", gene_id, tx_names)
+    # logger.debug("Transcripts in {}: {}", gene_id, tx_names)
     tx1_name, tx2_name = tx_names[0], tx_names[1]
-    tx1_bed_str = data[tx1_name]
-    tx2_bed_str = data[tx2_name]
-    tx1_bed_df = pd.DataFrame(tx1_bed_str, columns=['chrom', 'start', 'end', 'name', 'score',
-                                                    'strand'])
-    tx1_bed_df['start'] = tx1_bed_df['start'].astype(int)
-    tx1_bed_df['end'] = tx1_bed_df['end'].astype(int)
-    tx1_bed_df = tx1_bed_df.sort_values('start')
-    tx2_bed_df = pd.DataFrame(tx2_bed_str, columns=['chrom', 'start', 'end', 'name', 'score',
-                                                    'strand'])
-    tx2_bed_df['start'] = tx2_bed_df['start'].astype(int)
-    tx2_bed_df['end'] = tx2_bed_df['end'].astype(int)
-    tx2_bed_df = tx2_bed_df.sort_values('start')
+    tx1_bed_str, tx2_bed_str = data[tx1_name], data[tx2_name]
+    tx1_bed_df, tx2_bed_df = _create_bed_df(tx1_bed_str), _create_bed_df(tx2_bed_str)
     logger.debug("Comparing {} vs {}", tx1_name, tx2_name)
-    junction_data1 = create_junction_catalog_str(gene_id, tx1_name, tx1_bed_str)
-    junction_data2 = create_junction_catalog_str(gene_id, tx2_name, tx2_bed_str)
+    junction_data1 = create_junction_catalog(gene_id, tx1_name, tx1_bed_df)
+    junction_data2 = create_junction_catalog(gene_id, tx2_name, tx2_bed_df)
     junction_str1 = "|".join(pd.DataFrame(junction_data1, columns=['gene_id', 'transcript_id',
                                                                    'junction_id'])['junction_id'])
     junction_str2 = "|".join(pd.DataFrame(junction_data2, columns=['gene_id', 'transcript_id',
@@ -662,9 +645,7 @@ def do_ea_pair(tx_data):
         # Check for non-overlapping mono-exon transcript pairs
         # when T1 is completely upstream of T2 or vice versa
         if (tx1_max <= tx2_min) or (tx2_max <= tx1_min):
-            tx1_bed = BedTool(tx1_bed_str).saveas()
-            tx2_bed = BedTool(tx2_bed_str).saveas()
-            ea_data = er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
+            ea_data = er_ea_analysis(tx1_bed_str, tx2_bed_str, tx1_name, tx2_name, gene_id)
         else:
             # Some overlap present between transcripts
             is_fsm = True
@@ -697,9 +678,7 @@ def do_ea_pair(tx_data):
                                              side_diff="both")
     else:
         # Junctions are not identical (there is some alternate donor/acceptor/exon)
-        tx1_bed = BedTool(tx1_bed_str).saveas()
-        tx2_bed = BedTool(tx2_bed_str).saveas()
-        ea_data = er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id)
+        ea_data = er_ea_analysis(tx1_bed_str, tx2_bed_str, tx1_name, tx2_name, gene_id)
     out_df = pd.DataFrame(ea_data, columns=ea_df_cols)
     junction_df = pd.DataFrame(junction_data, columns=jct_df_cols)
     td_df = pd.DataFrame(TD.calculate_distance(out_df, junction_df, gene_id, tx1_name, tx2_name,
@@ -707,11 +686,13 @@ def do_ea_pair(tx_data):
     return out_df, junction_df, td_df
 
 
-def er_ea_analysis(tx1_bed, tx2_bed, tx1_name, tx2_name, gene_id):
+def er_ea_analysis(tx1_bed_str, tx2_bed_str, tx1_name, tx2_name, gene_id):
     """
     Generate ERs (Exonic Regions) and EFs (Exonic Fragments) and analyze events in a pair of
     transcripts.
     """
+    tx1_bed = BedTool(tx1_bed_str).saveas()
+    tx2_bed = BedTool(tx2_bed_str).saveas()
     # logger.debug("Performing EA analysis for {} gene", gene_id)
     # logger.debug("TX Names: {},{}", tx1_name, tx2_name)
     # logger.debug("EA Analysis raw data: tx1: {}, tx2: {}".format(tx1_bed, tx2_bed))
