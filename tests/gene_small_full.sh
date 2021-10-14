@@ -14,8 +14,8 @@ echo "### Starting test: ${TEST}"
 
 DATA="test_exons_gene.gtf"
 
-CMD="trand -f -e gene -o ${OUTPUT_DIR} $* ${INPUT_DIR}/${DATA}"
+CMD="trand -f -e gene -s -o ${OUTPUT_DIR} $* ${INPUT_DIR}/${DATA}"
 echo "CMD: ${CMD}"
-eval "${CMD}"
+time eval "${CMD}"
 
 date
