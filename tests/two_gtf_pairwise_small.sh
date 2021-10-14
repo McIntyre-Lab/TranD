@@ -13,7 +13,7 @@ echo "### Starting test: ${TEST}"
 
 DATA="${INPUT_DIR}/test_set_B73_END.gtf ${INPUT_DIR}/test_set_B73_R.gtf"
 
-CMD="trand -o ${OUTPUT_DIR} $* ${DATA}"
+CMD="trand -f -s -o ${OUTPUT_DIR} $* ${DATA}"
 echo "CMD: ${CMD}"
 time eval "${CMD}"
 
