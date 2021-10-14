@@ -74,11 +74,13 @@ ef_df_cols = ['gene_id', 'er_id', 'ef_id', 'ef_chr', 'ef_start', 'ef_end', 'ef_s
               'ef_ir_flag', 'ea_annotation_frequency']
 ir_df_cols = ['er_transcript_ids']
 ue_df_cols = ['gene_id', 'num_uniq_exon']
-# Parallelization
+# Parallelization result lists
 ea_list = []
 jct_list = []
 td_list = []
-
+er_list = []
+ef_list = []
+ir_list = []
 
 # Data structures for ERs and EFs. Use a mutable dataclass, so we could add transcript names and
 # counts during EA
@@ -126,12 +128,21 @@ def chunks(lst, n):
     return list_of_lists
 
 
-def callback_results(results):
-    # Callback function to append result to list of results
+def callback_pair_results(results):
+    # Callback function to append result to list of results for pairwise mode
     ea_data_cat, jct_data_cat, td_data_cat = results
     ea_list.append(ea_data_cat)
     jct_list.append(jct_data_cat)
     td_list.append(td_data_cat)
+
+
+def callback_gene_results(results):
+    # Callback function to append result to list of results for gene mode
+    er_data_cat, ef_data_cat, jct_data_cat, ir_data_cat = results
+    er_list.append(er_data_cat)
+    ef_list.append(ef_data_cat)
+    jct_list.append(jct_data_cat)
+    ir_list.append(ir_data_cat)
 
 
 def create_junction_catalog(gene, tx, tx_data):
@@ -1088,58 +1099,103 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
             out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
             out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
         out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
-    # Initialize concatenated pairwise transcript distance dataframe
-    if ea_mode == "pairwise":
-        td_data_cat = pd.DataFrame()
-    else:
-        er_data_cat = pd.DataFrame(columns=er_df_cols)
-        ef_data_cat = pd.DataFrame(columns=ef_df_cols)
-        ir_data_cat = pd.DataFrame(columns=['er_transcript_ids'])
     # Event analysis start
-    for gene in genes.groups:
-        gene_df = data[data['gene_id'] == gene]
-        transcripts = gene_df.groupby("transcript_id")
-        transcript_groups = transcripts.groups
-        number_of_transcripts = len(transcript_groups)
-        # Event analysis type
+    # Serial processing
+    if cpu_cores == 1:
         # Full Gene EA
-        if ea_mode == 'gene':
-            try:
-                er_data, ef_data, jct_data, ir_transcripts = do_ea_gene(gene_df, keep_ir=keep_ir)
-                if er_data is None:
-                    continue
-                if not skip_interm:
-                    write_output(er_data, out_fhs, 'er_fh')
-                    write_output(ef_data, out_fhs, 'ef_fh')
-                    write_output(jct_data, out_fhs, 'jc_fh')
-                er_data_cat = pd.concat([er_data_cat, er_data], ignore_index=True)
-                ef_data_cat = pd.concat([ef_data_cat, ef_data], ignore_index=True)
-                if len(ir_transcripts) > 0:
-                    ir_data = pd.DataFrame(ir_transcripts, columns=['er_transcript_ids'])
-                    ir_data_cat = pd.concat([ir_data_cat, ir_data], ignore_index=True)
-            except ValueError as e:
-                logger.error(e)
-                continue
+        if ea_mode == "gene":
+            er_data, ef_data, jct_data, ir_transcripts = loop_over_genes(
+                    list(genes.groups),
+                    out_fhs,
+                    "gene",
+                    keep_ir,
+                    data
+                )
+            ir_df = pd.DataFrame(ir_transcripts, columns=['er_transcript_ids'])
+            # Output intermediate files
+            if not skip_interm:
+                write_output(er_data, out_fhs, 'er_fh')
+                write_output(ef_data, out_fhs, 'ef_fh')
+                write_output(jct_data, out_fhs, 'jc_fh')
+                write_output(ir_df, out_fhs, 'ir_fh')
+                write_output(uniq_ex, out_fhs, 'ue_fh')
+            # Output plots for 1 GTF gene mode
+            if not skip_plots:
+                P1GG.plot_one_gtf_gene(er_data, ef_data, ir_df, uniq_ex, outdir)
+        # Pairwise EA
         else:
-            # Pairwise EA
-            if number_of_transcripts == 1:
-                logger.info("Gene {} has a single transcript. Skipping", gene)
-                continue
-            ea_data, jct_data, td_data = ea_pairwise(gene, gene_df)
-            td_data_cat = pd.concat([td_data_cat, td_data], ignore_index=True)
+            ea_data, jct_data, td_data = loop_over_genes(
+                    list(genes.groups),
+                    out_fhs,
+                    "pairwise",
+                    keep_ir,
+                    data
+                )
+            # Output intermediate files
             if not skip_interm:
                 write_output(ea_data, out_fhs, 'ea_fh')
                 write_output(jct_data, out_fhs, 'jc_fh')
                 write_output(td_data, out_fhs, 'td_fh')
-    # Output additional intermediate files for gene mode
-    if ea_mode == 'gene' and not skip_interm:
-        write_output(ir_data_cat, out_fhs, 'ir_fh')
-        write_output(uniq_ex, out_fhs, 'ue_fh')
-    if not skip_plots:
-        if ea_mode == 'pairwise':
-            P1GP.plot_one_gtf_pairwise(outdir, td_data_cat)
-        elif ea_mode == 'gene':
-            P1GG.plot_one_gtf_gene(er_data_cat, ef_data_cat, ir_data_cat, uniq_ex, outdir)
+            # Output plots for 1 GTF pairwise mode
+            if not skip_plots:
+                P1GP.plot_one_gtf_pairwise(outdir, td_data)
+    # Parallel processing
+    else:
+        # Get lists for each process based on cpu_cores value
+        geneLists = chunks(list(genes.groups), cpu_cores)
+        # Generate multiprocess Pool with specified number of cpus
+        #     to loop through genes and calculate distances
+        pool = Pool(cpu_cores)
+        for genes in geneLists:
+            subset_data = data[data['gene_id'].isin(genes)]
+            if ea_mode == "gene":
+                pool.apply_async(loop_over_genes, args=(
+                        genes,
+                        out_fhs,
+                        "gene",
+                        keep_ir,
+                        subset_data
+                    ), callback=callback_gene_results)
+            else:
+                pool.apply_async(loop_over_genes, args=(
+                        genes,
+                        out_fhs,
+                        "pairwise",
+                        keep_ir,
+                        subset_data
+                    ), callback=callback_pair_results)
+        pool.close()
+        pool.join()
+        # Full Gene EA
+        if ea_mode == "gene":
+            er_cat = pd.concat(er_list, ignore_index=True)
+            ef_cat = pd.concat(ef_list, ignore_index=True)
+            jct_cat = pd.concat(jct_list, ignore_index=True)
+            ir_cat = sum(ir_list, [])   # concatenate list of ir transcript lists
+            ir_df = pd.DataFrame(ir_cat, columns=['er_transcript_ids'])
+            # Output intermediate files
+            if not skip_interm:
+                write_output(er_cat, out_fhs, 'er_fh')
+                write_output(ef_cat, out_fhs, 'ef_fh')
+                write_output(jct_cat, out_fhs, 'jc_fh')
+                write_output(ir_df, out_fhs, 'ir_fh')
+                write_output(uniq_ex, out_fhs, 'ue_fh')
+            # Output plots for 1 GTF gene mode
+            if not skip_plots:
+                P1GG.plot_one_gtf_gene(er_cat, ef_cat, ir_df, uniq_ex, outdir)
+        # Pairwise EA
+        else:
+            ea_cat = pd.concat(ea_list, ignore_index=True)
+            jct_cat = pd.concat(jct_list, ignore_index=True)
+            td_cat = pd.concat(td_list, ignore_index=True)
+            # Output intermediate files
+            if not skip_interm:
+                write_output(ea_cat, out_fhs, 'ea_fh')
+                write_output(jct_cat, out_fhs, 'jc_fh')
+                write_output(td_cat, out_fhs, 'td_fh')
+            # Output plots for 1 GTF pairwise mode
+            if not skip_plots:
+                P1GP.plot_one_gtf_pairwise(outdir, td_cat)
 
 
 def ea_pairwise_two_files(f1_data, f2_data, gene_id, name1, name2):
@@ -1279,16 +1335,17 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
                     genes,
                     out_fhs,
                     "pairwise",
+                    True,
                     subset_f1,
                     subset_f2,
                     name1,
                     name2
-                ), callback=callback_results)
+                ), callback=callback_pair_results)
         pool.close()
         pool.join()
-        ea_cat = pd.concat(ea_list)
-        jct_cat = pd.concat(jct_list)
-        td_cat = pd.concat(td_list)
+        ea_cat = pd.concat(ea_list, ignore_index=True)
+        jct_cat = pd.concat(jct_list, ignore_index=True)
+        td_cat = pd.concat(td_list, ignore_index=True)
         if not skip_interm:
             write_output(ea_cat, out_fhs, 'ea_fh')
             write_output(jct_cat, out_fhs, 'jc_fh')
@@ -1304,16 +1361,17 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
                                        name2=name2)
 
 
-def loop_over_genes(gene_list, out_fhs, ea_mode, data1, data2=None,
+def loop_over_genes(gene_list, out_fhs, ea_mode, keep_ir, data1, data2=None,
                     name1=None, name2=None):
     """
     Loop over genes in given gene list and process based on the files input:
         1. If data1, data2, name1, and name2 provided then do 2 GTF analysis
         2. If data1 provided and not data2 then do 1 GTF analysis based on ea_mode
     """
+    jct_data_list = []
+    # (1) data2 present, do 2 GTF analysis
     if data2 is not None:
         ea_data_list = []
-        jct_data_list = []
         td_data_list = []
         # Loop over genes in a provided gene list
         for gene in gene_list:
@@ -1335,12 +1393,60 @@ def loop_over_genes(gene_list, out_fhs, ea_mode, data1, data2=None,
             jct_data_list.append(jct_data)
             td_data_list.append(td_data)
         # Concatenate outputs
-        ea_data_cat = pd.concat(ea_data_list)
-        jct_data_cat = pd.concat(jct_data_list)
-        td_data_cat = pd.concat(td_data_list)
+        ea_data_cat = pd.concat(ea_data_list, ignore_index=True)
+        jct_data_cat = pd.concat(jct_data_list, ignore_index=True)
+        td_data_cat = pd.concat(td_data_list, ignore_index=True)
         return [ea_data_cat, jct_data_cat, td_data_cat]
+    # (2) data2 not present, do 1 GTF analysis
     else:
         if ea_mode == "gene":
-            pass
+            er_data_list = []
+            ef_data_list = []
+            ir_data_list = []
         else:
-            pass
+            ea_data_list = []
+            td_data_list = []
+        # Loop over genes in a provided gene list
+        for gene in gene_list:
+            gene_df = data1[data1['gene_id'] == gene]
+            # Full Gene EA
+            if ea_mode == "gene":
+                try:
+                    er_data, ef_data, jct_data, ir_transcripts = do_ea_gene(
+                            gene_df,
+                            keep_ir=keep_ir
+                        )
+                except ValueError as e:
+                    logger.error(e)
+                    continue
+                # Append output to list
+                er_data_list.append(er_data)
+                ef_data_list.append(ef_data)
+                jct_data_list.append(jct_data)
+                ir_data_list.append(ir_transcripts)
+            # Pairwise EA
+            else:
+                try:
+                    ea_data, jct_data, td_data = ea_pairwise(
+                            gene,
+                            gene_df
+                        )
+                except ValueError as e:
+                    logger.error(e)
+                    continue
+                # Append output to list
+                ea_data_list.append(ea_data)
+                jct_data_list.append(jct_data)
+                td_data_list.append(td_data)
+        # Concatenate outputs
+        if ea_mode == "gene":
+            er_data_cat = pd.concat(er_data_list, ignore_index=True)
+            ef_data_cat = pd.concat(ef_data_list, ignore_index=True)
+            jct_data_cat = pd.concat(jct_data_list, ignore_index=True)
+            ir_data_cat = sum(ir_data_list, [])     # concatenate list of ir transcript lists
+            return [er_data_cat, ef_data_cat, jct_data_cat, ir_data_cat]
+        else:
+            ea_data_cat = pd.concat(ea_data_list, ignore_index=True)
+            jct_data_cat = pd.concat(jct_data_list, ignore_index=True)
+            td_data_cat = pd.concat(td_data_list, ignore_index=True)
+            return [ea_data_cat, jct_data_cat, td_data_cat]
