@@ -403,6 +403,9 @@ def plot_min_pair_AS_upset_nt_box(md_data, name1, name2, legendOut, reciprocal=T
                 | (md_data["flag_min_match_" + name2] == 1)
             )
         ].copy()
+    # Check if there are any pairs to plot
+    if len(minPairAS) == 0:
+        return
     minPairAS = minPairAS[
         [
             "transcript_1",
