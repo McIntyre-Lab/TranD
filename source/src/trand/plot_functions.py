@@ -231,15 +231,15 @@ def plot_gene_stack(md_data, name1, name2, legendOut, useProp=False):
                 md_data["gene_id"].nunique(),
                 name1,
                 name2,
-                genePairDF.loc["Match"].sum(),
+                genePairDF[genePairDF.index == "Match"].sum().sum(),
                 name1,
                 name2,
                 name1,
-                genePairDF.loc[name1 + " Greater"].sum(),
+                genePairDF[genePairDF.index == name1 + " Greater"].sum().sum(),
                 name2,
                 name1,
                 name2,
-                genePairDF.loc[name2 + " Greater"].sum(),
+                genePairDF[genePairDF.index == name2 + " Greater"].sum().sum(),
             )
         )
         genePairDF = genePairDF.div(genePairDF.sum(axis=1), axis=0)
@@ -260,15 +260,15 @@ def plot_gene_stack(md_data, name1, name2, legendOut, useProp=False):
                 md_data["gene_id"].nunique(),
                 name1,
                 name2,
-                genePairDF.loc["Match"].sum(),
+                genePairDF[genePairDF.index == "Match"].sum().sum(),
                 name1,
                 name2,
                 name1,
-                genePairDF.loc[name1 + " Greater"].sum(),
+                genePairDF[genePairDF.index == name1 + " Greater"].sum().sum(),
                 name2,
                 name1,
                 name2,
-                genePairDF.loc[name2 + " Greater"].sum(),
+                genePairDF[genePairDF.index == name2 + " Greater"].sum().sum(),
             )
         )
         title = "Number of Genes"
