@@ -36,6 +36,9 @@ from dataclasses import dataclass
 from loguru import logger
 from pybedtools import BedTool
 from multiprocessing import Pool
+from inscripta.biocantor.location.location_impl import SingleInterval
+from inscripta.biocantor.location.location_impl import Strand
+from inscripta.biocantor.location.location_impl import EmptyLocation
 
 # Import general trand functions
 from .io import write_output
@@ -172,6 +175,45 @@ def create_junction_catalog(gene, tx, tx_bed_df):
     return junctions
 
 
+def get_intron_retention_efs_new(ers_bed, efs_bed, common_efs):
+    """
+    Produce a list of exon fragments that participate in intron retention events.
+    In essence, retained introns are ER-internal transcript-specific exonic fragments.
+    So, they cannot be on the ER borders and cannot be shared between two transcripts.
+    For a tiny speedup check that we have more than two EFs in an ER.
+    """
+    ir_efs = []
+    ers = [[er.start, er.end, er.name] for er in ers_bed]
+    efs = [[ef.start, ef.end, ef.name] for ef in efs_bed]
+    e = EmptyLocation()
+    for er in ers:
+        er_ef_ixs = []
+        logger.debug("ER: {}", er)
+        er_start, er_end, ef_name = er
+        # logger.debug("ER: {}", er)
+        er_i = SingleInterval(er[0], er[1], Strand.PLUS)
+        for ef in efs:
+            ef_start, ef_end, ef_name = ef
+            ef_i = SingleInterval(ef_start, ef_end, Strand.PLUS)
+            ix = ef_i.intersection(er_i)
+            if ix != e:
+                EF_IX = namedtuple('EF_IX', ['start', 'end', 'name'])
+                # logger.debug("\tEF: {}", ef)
+                # logger.debug("Intersection: {}", ix)
+                er_ef_ixs.append(EF_IX(ix.start, ix.end, ef_name))
+        if len(er_ef_ixs) >= 3:
+            for ef in er_ef_ixs:
+                if ef.name not in common_efs:
+                    if ef.start != er_start and ef.end != er_end:
+                        ir_efs.append(ef.name)
+    if ir_efs:
+        logger.debug("ERs: {}", ers)
+        logger.debug("EFs: {}", efs)
+        logger.debug("Common EFs: {}", common_efs)
+        logger.debug("IR EFs: {}", ir_efs)
+    return ir_efs
+
+
 def get_intron_retention_efs(ers_bed, efs_bed, common_efs):
     """
     Produce a list of exon fragments that participate in intron retention events.
@@ -180,6 +222,9 @@ def get_intron_retention_efs(ers_bed, efs_bed, common_efs):
     For a tiny speedup check that we have more than two EFs in an ER.
     """
     ir_efs = []
+    logger.debug("ERs bed:\n{}", ers_bed)
+    logger.debug("EFs bed:\n{}", efs_bed)
+    logger.debug("Common EFs:\n{}", common_efs)
     for er in ers_bed:
         er_bed_str = f"{er.chrom}\t{er.start}\t{er.end}\t{er.name}\t{er.score}\t{er.name}"
         er_bed = BedTool(er_bed_str, from_string=True)
@@ -189,7 +234,13 @@ def get_intron_retention_efs(ers_bed, efs_bed, common_efs):
                 # Intron cannot be on the ER border by definition
                 if ef.start != er.start and ef.end != er.end:
                     if ef.name not in common_efs:
+                        logger.debug("ER bed str:\n{}", er_bed_str)
+                        logger.debug("ER_EF Intersects:\n'{}'", str(er_efs))
+                        logger.debug("Len of intersects: {}", len(er_efs))
+                        logger.debug("IR EF: {}", ef.name)
                         ir_efs.append(ef.name)
+    if ir_efs:
+        logger.debug("IR EFs: {}", ir_efs)
     return ir_efs
 
 
@@ -741,7 +792,8 @@ def er_ea_analysis(tx1_bed_str, tx2_bed_str, tx1_name, tx2_name, gene_id):
     common_efs = list(common_efs_set)
     tx1_efs = list(set([x.name for x in efs_bed.intersect(tx1_bed)]).difference(common_efs_set))
     tx2_efs = list(set([x.name for x in efs_bed.intersect(tx2_bed)]).difference(common_efs_set))
-    ir_efs = get_intron_retention_efs(ers_bed, efs_bed, common_efs)
+    # ir_efs = get_intron_retention_efs(ers_bed, efs_bed, common_efs)
+    ir_efs = get_intron_retention_efs_new(ers_bed, efs_bed, common_efs)
 
     for ef in efs_bed:
         ir_flag = '0'
