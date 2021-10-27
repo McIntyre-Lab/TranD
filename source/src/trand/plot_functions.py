@@ -949,21 +949,29 @@ def plot_gene_avg_nt_diff_pairs(md_data, name1, name2, legendOut, zoomMean=False
     }
     if not zoomMean:
         limit = (
-            minPairNTGene[["num_nt_diff_recip_min", "num_nt_diff_extra"]].max().max()
-        )
-    else:
-        limit = round(
-            np.nanmax(
-                [
-                    minPairNTGene[minPairNTGene["num_nt_diff_recip_min"] > 0][
-                        "num_nt_diff_recip_min"
-                    ].mean(),
-                    minPairNTGene[minPairNTGene["num_nt_diff_extra"] > 0][
-                        "num_nt_diff_extra"
-                    ].mean(),
-                ]
+            max(
+                minPairNTGene[
+                        ["num_nt_diff_recip_min", "num_nt_diff_extra"]
+                        ].max().max(),
+                1
             )
         )
+    else:
+        try:
+            limit = round(
+                np.nanmax(
+                    [
+                        minPairNTGene[minPairNTGene["num_nt_diff_recip_min"] > 0][
+                            "num_nt_diff_recip_min"
+                        ].mean(),
+                        minPairNTGene[minPairNTGene["num_nt_diff_extra"] > 0][
+                            "num_nt_diff_extra"
+                        ].mean(),
+                    ]
+                )
+            )
+        except ValueError:
+            limit = 1
     plt.figure(figsize=(8.45, 5))
     sns.scatterplot(
         data=minPairNTGene,
