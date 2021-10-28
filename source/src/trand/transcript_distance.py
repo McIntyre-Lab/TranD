@@ -9,6 +9,7 @@ Created on Thu May 13 15:03:09 2021
 import pandas as pd
 import numpy as np
 
+
 td_df_cols = [
     "gene_id",
     "transcript_1",
@@ -74,6 +75,10 @@ td_df_cols = [
 
 
 def calculate_distance(out_df, junction_df, gene_id, tx1_name, tx2_name, fsm=False):
+    # Check for monoexons
+    has_junctions = True
+    if junction_df.empty:
+        has_junctions = False
     # Set EF variable
     ef_df = out_df.copy()
 
@@ -121,28 +126,29 @@ def calculate_distance(out_df, junction_df, gene_id, tx1_name, tx2_name, fsm=Fal
     ef_df["fragment_length"] = ef_df["ef_end"].map(int) - ef_df["ef_start"].map(int)
 
     # Sort junctions by chromosome and coordinates
-    sorted_junction_df = junction_df.copy()
-    sorted_junction_df[["chr", "start", "end", "strand"]] = (
-            sorted_junction_df["coords"].str.split(":", expand=True)
-    )
-    sorted_junction_df[["start", "end"]] = (
-            sorted_junction_df[["start", "end"]].astype(int)
-    )
-    sorted_junction_df = sorted_junction_df.sort_values(
-            by=["chr", "start", "end"]
-        ).reset_index(drop=True)
+    if has_junctions:
+        sorted_junction_df = junction_df.copy()
+        sorted_junction_df[["chr", "start", "end", "strand"]] = (
+                sorted_junction_df["coords"].str.split(":", expand=True)
+        )
+        sorted_junction_df[["start", "end"]] = (
+                sorted_junction_df[["start", "end"]].astype(int)
+        )
+        sorted_junction_df = sorted_junction_df.sort_values(
+                by=["chr", "start", "end"]
+            ).reset_index(drop=True)
 
-    # Get distance measures for junctions, exon regions (ER),and exon fragments (EF)
-    singlePair = get_junction_distance(
-        singlePair, sorted_junction_df, tx1_name, tx2_name, fsm=fsm
-    )
+        # Get distance measures for junctions, exon regions (ER),and exon fragments (EF)
+        singlePair = get_junction_distance(
+            singlePair, sorted_junction_df, tx1_name, tx2_name, fsm=fsm
+        )
     singlePair, ERSharedSet = get_ER_distance(
         singlePair, ef_df, tx1_name, tx2_name, fsm=fsm
     )
     singlePair = get_EF_distance(singlePair, ef_df, tx1_name, tx2_name, ERSharedSet)
 
     # Set flags for different alternative splicing (AS) events
-    singlePair = set_AS_flags(singlePair, ef_df, tx1_name, tx2_name)
+    singlePair = set_AS_flags(singlePair, ef_df, tx1_name, tx2_name, has_junctions)
 
     # Return distance of transcript pair
     return singlePair
@@ -181,7 +187,7 @@ def get_junction_distance(singlePair, sorted_junction_df, tx1_name, tx2_name, fs
                             sorted_junction_df["transcript_id"] == tx1_name
                         ]["coords"]
             )
-            
+
     # Transcript pair does not share all junctions
     else:
         # Check if both transcripts are monoexon but do not overlap (not fsm)
@@ -451,38 +457,39 @@ def get_EF_distance(singlePair, ef_df, tx1_name, tx2_name, ERSharedSet):
     return singlePair
 
 
-def set_AS_flags(singlePair, ef_df, tx1_name, tx2_name):
+def set_AS_flags(singlePair, ef_df, tx1_name, tx2_name, has_junctions):
     # Flag alternative splicing events
 
     # Flag transcripts with no shared nucleotides (nonoverlapping)
     singlePair["flag_no_shared_nt"] = np.where(singlePair["prop_nt_diff"] == 1, 1, 0)
 
     # Flag full-splice matches (FSM, share all junctions)
-    # NOTE: monoexon transcripts can be FSM 
+    # NOTE: monoexon transcripts can be FSM
     singlePair["flag_FSM"] = np.where(singlePair["prop_junction_diff"] == 0, 1, 0)
 
     # Flag incomplete-splice matches
     # (ISM, one set of junctions is a complete consecutive subset of the other)
     # NOTE: ISM flags are 0 if transcripts are FSM or if at least one is monoexon
-    if (
-        singlePair["flag_FSM"] == 1
-        or singlePair["junction_T1_all"] == ""
-        or singlePair["junction_T2_all"] == ""
-    ):
-        singlePair[
-            ["flag_T1_ISM_of_T2", "flag_T2_ISM_of_T1"]
-        ] = 0
-    else:
-        singlePair["flag_T1_ISM_of_T2"] = np.where(
-            singlePair["junction_T1_all"] in singlePair["junction_T2_all"],
-            1,
-            0
-        )
-        singlePair["flag_T2_ISM_of_T1"] = np.where(
-            singlePair["junction_T2_all"] in singlePair["junction_T1_all"],
-            1,
-            0
-        )
+    if has_junctions:
+        if (
+            singlePair["flag_FSM"] == 1
+            or singlePair["junction_T1_all"] == ""
+            or singlePair["junction_T2_all"] == ""
+        ):
+            singlePair[
+                ["flag_T1_ISM_of_T2", "flag_T2_ISM_of_T1"]
+            ] = 0
+        else:
+            singlePair["flag_T1_ISM_of_T2"] = np.where(
+                singlePair["junction_T1_all"] in singlePair["junction_T2_all"],
+                1,
+                0
+            )
+            singlePair["flag_T2_ISM_of_T1"] = np.where(
+                singlePair["junction_T2_all"] in singlePair["junction_T1_all"],
+                1,
+                0
+            )
 
     # If a pair contains at least one IR event - 5' and 3' variation calculated
     #   but flag_alt_exon and flag_alt_donor_acceptor set to 0

@@ -748,7 +748,6 @@ def er_ea_analysis(tx1_bed_str, tx2_bed_str, tx1_name, tx2_name, gene_id):
     common_efs = list(common_efs_set)
     tx1_efs = list(set([x.name for x in efs_bed.intersect(tx1_bed)]).difference(common_efs_set))
     tx2_efs = list(set([x.name for x in efs_bed.intersect(tx2_bed)]).difference(common_efs_set))
-    # ir_efs = get_intron_retention_efs(ers_bed, efs_bed, common_efs)
     ir_efs = get_intron_retention_efs(ers_bed, efs_bed, common_efs)
 
     for ef in efs_bed:
@@ -1198,7 +1197,6 @@ def ea_pairwise_two_files(f1_data, f2_data, gene_id, name1, name2):
     jct_df = pd.DataFrame(columns=jct_df_cols)
     td_df = pd.DataFrame(columns=TD.td_df_cols)
     for pair in transcript_combos:
-        # try:
         tx_df_1 = f1_data[f1_data['transcript_id'] == pair[0]]
         tx_df_1_s = tx_df_1.assign(transcript_id=lambda x: x.transcript_id + '_' + name1)
         tx_df_2 = f2_data[f2_data['transcript_id'] == pair[1]]
