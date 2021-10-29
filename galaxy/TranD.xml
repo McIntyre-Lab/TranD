@@ -33,7 +33,7 @@
       --pairs=$gtf_input.transcriptPairs
       --name1=$gtf_input.gtf1Name
       --name2='$gtf_input.gtf2Name'
-      --ea=$gtf_input.eaMode
+      --ea="pairwise"
     #end if
 
 ##Run rest of arguments 
@@ -55,49 +55,46 @@
   ]]></command>
   <inputs>
     <conditional name="gtf_input">
-      <param name="gtfNum" type="select" display="radio" label="Select the amount of GTF files you have as input for TranD processing">
+      <param name="gtfNum" type="select" display="radio" label="Select the number of GTF files for input into TranD">
         <option value="gtf1">One GTF File</option>
         <option value="gtf2">Two GTF Files</option>
         <validator type="no_options" message="You must select at least one option." /> 
       </param>
       <when value="gtf1">
-        <param name="gtf1Dataset" type="data" format="gtf" label="Select GTF file containing transcriptomes of interest from your history" help="File must contain “exon” features with transcript_id and gene_id values indicated in attributes"/>
+        <param name="gtf1Dataset" type="data" format="gtf" label="Select GTF file containing transcriptomes of interest from your history" help="File must contain “exon” features with transcript_id and gene_id values in attributes column"/>
         <conditional name="consolidateCheck">
           <param name="consolidate" type="select" display="radio" label="Select 'Yes' to consolidate transcripts" help="Consolidating transcripts remove 5'/3' transcript end variation in redundantly spliced transcripts) with identical junctions prior to complexity calculations, events and summary plotting">
             <option value="True">Yes</option>
             <option value="False">No</option>
           </param>
           <when value="True">
-            <param name="consolPrefix" type="text" value="tr" label="Specify the prefix to use for consolidated transcript_id values. Prefix must be alphanumeric with no spaces. An underscore is the only allowed special character"/> 
+            <param name="consolPrefix" type="text" value="tr" label="Specify the prefix to use for consolidated transcript_id values. Default is 'tr'" help="Prefix must be alphanumeric with no spaces. An underscore is the only allowed special character"/> 
           </when>
         </conditional>
-        <param name="eaMode" size="30" type="select" value="" display="radio" label="Choose type of comparison to do within gene transcript" help="Compare pairs of transcripts within a gene (Pairwise) or compare all transcripts within a gene (Gene)">
-          <option value="pairwise" selected="true">Pairwise</option>
-          <option value="gene" selected="true">Gene</option>
+        <param name="eaMode" size="30" type="select" value="" display="radio" label="Specify type of within gene transcript comparison">
+          <option value="pairwise" selected="true">Pairwise -- Compare pairs of transcripts within a gene</option>
+          <option value="gene" selected="true">Gene -- Compare all transcripts within a gene</option>
         </param>
         <param name="keepIR" type="boolean" label="Set to 'Yes' if you want to keep transcripts with Intron Retention regions when generating transcript events"/>
       </when>
       <when value="gtf2">
         <param name="gtf1Dataset" type="data" format="gtf" label="Select GTF file containing transcriptomes of interest from your history"/>
         <param name="gtf2Dataset" type="data" format="gtf" label="Select 2nd GTF file containing transcriptomes of interest from your history" help="Files must contain “exon” features with transcript_id and gene_id values indicated in attributes" />
-        <param name="transcriptPairs" type="select" display="radio" label="Select desired transcript pairs" help="The TranD metrics can be output for all transcript pairs in both GTF files or for a subset of transcript pairs">           
-            <option value="all">TranD metrics for all transcript pairs in both GTF files</option>
-            <option value="first">TranD metrics for the minimum pairs in the first GTF file</option>
-            <option value="second">TranD metrics for the minimum pairs in the second GTF file</option>  
-            <option value="both">TranD metrics for the minimum pairs in both GTF files</option>
+        <param name="transcriptPairs" type="select" display="radio" label="The TranD metrics can be output for all transcript pairs in both GTF files or for a subset of transcript pairs">           
+            <option value="all"> Calculate TranD metrics for all transcript pairs in both GTF files</option>
+            <option value="first"> Calculate TranD metrics for the minimum pairs in the first GTF file</option>
+            <option value="second"> Calculate TranD metrics for the minimum pairs in the second GTF file</option>  
+            <option value="both">Calculate TranD metrics for the minimum pairs in both GTF files</option>
         </param> 
         <param name="gtf1Name" type="text" label="Name to give GTF 1. Default: d1" help="User-specified name to be used for labeling output files related to first GTF file. Must be alphanumeric, cannot include any special characters except for underscores ‘_’, and cannot contain any spaces" value="d1"/>
         <param name="gtf2Name" type="text" label="Name to give GTF 2. Default: d2" value="d2" help="User-specified name to be used for output files related to second GTF file"/>
-        <param name="eaMode" size="30" type="select" display="radio" value="" label="When running TranD with two GTF files, pairs of transcripts will be compared within a gene">
-          <option value="pairwise" selected="true">Pairwise</option>
-        </param>
       </when>
      </conditional>
         <param name="complexityOnly" type="boolean" label="Select to output only complexity calculations" help="Select this parameter if you only want complexity measures as opposed to outputting performance of all analyses (ie event analysis, etc)"/>
         <param name="skipPlots" type="boolean" label="Skip generation of all plots" help="If 'Yes', TranD will not produce any plots"/>
         <param name="skipInterm" type="boolean" label="Skip output of intermediate files" help="If 'Yes', the TranD program will not output intermediate files (such as junction and exon region/fragment files)."/>
      <conditional name="logCond">
-       <param name="logfile_selector" type="select" display="radio" label="Indicate whether you want a log file (if any) to be output that contains information about how the input files were processed" help="NOTE: A log file may not be generated if there are no warnings to be noted in data"> 
+       <param name="logfile_selector" type="select" display="radio" label="Indicate whether you want a log file (if any) to be output that contains information about how the input files were processed"> 
          <option value="No">No</option> 
          <option value="Yes">Yes</option>
        </param> 
@@ -111,7 +108,7 @@
     <collection format= "gtf" type="list" name="gtf" label="${tool.name} on ${on_string}: Consolidated GTF" >
       <discover_datasets pattern="(?P&lt;name&gt;.*)\.gtf" ext="gtf" directory="outputs"/>
     </collection>
-    <collection format= "png" type="list" name="boxplots" label="${tool.name} on ${on_string}: Plots" >
+    <collection format= "png" type="list" name="plots" label="${tool.name} on ${on_string}: Plots" >
       <discover_datasets pattern="(?P&lt;name&gt;.*)\.png" ext="png" directory="outputs"/>
     </collection>
     <collection format= "txt" type="list" name="figureLegend" label="${tool.name} on ${on_string}: Plot Legends" >
@@ -125,14 +122,58 @@
     <test>
        <!-- Calculate complexity measures only (do not generate events) on a GTF file after consolidation -->
        <param name="gtf1Dataset" value="cel_adult_FLAIR_chr4.gtf"/>
-       <param name="consolidate" value="True" />
-       <param name="consolPrefix" value="tr" />
+       <param name="complexityOnly" value="True" />
        <param name="keepir" value="True" />
+       <output name="plots">
+         <discovered_dataset designation="all_gene_prop_nt_variablility" ftype="png">
+           <assert_contents><has_line line="Proportion of Variable Nucleotides"/></assert_contents>
+          </discovered_dataset>
+         <discovered_dataset designation="complexity_plots" ftype="png">
+           <assert_contents><has_line line="Number of Transcripts per Gene"/></assert_contents>
+          </discovered_dataset>
+         <discovered_dataset designation="multi_xcrpt_gene_prop_nt_variablility" ftype="png">
+           <assert_contents><has_line line="Proportion of Variable Nucleotides"/></assert_contents>
+          </discovered_dataset>
+         <discovered_dataset designation="transcriptome_summary_plot" ftype="png">
+           <assert_contents><has_line line="Number of Transcripts per Gene"/></assert_contents>
+          </discovered_dataset>
+       </output>
+       <output name="counts">
+         <discovered_dataset designation="event_analysis_ef" ftype="csv">
+           <assert_contents><has_line line="ef_id"/></assert_contents>
+          </discovered_dataset>
+         <discovered_dataset designation="event_analysis_er" ftype="csv">
+           <assert_contents><has_line line="er_exon_ids"/></assert_contents>
+          </discovered_dataset>
+         <discovered_dataset designation="ir_transcripts" ftype="csv">
+           <assert_contents><has_line line="er_transcript_ids"/></assert_contents>
+          </discovered_dataset>
+         <discovered_dataset designation="junction_catalog" ftype="csv">
+           <assert_contents><has_line line="coords"/></assert_contents>
+          </discovered_dataset>
+         <discovered_dataset designation="transcriptome_complexity_counts" ftype="csv">
+           <assert_contents><has_line line="num_transcript"/></assert_contents>
+          </discovered_dataset>
+         <discovered_dataset designation="uniq_exons_per_gene" ftype="csv">
+           <assert_contents><has_line line="num_uniq_exon"/></assert_contents>
+          </discovered_dataset>
+       </output>
+       <output name="figureLegend">
+         <discovered_dataset designation="all_gene_prop_nt_variablility" ftype="rtf">
+           <assert_contents><has_line line="Distribution of the proportion of variable nucleotides across all genes"/></assert_contents>
+          </discovered_dataset>
+         <discovered_dataset designation="complexity_plots" ftype="rtf">
+           <assert_contents><has_line line="unique exons per gene"/></assert_contents>
+          </discovered_dataset>
+         <discovered_dataset designation="ir_transcripts" ftype="csv">
+           <assert_contents><has_line line="Distribution of the proportion of variable nucleotides across multi-transcript genes"/></assert_contents>
+          </discovered_dataset>
+       </output>
     </test>
     <test>
        <!-- Compare pairs of transcripts within a gene -->
        <param name="gtf1Dataset" value="cel_adult_FLAIR_chr4.gtf"/>
-       <param name="eaMode" value="pairwise" />
+       <param name="eaMode" value="gene" />
        <param name="keepir" value="True" />
     </test>
     <test>
@@ -155,7 +196,7 @@
 
 **Tool Description** 
 
-    TranD is a collection of tools that facilitate the metrics of structural variation for whole genome transcript annotation files (GTF) that pinpoint structural variation at the nucleotide level.
+    TranD is a collection of tools that facilitate the metrics of structural variation for whole genome transcript annotation files (GTF) that pinpoint structural variation at the nucleotide level. The TranD User Guide is available for more detailed information. 
 
     TranD (Transcript Distances) can be used to calculate metrics of structural variation within and between annotation files (GTF). Structural variation reflects organismal complexity and three summary metrics for genome level complexity are calculated for every gene in a GTF file: 1) the number of transcripts per gene; 2) the number of exons per transcript; and 3) the number of unique exons (exons with unique genomic coordinates) per gene. From each of these metric distributions, summary statistics such as mean, median, variance, and inter-quartile range are calculated. 
 
@@ -252,7 +293,7 @@ Other Parameters that be set regardless of amount of GTF files:
 
 - One output CSV file which includes the transcript distance and minimum distance output for all pairwise transcripts pairs (“all”), all minimum pairs of the first transcriptome to the second transcriptome (“first”), all minimum pairs of the second transcriptome to the frist transcriptome (“second”), or the minimum pairs for either the first transcriptome and/or the second transcriptome (“both”)
 
-- Box plots of complexity metrics (saved as .png file) and automatically generated figure legend (saved as .rtf) for each transcriptome, where [name] represents the names given to each transcriptome (or “d1” and “d2” as default
+- Box plots of complexity metrics (saved as .png file) and automatically generated figure legend (saved as .rtf) for each transcriptome, where [name] represents the names given to each transcriptome (or “d1” and “d2”) as default
 
 - Various plots described in TranD manuscript and automatically generated figure legends for each
 
