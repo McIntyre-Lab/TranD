@@ -49,6 +49,9 @@
     #end if
     #if str( $logCond.logfile_selector ) == "Yes":
       --logfile="tranD_logFile.txt"
+      #if $logCond.debug:
+        --debug
+      #end if
     #end if
     --force
 
@@ -98,6 +101,9 @@
          <option value="No">No</option> 
          <option value="Yes">Yes</option>
        </param> 
+       <when value="Yes">
+         <param name="debug" type="boolean" label="Set debugger" help="Select 'Yes' to set logging information to 'Debug'"/>
+       </when>
      </conditional>
   </inputs>
   <outputs>
@@ -107,6 +113,7 @@
     </collection>
     <collection format= "gtf" type="list" name="gtf" label="${tool.name} on ${on_string}: Consolidated GTF" >
       <discover_datasets pattern="(?P&lt;name&gt;.*)\.gtf" ext="gtf" directory="outputs"/>
+      <filter>(gtf_input['gtfNum'] == 'gtf1' and gtf_input['consolidateCheck']['consolidate'] == 'True')</filter>
     </collection>
     <collection format= "png" type="list" name="plots" label="${tool.name} on ${on_string}: Plots" >
       <discover_datasets pattern="(?P&lt;name&gt;.*)\.png" ext="png" directory="outputs"/>
@@ -116,6 +123,7 @@
     </collection>
     <collection format= "txt" type="list" name="logFile" label="${tool.name} on ${on_string}: Log File" >
       <discover_datasets pattern="(?P&lt;name&gt;.*)\.txt" ext="txt" directory="outputs" />
+      <filter>logCond['logfile_selector'] == "Yes"</filter>
     </collection>
   </outputs>
   <tests>
