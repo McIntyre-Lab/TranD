@@ -137,11 +137,15 @@ def calculate_distance(out_df, junction_df, gene_id, tx1_name, tx2_name, fsm=Fal
         sorted_junction_df = sorted_junction_df.sort_values(
                 by=["chr", "start", "end"]
             ).reset_index(drop=True)
+    else:
+        sorted_junction_df = pd.DataFrame()
 
-        # Get distance measures for junctions, exon regions (ER),and exon fragments (EF)
-        singlePair = get_junction_distance(
-            singlePair, sorted_junction_df, tx1_name, tx2_name, fsm=fsm
-        )
+    # Get distance measures for junctions
+    singlePair = get_junction_distance(
+        singlePair, sorted_junction_df, tx1_name, tx2_name, fsm=fsm
+    )
+
+    # Gt distance measures for exon regions (ER) and exon fragments (EF)
     singlePair, ERSharedSet = get_ER_distance(
         singlePair, ef_df, tx1_name, tx2_name, fsm=fsm
     )
