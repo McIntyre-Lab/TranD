@@ -47,10 +47,16 @@
     #if $skipInterm
       --skip-intermediate
     #end if
+
     #if str( $logCond.logfile_selector ) == "Yes":
-      --logfile="tranD_logFile.txt"
       #if $logCond.debug:
         --debug
+      #end if
+      #if $logCond.verbose:
+        --verbose
+      #end if
+      #if $logCond.warnings:
+        --logfile="tranD_logFile.txt"
       #end if
     #end if
     --force
@@ -97,12 +103,14 @@
         <param name="skipPlots" type="boolean" label="Skip generation of all plots" help="If 'Yes', TranD will not produce any plots"/>
         <param name="skipInterm" type="boolean" label="Skip output of intermediate files" help="If 'Yes', the TranD program will not output intermediate files (such as junction and exon region/fragment files)."/>
      <conditional name="logCond">
-       <param name="logfile_selector" type="select" display="radio" label="Indicate whether you want a log file (if any) to be output that contains information about how the input files were processed"> 
+       <param name="logfile_selector" type="select" display="radio" label="Indicate whether you want a log file to be output that contains information about how the input files were processed"> 
          <option value="No">No</option> 
          <option value="Yes">Yes</option>
        </param> 
        <when value="Yes">
+         <param name="warnings" type="boolean" label="Output warnings (if any) to log file" help="Select 'Yes' to output warnings to log"/>
          <param name="debug" type="boolean" label="Set debugger" help="Select 'Yes' to set logging information to 'Debug'"/>
+         <param name="verbose" type="boolean" label="Output Verbose information" />
        </when>
      </conditional>
   </inputs>
@@ -132,51 +140,9 @@
        <param name="gtf1Dataset" value="cel_adult_FLAIR_chr4.gtf"/>
        <param name="complexityOnly" value="True" />
        <param name="keepir" value="True" />
-       <output name="plots">
-         <discovered_dataset designation="all_gene_prop_nt_variablility" ftype="png">
-           <assert_contents><has_line line="Proportion of Variable Nucleotides"/></assert_contents>
-          </discovered_dataset>
-         <discovered_dataset designation="complexity_plots" ftype="png">
-           <assert_contents><has_line line="Number of Transcripts per Gene"/></assert_contents>
-          </discovered_dataset>
-         <discovered_dataset designation="multi_xcrpt_gene_prop_nt_variablility" ftype="png">
-           <assert_contents><has_line line="Proportion of Variable Nucleotides"/></assert_contents>
-          </discovered_dataset>
-         <discovered_dataset designation="transcriptome_summary_plot" ftype="png">
-           <assert_contents><has_line line="Number of Transcripts per Gene"/></assert_contents>
-          </discovered_dataset>
-       </output>
-       <output name="counts">
-         <discovered_dataset designation="event_analysis_ef" ftype="csv">
-           <assert_contents><has_line line="ef_id"/></assert_contents>
-          </discovered_dataset>
-         <discovered_dataset designation="event_analysis_er" ftype="csv">
-           <assert_contents><has_line line="er_exon_ids"/></assert_contents>
-          </discovered_dataset>
-         <discovered_dataset designation="ir_transcripts" ftype="csv">
-           <assert_contents><has_line line="er_transcript_ids"/></assert_contents>
-          </discovered_dataset>
-         <discovered_dataset designation="junction_catalog" ftype="csv">
-           <assert_contents><has_line line="coords"/></assert_contents>
-          </discovered_dataset>
-         <discovered_dataset designation="transcriptome_complexity_counts" ftype="csv">
-           <assert_contents><has_line line="num_transcript"/></assert_contents>
-          </discovered_dataset>
-         <discovered_dataset designation="uniq_exons_per_gene" ftype="csv">
-           <assert_contents><has_line line="num_uniq_exon"/></assert_contents>
-          </discovered_dataset>
-       </output>
-       <output name="figureLegend">
-         <discovered_dataset designation="all_gene_prop_nt_variablility" ftype="rtf">
-           <assert_contents><has_line line="Distribution of the proportion of variable nucleotides across all genes"/></assert_contents>
-          </discovered_dataset>
-         <discovered_dataset designation="complexity_plots" ftype="rtf">
-           <assert_contents><has_line line="unique exons per gene"/></assert_contents>
-          </discovered_dataset>
-         <discovered_dataset designation="ir_transcripts" ftype="csv">
-           <assert_contents><has_line line="Distribution of the proportion of variable nucleotides across multi-transcript genes"/></assert_contents>
-          </discovered_dataset>
-       </output>
+       <output_collection name="counts" type="list">
+         <element name="tranD_counts_output" file="transcriptome_complexity_counts.csv" ftype="csv" />
+       </output_collection>
     </test>
     <test>
        <!-- Compare pairs of transcripts within a gene -->
