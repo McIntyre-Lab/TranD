@@ -47,16 +47,13 @@
     #if $skipInterm
       --skip-intermediate
     #end if
-
     #if str( $logCond.logfile_selector ) == "Yes":
+      --logfile="tranD_logFile.txt"
       #if $logCond.debug:
         --debug
       #end if
       #if $logCond.verbose:
         --verbose
-      #end if
-      #if $logCond.warnings:
-        --logfile="tranD_logFile.txt"
       #end if
     #end if
     --force
@@ -103,14 +100,13 @@
         <param name="skipPlots" type="boolean" label="Skip generation of all plots" help="If 'Yes', TranD will not produce any plots"/>
         <param name="skipInterm" type="boolean" label="Skip output of intermediate files" help="If 'Yes', the TranD program will not output intermediate files (such as junction and exon region/fragment files)."/>
      <conditional name="logCond">
-       <param name="logfile_selector" type="select" display="radio" label="Indicate whether you want a log file to be output that contains information about how the input files were processed"> 
+       <param name="logfile_selector" type="select" display="radio" label="Indicate whether you want a log file to be output" help=" The log file contains warnings (if any) about how the input files were processed"> 
          <option value="No">No</option> 
          <option value="Yes">Yes</option>
        </param> 
        <when value="Yes">
-         <param name="warnings" type="boolean" label="Output warnings (if any) to log file" help="Select 'Yes' to output warnings to log"/>
-         <param name="debug" type="boolean" label="Set debugger" help="Select 'Yes' to set logging information to 'Debug'"/>
-         <param name="verbose" type="boolean" label="Output Verbose information" />
+         <param name="debug" type="boolean" label="Set debugger" help="Select 'Yes' to also output debugging information to log file"/>
+         <param name="verbose" type="boolean" label="Output Verbose information" help="Select 'Yes' to output verbose information to log file" />
        </when>
      </conditional>
   </inputs>
