@@ -73,6 +73,7 @@
             <option value="True">Yes</option>
             <option value="False">No</option>
           </param>
+          <when value="False"/>
           <when value="True">
             <param name="consolPrefix" type="text" value="tr" label="Specify the prefix to use for consolidated transcript_id values. Default is 'tr'" help="Prefix must be alphanumeric with no spaces. An underscore is the only allowed special character"/> 
           </when>
@@ -104,6 +105,7 @@
          <option value="No">No</option> 
          <option value="Yes">Yes</option>
        </param> 
+       <when value="No"/>
        <when value="Yes">
          <param name="debug" type="boolean" label="Set debugger" help="Select 'Yes' to also output debugging information to log file"/>
          <param name="verbose" type="boolean" label="Output Verbose information" help="Select 'Yes' to output verbose information to log file" />
@@ -115,9 +117,13 @@
     <collection format= "csv" type="list" name="counts" label="${tool.name} on ${on_string}: Summary Counts and Intermediate Files" >
       <discover_datasets pattern="(?P&lt;name&gt;.*)\.csv" ext="csv" directory="outputs"/>
     </collection>
-    <collection format= "gtf" type="list" name="gtf" label="${tool.name} on ${on_string}: Consolidated GTF" >
+    <collection format= "gtf" type="list" name="consolidated_GTF" label="${tool.name} on ${on_string}: Consolidated GTF" >
       <discover_datasets pattern="(?P&lt;name&gt;.*)\.gtf" ext="gtf" directory="outputs"/>
       <filter>(gtf_input['gtfNum'] == 'gtf1' and gtf_input['consolidateCheck']['consolidate'] == 'True')</filter>
+    </collection>
+    <collection format= "gtf" type="list" name="GTF_only" label="${tool.name} on ${on_string}:  GTF Files" >
+      <discover_datasets pattern="(?P&lt;name&gt;.*)\.gtf" ext="gtf" directory="outputs"/>
+      <filter>(gtf_input['gtfNum'] == 'gtf2')</filter>
     </collection>
     <collection format= "png" type="list" name="plots" label="${tool.name} on ${on_string}: Plots" >
       <discover_datasets pattern="(?P&lt;name&gt;.*)\.png" ext="png" directory="outputs"/>
@@ -137,14 +143,35 @@
        <param name="complexityOnly" value="True" />
        <param name="keepir" value="True" />
        <output_collection name="counts" type="list">
-         <element name="tranD_counts_output" file="transcriptome_complexity_counts.csv" ftype="csv" />
+         <element name="transcriptome_complexity_counts" file="transcriptome_complexity_counts.csv" ftype="csv" />
+       </output_collection> 
+       <output_collection name="plots" type="list">
+         <element name="complexity_plots" file="complexity_plots.png" ftype="png"/>
+       </output_collection>
+       <output_collection name="figureLegend" type="list">
+         <element name="complexity_fig_legend" file="complexity_plots.rtf" ftype="rtf"/>
        </output_collection>
     </test>
     <test>
-       <!-- Compare pairs of transcripts within a gene -->
-       <param name="gtf1Dataset" value="cel_adult_FLAIR_chr4.gtf"/>
-       <param name="eaMode" value="gene" />
-       <param name="keepir" value="True" />
+      <!-- Generate event file by a pairwise comparison of transcripts for a gene -->
+      <param name="gtf1Dataset" value="cel_adult_FLAIR_chr4.gtf"/>
+      <param name="eaMode" value="gene" />
+      <output_collection name="counts" type="list">
+        <element name="event_analysis" file="event_analysis.csv" ftype="csv"/>   
+        <element name="junction_catalog" file="junction_catalog.csv" ftype="csv"/>   
+        <element name="transcriptome_complexity_counts" file="transcriptome_complexity_counts.csv" ftype="csv" />
+        <element name="pairwise_transcript_distance" file="pairwise_transcript_distance.csv" ftype="csv"/>
+      </output_collection>
+      <output_collection name="plots" type="list">
+        <element name="complexity_plots" file="complexity_plots.png" ftype="png"/>
+        <element name="gene_AS_upset" file="gene_AS_upset.png" ftype="png"/>
+        <element name="transcript_pair_AS_upset_nt_boxplot" file="transcript_pair_AS_upset_nt_boxplot.png" ftype="png"/>
+      </output_collection>
+      <output_collection name="figureLegend" type="list">
+        <element name="complexity_plots_legend" file="complexity_plots.rtf" ftype="rtf"/>
+        <element name="gene_AS_upset_legend" file="gene_AS_upset.rtf" ftype="rtf"/>
+        <element name="transcript_pair_AS_upset_nt_boxplot_legend" file="transcript_pair_AS_upset_nt_boxplot.rtf" ftype="rtf"/>
+      </output_collection>
     </test>
     <test>
       <!-- Calculate complexity measures on consolidated GTF file -->
@@ -154,12 +181,79 @@
       <param name="consolPrefix" value="tr" />
       <param name="eaMode" value="gene" />
       <param name="keepir" value="True" />
+      <output_collection name="consolidated_GTF" type="list">
+        <element name="consolidated_transcriptome" file="consolidated_transcriptome.gtf" ftype="gtf"/>
+      </output_collection>
+      <output_collection name="counts" type="list">
+        <element name="transcriptome_complexity_counts" file="transcriptome_complexity_counts.csv" ftype="csv" />
+        <element name="uniq_exons_per_gene" file="uniq_exons_per_gene.csv" ftype="csv"/>
+        <element name="transcript_id_2_consolidation_id" file="transcript_id_2_consolidation_id.csv" ftype="csv"/>
+        <element name="junction_catalog" file="junction_catalog.csv" ftype="csv"/>
+        <element name="ir_transcripts" file="ir_transcripts.csv" ftype="csv"/>
+        <element name="event_analysis_er" file="event_analysis_er.csv" ftype="csv"/>
+        <element name="event_analysis_ef" file="event_analysis_ef.csv" ftype="csv"/>
+      </output_collection> 
+      <output_collection name="plots" type="list">
+        <element name="complexity_plots" file="complexity_plots.png" ftype="png"/>
+        <element name="multi_xcrpt_gene_prop_nt_variablility" file="multi_xcrpt_gene_prop_nt_variablility.png" ftype="png"/>
+        <element name="all_gene_prop_nt_variablility" file="all_gene_prop_nt_variablility.png" ftype="png"/>
+        <element name="transcriptome_summary_plot" file="transcriptome_summary_plot.png" ftype="png"/>
+      </output_collection>
+      <output_collection name="figureLegend" type="list">
+        <element name="complexity_plots_legend" file="complexity_plots.rtf" ftype="rtf"/>
+        <element name="multi_xcrpt_gene_prop_nt_variablility_legend" file="multi_xcrpt_gene_prop_nt_variablility.rtf" ftype="rtf"/>
+        <element name="all_gene_prop_nt_variablility_legend" file="all_gene_prop_nt_variablility.rtf" ftype="rtf"/>
+        <element name="transcriptome_summary_plot_legend" file="transcriptome_summary_plot.rtf" ftype="rtf"/>
+      </output_collection>
     </test>
     <test>
       <!-- Test TranD on two GTF files and output metrics for all transcript pairs-->
       <param name="gtf1Dataset" value="cel_adult_FLAIR_chr4.gtf"/>
       <param name="gtf2Dataset" value="cel_L1_FLAIR_chr4.gtf" />
       <param name="transcriptPairs" value="all" /> 
+      <param name="logfile_selector" value="Yes"/>
+      <param name="debug" value="True" />
+      <param name="verbose" value="True" />
+      <output_collection name="GTF_only" type="list">
+        <element name="gtf1_only" file="gtf1_only.gtf" ftype="gtf" />   
+        <element name="gtf2_only" file="gtf2_only.gtf" ftype="gtf" />     
+      </output_collection>         
+      <output_collection name="counts" type="list">
+        <element name="pairwise_transcript_distance" file="pairwise_transcript_distance.csv" ftype="csv" />
+        <element name="junction_catalog" file="junction_catalog.csv" ftype="csv"/>
+        <element name="event_analysis" file="event_analysis.csv" ftype="csv"/>
+        <element name="d1_transcriptome_complexity_counts" file="d1_transcriptome_complexity_counts.csv" ftype="csv"/>
+        <element name="d2_transcriptome_complexity_counts" file="d2_transcriptome_complexity_counts.csv" ftype="csv"/>
+      </output_collection> 
+      <output_collection name="plots" type="list">
+        <element name="d1_complexity_plots" file="d1_complexity_plots.png" ftype="png"/>
+        <element name="d2_complexity_plots" file="d2_complexity_plots.png" ftype="png"/>
+        <element name="extra_min_pair_AS_upset_nt_box" file="extra_min_pair_AS_upset_nt_box.png" ftype="png"/>
+        <element name="gene_avg_nt_diff_pairs" file="gene_avg_nt_diff_pairs.png" ftype="png"/>
+        <element name="gene_avg_nt_diff_pairs_zoomIn" file="gene_avg_nt_diff_pairs_zoomIn.png" ftype="png"/>
+        <element name="recip_min_gene_AS_upset" file="recip_min_gene_AS_upset.png" ftype="png"/>
+        <element name="recip_min_pair_AS_upset_nt_box" file="recip_min_pair_AS_upset_nt_box.png" ftype="png"/>
+        <element name="transcript_in_gene_split_pie" file="transcript_in_gene_split_pie.png" ftype="png"/>
+        <element name="transcript_in_gene_stackCount" file="transcript_in_gene_stackCount.png" ftype="png"/>
+        <element name="transcript_in_gene_stack_proportion" file="transcript_in_gene_stack_proportion.png" ftype="png"/>
+        <element name="transcript_in_gene_upset" file="transcript_in_gene_upset.png" ftype="png"/>
+      </output_collection>
+      <output_collection name="plots" type="list">
+        <element name="d1_complexity_plots_legend" file="d1_complexity_plots.rtf" ftype="rtf"/>
+        <element name="d2_complexity_plots_legend" file="d2_complexity_plots.rtf" ftype="rtf"/>
+        <element name="extra_min_pair_AS_upset_nt_box_legend" file="extra_min_pair_AS_upset_nt_box.rtf" ftype="rtf"/>
+        <element name="gene_avg_nt_diff_pairs_legend" file="gene_avg_nt_diff_pairs.rtf" ftype="rtf"/>
+        <element name="gene_avg_nt_diff_pairs_zoomIn_legend" file="gene_avg_nt_diff_pairs_zoomIn.rtf" ftype="rtf"/>
+        <element name="recip_min_gene_AS_upset_legend" file="recip_min_gene_AS_upset_legend.rtf" ftype="rtf"/>
+        <element name="recip_min_pair_AS_upset_nt_box_legend" file="recip_min_pair_AS_upset_nt_box.rtf" ftype="rtf"/>
+        <element name="transcript_in_gene_split_pie_legend" file="transcript_in_gene_split_pie.rtf" ftype="rtf"/>
+        <element name="transcript_in_gene_stackCount_legend" file="transcript_in_gene_stackCount.rtf" ftype="rtf"/>
+        <element name="transcript_in_gene_stack_proportion_legend" file="transcript_in_gene_stack_proportion.rtf" ftype="rtf"/>
+        <element name="transcript_in_gene_upset_legend" file="transcript_in_gene_upset.rtf" ftype="rtf"/>
+      </output_collection>
+      <output_collection name="logFile" type="list">
+        <element name="logOut" file="tranD_logFile.txt" ftype="txt"/>
+      </output_collection>
     </test>
   </tests>
   <help><![CDATA[
