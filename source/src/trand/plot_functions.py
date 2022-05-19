@@ -384,7 +384,7 @@ def plot_transcript_in_gene_upset(md_data, f1_odds, f2_odds, name1, name2, legen
         end_rtf(outFile)
 
 
-def plot_min_pair_AS_upset_nt_box(md_data, name1, name2, legendOut, reciprocal=True):
+def plot_min_pair_AS_upset_nt_box(md_data, name1, name2, legendOut, reciprocal=True, pairs=None):
     """
     For all reciprocal minimum pair transcripts or minimum pair of extra transcripts:
             Upset plot for the number of transcript pairs with each kind of
@@ -395,14 +395,28 @@ def plot_min_pair_AS_upset_nt_box(md_data, name1, name2, legendOut, reciprocal=T
         # Plot only reciprocal minimum pairs
         minPairAS = md_data[md_data["flag_recip_min_match"] == 1].copy()
     else:
-        # Plot only minimum pairs of extras, or those without a recip min pair
-        minPairAS = md_data[
-            (md_data["flag_recip_min_match"] != 1)
-            & (
-                (md_data["flag_min_match_" + name1] == 1)
-                | (md_data["flag_min_match_" + name2] == 1)
-            )
-        ].copy()
+        if pairs == None:
+            # Plot only minimum pairs of extras, or those without a recip min pair
+            minPairAS = md_data[
+                (md_data["flag_recip_min_match"] != 1)
+                & (
+                    (md_data["flag_min_match_" + name1] == 1)
+                    | (md_data["flag_min_match_" + name2] == 1)
+                )
+            ].copy()
+        elif pairs == "all":
+            minPairAS = md_data[
+                    (md_data["flag_min_match_" + name1] == 1)
+                    | (md_data["flag_min_match_" + name2] == 1)
+            ].copy()
+        elif pairs == "first":
+            minPairAS = md_data[
+                    (md_data["flag_min_match_" + name1] == 1)
+            ].copy()
+        elif pairs == "second":
+            minPairAS = md_data[
+                    (md_data["flag_min_match_" + name2] == 1)
+            ].copy()
     # Check if there are any pairs to plot
     if len(minPairAS) == 0:
         return
@@ -466,24 +480,86 @@ def plot_min_pair_AS_upset_nt_box(md_data, name1, name2, legendOut, reciprocal=T
             )
         )
     else:
-        plot_upset(
-            minPairAS.set_index(AScols),
-            "Number of Extra Minimum Pairs with AS Categories",
-            ["# NT Different", "Proportion\nNT Different"],
-        )
-        legendText = (
-            "Number of extra minimum pairs, or pairs without reciprocal minimums, "
-            "with the specified types of alternative splicing between {} and {} "
-            "indicated by the black dots below the histogram of pair counts "
-            "(n = {} total pairs). Pairs with no shared nucleotides are "
-            "in the same genes but with nonoverlapping coordinates. Box plots of the "
-            "number (blue) and proportion (orange) of nucleotide (NT) differences between "
-            "the pairs represented in the histogram.".format(
-                name1,
-                name2,
-                len(minPairAS),
+        if pairs == None:
+            plot_upset(
+                minPairAS.set_index(AScols),
+                "Number of Extra Minimum Pairs with AS Categories",
+                ["# NT Different", "Proportion\nNT Different"],
             )
-        )
+            legendText = (
+                "Number of extra minimum pairs, or pairs without reciprocal minimums, "
+                "with the specified types of alternative splicing between {} and {} "
+                "indicated by the black dots below the histogram of pair counts "
+                "(n = {} total pairs). Pairs with no shared nucleotides are "
+                "in the same genes but with nonoverlapping coordinates. Box plots of the "
+                "number (blue) and proportion (orange) of nucleotide (NT) differences between "
+                "the pairs represented in the histogram.".format(
+                    name1,
+                    name2,
+                    len(minPairAS),
+                )
+            )
+        elif pairs == "all":
+            plot_upset(
+                minPairAS.set_index(AScols),
+                "Number of Minimum Pairs in either {} or {} with AS Categories".format(name1, name2),
+                ["# NT Different", "Proportion\nNT Different"],
+            )
+            legendText = (
+                "Number of minimum pairs in either {} or {}  "
+                "with the specified types of alternative splicing between {} and {} "
+                "indicated by the black dots below the histogram of pair counts "
+                "(n = {} total pairs). Pairs with no shared nucleotides are "
+                "in the same genes but with nonoverlapping coordinates. Box plots of the "
+                "number (blue) and proportion (orange) of nucleotide (NT) differences between "
+                "the pairs represented in the histogram.".format(
+                    name1,
+                    name2,
+                    name1,
+                    name2,
+                    len(minPairAS),
+                )
+            )
+        elif pairs == "first":
+            plot_upset(
+                minPairAS.set_index(AScols),
+                "Number of Minimum Pairs in {} with AS Categories".format(name1),
+                ["# NT Different", "Proportion\nNT Different"],
+            )
+            legendText = (
+                "Number of minimum pairs in {}  "
+                "with the specified types of alternative splicing between {} and {} "
+                "indicated by the black dots below the histogram of pair counts "
+                "(n = {} total pairs). Pairs with no shared nucleotides are "
+                "in the same genes but with nonoverlapping coordinates. Box plots of the "
+                "number (blue) and proportion (orange) of nucleotide (NT) differences between "
+                "the pairs represented in the histogram.".format(
+                    name1,
+                    name1,
+                    name2,
+                    len(minPairAS),
+                )
+            )
+        elif pairs == "second":
+            plot_upset(
+                minPairAS.set_index(AScols),
+                "Number of Minimum Pairs in {} with AS Categories".format(name2),
+                ["# NT Different", "Proportion\nNT Different"],
+            )
+            legendText = (
+                "Number of minimum pairs in {}  "
+                "with the specified types of alternative splicing between {} and {} "
+                "indicated by the black dots below the histogram of pair counts "
+                "(n = {} total pairs). Pairs with no shared nucleotides are "
+                "in the same genes but with nonoverlapping coordinates. Box plots of the "
+                "number (blue) and proportion (orange) of nucleotide (NT) differences between "
+                "the pairs represented in the histogram.".format(
+                    name2,
+                    name1,
+                    name2,
+                    len(minPairAS),
+                )
+            )
     with open(legendOut, "w") as outFile:
         start_rtf(outFile)
         if reciprocal:
