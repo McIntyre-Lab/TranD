@@ -18,3 +18,19 @@ visualized and summary statistics for structural variations between pairs are ca
 reported.  Visualizations of the distributions of the frequency of intron retention, alternative
 exon usage, donor/acceptor variation and 5', 3' variation in UTR regions are provided as well as
 tabular formatted nucleotide level distances for both 1GTF and 2 GTF.
+
+## Installation
+
+To install TranD run
+```
+pip install trand
+```
+in activated conda or virtualenv environment
+
+If you clone this repository you can use the source/requirements.txt file to pip install required dependencies with
+```
+pip install -r source/requirements.txt
+```
+See the [PyPI TranD page](https://pypi.org/project/trand/) for reference.
+
+We will add a conda trand package in the near future.
