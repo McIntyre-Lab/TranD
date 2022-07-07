@@ -1027,9 +1027,9 @@ def ea_pairwise(gene_id, data):
         tx_df_2 = tx_data[tx_pair[1]]
         tx_pair_data = pd.concat([tx_df_1, tx_df_2])
         ea_data, jct_data, td_data = do_ea_pair(tx_pair_data)
-        ea_df = ea_df.append(ea_data)
-        jct_df = jct_df.append(jct_data)
-        td_df = td_df.append(td_data)
+        ea_df = pd.concat([ea_df, ea_data], axis=0, ignore_index=True)
+        jct_df = pd.concat([jct_df, jct_data], axis=0, ignore_index=True)
+        td_df = pd.concat([td_df, td_data], axis=0, ignore_index=True)
     return ea_df, jct_df, td_df
 
 
@@ -1204,9 +1204,9 @@ def ea_pairwise_two_files(f1_data, f2_data, gene_id, name1, name2):
         tx_pair_data = pd.concat([tx_df_1_s, tx_df_2_s])
         try:
             ea_data, jct_data, td_data = do_ea_pair(tx_pair_data)
-            ea_df = ea_df.append(ea_data)
-            jct_df = jct_df.append(jct_data)
-            td_df = td_df.append(td_data)
+            ea_df = pd.concat([ea_df, ea_data], axis=0, ignore_index=True)
+            jct_df = pd.concat([jct_df, jct_data], axis=0, ignore_index=True)
+            td_df = pd.concat([td_df, td_data], axis=0, ignore_index=True)
         except ValueError:
             raise
     return ea_df, jct_df, td_df
