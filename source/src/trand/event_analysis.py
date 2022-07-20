@@ -1121,7 +1121,7 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
         )
 
     # Output complexity measures using GTF data
-    uniq_ex = COMP.calculate_complexity(outdir, data, skip_plots)
+    uniq_ex = COMP.calculate_complexity(outdir, data, skip_plots, output_prefix)
 
     # If requested, skip all other functions
     if complexity_only:
