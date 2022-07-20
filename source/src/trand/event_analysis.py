@@ -1045,7 +1045,7 @@ def ea_pairwise(gene_id, data):
 
 def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                         complexity_only, skip_plots, skip_interm, consolidate,
-                        consol_prefix, consol_outfiles):
+                        consol_prefix, consol_outfiles, output_prefix):
     """
     Pairwise or full gene transcript event analysis (TranD) on a single GTF file.
     """
@@ -1077,7 +1077,13 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
         logger.info("Consolidation of transcript with identical junctions.")
         # Open consolidation output files
         if not skip_interm:
-            consol_fhs = open_output_files(outdir, consol_outfiles)
+            if output_prefix is not None:
+                prefix_consol_outfiles = {
+                    k: "{}_{}".format(output_prefix,v) for k,v in consol_outfiles.items()
+                }
+                consol_fhs = open_output_files(outdir, prefix_consol_outfiles)
+            else:
+                consol_fhs = open_output_files(outdir, consol_outfiles)
             consol_fhs["key_fh"].write_text(",".join(consol_key_cols) + "\n")
         # Serial consolidation
         if cpu_cores == 1:

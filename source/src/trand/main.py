@@ -88,6 +88,14 @@ def parse_args(print_help=False):
         help="Output directory, created if missing. Default: current directory.",
     )
     parser.add_argument(
+        "-op",
+        "--outPrefix",
+        action="store",
+        type=str,
+        required=False,
+        help="Output prefix of various output files. Default: no prefix.",
+    )
+    parser.add_argument(
         "-l",
         "--logfile",
         dest="log_file",
@@ -313,7 +321,8 @@ def cli():
                 args.skip_interm,
                 args.consolidate,
                 args.consol_prefix,
-                consol_outfiles
+                consol_outfiles,
+                args.outPrefix
             )
         finally:
             # Only for bedtools. Remove when bedtools are refactored out.
