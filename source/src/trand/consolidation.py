@@ -9,14 +9,9 @@ Created on Thu Jun 24 14:38:56 2021
 import pandas as pd
 import numpy as np
 from loguru import logger
-from .io import open_output_files
-from .io import write_gtf
-from .io import write_output
 from .bedtools import prep_bed_for_ea
 
 # CONFIGURATION
-consol_key_cols = ['gene_id', 'transcript_id', 'consolidation_transcript_id']
-
 # Duplicate to prevent a circular import
 jct_df_cols = ['gene_id', 'transcript_id', 'coords']
 
@@ -43,7 +38,7 @@ def create_junction_catalog_str(gene, tx, tx_data):
 
 
 def consolidate_junctions(
-    bed_gene_data, pre_consol_jct_df, outdir, skip_interm, prefix="tr"
+    bed_gene_data, pre_consol_jct_df, prefix="tr"
 ):
     gene_id = bed_gene_data["gene_id"]
     logger.debug("Consolidation of {}", gene_id)
@@ -428,17 +423,15 @@ def consolidate_junctions(
     return consol_gene, key_gene
 
 
-def consolidate_transcripts(data, outdir, consol_prefix, consol_outfiles, genes, skip_interm):
+def consolidate_transcripts(data, consol_prefix, gene_list):
     """
     If requested, consolidate junctions in input transcripts.
     """
-    logger.info("Consolidation of transcript with identical junctions.")
     # Loop over genes
     consol_data = pd.DataFrame(columns=data.columns)
-    if not skip_interm:
-        consol_fhs = open_output_files(outdir, consol_outfiles)
-        consol_fhs["key_fh"].write_text(",".join(consol_key_cols) + "\n")
-    for gene in genes.groups:
+    key = []
+
+    for gene in gene_list:
         # Test for single transcript gene (WBGene00000003)
         # Test gene for multiple groups with consolidation (WBGene00001574)
         # Test monoexon gene (WBGene00000214)
@@ -462,20 +455,32 @@ def consolidate_transcripts(data, outdir, consol_prefix, consol_outfiles, genes,
         pre_consol_jct_df = pd.DataFrame(pre_consol_jct, columns=jct_df_cols)
         # Consolidate 5'/3' variation
         consol_gene, key_gene = consolidate_junctions(
-            bed_gene_data, pre_consol_jct_df, outdir, skip_interm, consol_prefix
+            bed_gene_data, pre_consol_jct_df, consol_prefix
         )
         consol_data = pd.concat([consol_data, consol_gene], ignore_index=True)
-        if not skip_interm:
-            write_output(key_gene, consol_fhs, "key_fh")
-    # Output consolidated GTF
-    if not skip_interm:
-        write_gtf(consol_data, consol_fhs, "consol_gtf_fh")
+        key.append(key_gene)
+
     # Set data variable to new consolidated data
     data = consol_data.copy()
     del consol_data
     genes = data.groupby("gene_id")
-    num_tx = data.groupby(["gene_id", "transcript_id"])
-    logger.info(
-        "After consolidation: {} genes and {} transcripts", len(genes), len(num_tx)
+    # Combine key file entries
+    if len(key) > 1:
+        keys = pd.concat(key, ignore_index=True)
+    else:
+        keys = key[0]
+    # Add columns for number of transcript_id, number of consolidated_transcript_id
+    #   and a flag for if the gene was consolidated
+    keys["num_transcript_in_consol_transcript"] = keys.groupby(
+            "consolidation_transcript_id")["transcript_id"].transform('nunique')
+    keys["num_transcript_id_in_gene"] = keys.groupby(
+            "gene_id")["transcript_id"].transform('nunique')
+    keys["num_consol_transcript_id_in_gene"] = keys.groupby(
+            "gene_id")["consolidation_transcript_id"].transform('nunique')
+    keys["flag_gene_consolidated"] = np.where(
+        keys["num_transcript_id_in_gene"] > keys["num_consol_transcript_id_in_gene"],
+        1,
+        0
     )
-    return data, genes
+
+    return data, genes, keys
