@@ -86,6 +86,8 @@ def get_md_cols(name1, name2):
         "num_recip_min_match_in_gene",
         "flag_" + name1 + "_tie",
         "flag_" + name2 + "_tie",
+        name1 + "_distance_ties",
+        name2 + "_distance_ties",
         "flag_identical_recip_min_match",
         "flag_FSM_recip_min_match",
         "flag_ERM_recip_min_match",
@@ -227,6 +229,24 @@ def identify_min_pair(td_data, out_pairs, name1, name2):
         .duplicated(keep=False)
         .astype(int)
     )
+
+    # List the other transcripts that the distances are tied with
+    td_data[name1 + "_distance_ties"] = td_data.groupby(
+            [
+                "transcript_1",
+                "prop_junction_diff",
+                "prop_ER_diff",
+                "prop_nt_diff",
+                "num_nt_diff",
+            ])["transcript_2"].transform(lambda x: "|".join(x))
+    td_data[name2 + "_distance_ties"] = td_data.groupby(
+            [
+                "transcript_2",
+                "prop_junction_diff",
+                "prop_ER_diff",
+                "prop_nt_diff",
+                "num_nt_diff",
+            ])["transcript_1"].transform(lambda x: "|".join(x))
 
     # Flag FSM (all junctions matching) and ERM (all exonic regions shared) min matches
     td_data["flag_identical_recip_min_match"] = np.where(
