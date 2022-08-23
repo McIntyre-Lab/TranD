@@ -297,7 +297,9 @@ def identify_min_pair(td_data, out_pairs, name1, name2):
         
     # Flag FSM (all junctions matching) and ERM (all exonic regions shared) min matches
     td_data["flag_identical_recip_min_match"] = np.where(
-        (td_data["flag_recip_min_match"] == 1) & (td_data["prop_nt_diff"] == 0), 1, 0
+        (td_data["flag_recip_min_match"] == 1) & (td_data["prop_nt_diff"] == 0),
+        1,
+        0
     )
     td_data["flag_FSM_recip_min_match"] = np.where(
         (td_data["flag_recip_min_match"] == 1) & (td_data["prop_junction_diff"] == 0),
@@ -305,7 +307,9 @@ def identify_min_pair(td_data, out_pairs, name1, name2):
         0,
     )
     td_data["flag_ERM_recip_min_match"] = np.where(
-        (td_data["flag_recip_min_match"] == 1) & (td_data["prop_ER_diff"] == 0), 1, 0
+        (td_data["flag_recip_min_match"] == 1) & (td_data["prop_ER_diff"] == 0),
+        1,
+        0
     )
     td_data["flag_ERM_noIR_recip_min_match"] = np.where(
         (td_data["flag_recip_min_match"] == 1)
@@ -464,7 +468,7 @@ def identify_min_pair(td_data, out_pairs, name1, name2):
             "prop_junction_diff",
             "prop_nt_diff",
             "transcript_1"
-        ])["transcript_2"].transform('ngroup')
+        ])["transcript_2"].ngroup()
     td_data["min_group_num_" + name1] = td_data.groupby("transcript_1")[
             "num_group_" + name1].transform('min')
     td_data["flag_min_match_" + name1 + "_w_ties"] = np.where(
@@ -478,7 +482,7 @@ def identify_min_pair(td_data, out_pairs, name1, name2):
             "prop_junction_diff",
             "prop_nt_diff",
             "transcript_2"
-        ])["transcript_2"].transform('ngroup')
+        ])["transcript_2"].ngroup()
     td_data["min_group_num_" + name2] = td_data.groupby("transcript_2")[
             "num_group_" + name2].transform('min')
     td_data["flag_min_match_" + name2 + "_w_ties"] = np.where(
