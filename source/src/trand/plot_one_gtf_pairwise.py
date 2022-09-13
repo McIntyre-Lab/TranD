@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from . import plot_functions as PF
 
 
-def plot_one_gtf_pairwise(outdir, td_data):
+def plot_one_gtf_pairwise(outdir, td_data, prefix):
     """
     Plot 1 GTF Pairwise output including the following:
 
@@ -25,7 +25,10 @@ def plot_one_gtf_pairwise(outdir, td_data):
 # Plot 1
     # Upset plot for the number of genes with each kind of alternative splicing (AS)
     PF.plot_gene_AS_upset(td_data, "{}/gene_AS_upset.rtf".format(outdir))
-    plt.savefig("{}/gene_AS_upset.png".format(outdir), dpi=600, format="png")
+    if prefix is not None:
+        plt.savefig("{}{}_/gene_AS_upset.png".format(outdir, prefix), dpi=600, format="png")
+    else:
+        plt.savefig("{}/gene_AS_upset.png".format(outdir), dpi=600, format="png")
     plt.clf()
 
 # Plot 2
@@ -33,5 +36,8 @@ def plot_one_gtf_pairwise(outdir, td_data):
     #   AS for a single transcriptome with added box plots
     #   of the number of nt different and the proportion of nt different
     PF.plot_pair_AS_upset_nt_box(td_data, "{}/transcript_pair_AS_upset_nt_boxplot.rtf".format(outdir))
-    plt.savefig("{}/transcript_pair_AS_upset_nt_boxplot.png".format(outdir), dpi=600, format="png")
+    if prefix is not None:
+        plt.savefig("{}/{}_transcript_pair_AS_upset_nt_boxplot.png".format(outdir, prefix), dpi=600, format="png")
+    else:
+        plt.savefig("{}/transcript_pair_AS_upset_nt_boxplot.png".format(outdir), dpi=600, format="png")
     plt.clf()

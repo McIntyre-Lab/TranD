@@ -16,7 +16,7 @@ from . import plot_functions as PF
 from . import plot_transcriptome as PT
 
 
-def plot_one_gtf_gene(er_data, ef_data, ir_data, uniqex_data, outdir):
+def plot_one_gtf_gene(er_data, ef_data, ir_data, uniqex_data, outdir, prefix):
     """
     Plot 1 GTF Pairwise output including the following:
 
@@ -27,11 +27,14 @@ def plot_one_gtf_gene(er_data, ef_data, ir_data, uniqex_data, outdir):
 # Plot 1
     # Summary of structural elements of transcriptome, grouped by number of
     #   transcripts per gene
-    PT.plot_transcriptome(er_data, ef_data, ir_data, uniqex_data, outdir)
+    PT.plot_transcriptome(er_data, ef_data, ir_data, uniqex_data, outdir, prefix)
     plt.clf()
     # Make legend for plot 1
     # !!! Move this to plot functions when plot_transcriptome is moved
-    legendOut = "{}/transcriptome_summary_plot.rtf".format(outdir)
+    if prefix is not None:
+        legendOut = "{}/{}_transcriptome_summary_plot.rtf".format(outdir, prefix)
+    else:
+        legendOut = "{}/transcriptome_summary_plot.rtf".format(outdir)
     legendText = (
         "Summary of structural elements from input GTF. Structural elements "
         "include the frequency of genes within each range of transcript per "
@@ -61,8 +64,13 @@ def plot_one_gtf_gene(er_data, ef_data, ir_data, uniqex_data, outdir):
 # Plot 2
     # Distribution of proportion of nucleotide variability across all genes
     try:
-        PF.plot_gene_prop_nt_variablility(ef_data,"{}/all_gene_prop_nt_variablility.rtf".format(outdir))
-        plt.savefig("{}/all_gene_prop_nt_variablility.png".format(outdir), dpi=600, format="png")
+        if prefix is not None:
+            PF.plot_gene_prop_nt_variablility(ef_data,"{}/{}_all_gene_prop_nt_variablility.rtf".format(outdir, prefix))
+            plt.savefig("{}/{}_all_gene_prop_nt_variablility.png".format(outdir, prefix), dpi=600, format="png")
+        else:
+            PF.plot_gene_prop_nt_variablility(ef_data,"{}/all_gene_prop_nt_variablility.rtf".format(outdir))
+            plt.savefig("{}/all_gene_prop_nt_variablility.png".format(outdir), dpi=600, format="png")
+
         plt.clf()
     except ValueError as e:
         logger.error("Not enough data to plot nt variability {}".format(e))
@@ -71,8 +79,14 @@ def plot_one_gtf_gene(er_data, ef_data, ir_data, uniqex_data, outdir):
 # Plot 3
     # Distribution of proportion of nucleotide variability across multi-transcript
     #   genes
-    PF.plot_gene_prop_nt_variablility(ef_data,
-                                      "{}/multi_xcrpt_gene_prop_nt_variablility.rtf".format(outdir),
-                                      multitranscript=True)
-    plt.savefig("{}/multi_xcrpt_gene_prop_nt_variablility.png".format(outdir), dpi=600, format="png")
+    if prefix is not None:
+        PF.plot_gene_prop_nt_variablility(ef_data,
+                                          "{}/{}_multi_xcrpt_gene_prop_nt_variablility.rtf".format(outdir, prefix),
+                                          multitranscript=True)
+        plt.savefig("{}/{}_multi_xcrpt_gene_prop_nt_variablility.png".format(outdir, prefix), dpi=600, format="png")
+    else:
+        PF.plot_gene_prop_nt_variablility(ef_data,
+                                          "{}/multi_xcrpt_gene_prop_nt_variablility.rtf".format(outdir),
+                                          multitranscript=True)
+        plt.savefig("{}/multi_xcrpt_gene_prop_nt_variablility.png".format(outdir), dpi=600, format="png")
     plt.clf()
