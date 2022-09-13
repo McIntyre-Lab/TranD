@@ -214,7 +214,7 @@ def extract_genes_from_bins(geneList, data, results, types):
     results.append(each)
     
 
-def visualize_combined(list_main, list_e, list_eu, df_ratio_IR, f_donor_ratio, df_ratio_e, df_ratio_f_lensum, out, kbins=4):
+def visualize_combined(list_main, list_e, list_eu, df_ratio_IR, f_donor_ratio, df_ratio_e, df_ratio_f_lensum, out, prefix, kbins=4):
     dat = list_main
     dat2 = list_e
     dat3 = list_eu
@@ -474,8 +474,8 @@ def plot_transcriptome(er_data, ef_data, ir_data, uniqex_data, outdir, prefix):
         f_donor_ratio,
         df_ratio_e,
         df_ratio_f_lensum,
+        prefix,
         out = os.path.normpath(outdir),
-        prefix
     )
 
 
