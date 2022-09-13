@@ -93,7 +93,8 @@ def parse_args(print_help=False):
         action="store",
         type=str,
         required=False,
-        help="Output prefix of various output files. Default: no prefix.",
+        help="""Output prefix of various output files. "
+        Default: no prefix for 1GTF, 'name1_vs_name2' for 2GTF."""
     )
     parser.add_argument(
         "-l",
@@ -347,6 +348,7 @@ def cli():
                 args.skip_interm,
                 args.name1,
                 args.name2,
+                args.outPrefix
             )
         finally:
             # Only for bedtools. Remove when bedtools are refactored out.
