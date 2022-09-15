@@ -350,7 +350,7 @@ def consolidate_junctions(
                             pd.DataFrame(
                                 [
                                     [
-                                        row[0],
+                                        bed_gene_data[transcript][0][0],
                                         longest_df[
                                             longest_df["consolidation_transcript_id"]
                                             == consol_transcript
@@ -359,7 +359,7 @@ def consolidate_junctions(
                                             longest_df["consolidation_transcript_id"]
                                             == consol_transcript
                                         ]["consol_end"].values[0],
-                                        row[5],
+                                        bed_gene_data[transcript][0][5],
                                         gene_id,
                                         consol_transcript,
                                     ]
