@@ -88,6 +88,7 @@ ir_list = []
 data_list = []
 keys_list = []
 
+
 # Data structures for ERs and EFs. Use a mutable dataclass, so we could add transcript names and
 # counts during EA
 @dataclass
@@ -150,11 +151,13 @@ def callback_gene_results(results):
     jct_list.append(jct_data_cat)
     ir_list.append(ir_data_cat)
 
+
 def callback_consol_results(results):
     # Callback function to append results to list of results for consolidation
     data, genes, keys = results
     data_list.append(data)
     keys_list.append(keys)
+
 
 def _create_bed_df(tx_str):
     """Create a data structure resembling a bed record for a transcript"""
@@ -1079,7 +1082,7 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
         if not skip_interm:
             if output_prefix is not None:
                 prefix_consol_outfiles = {
-                    k: "{}_{}".format(output_prefix,v) for k,v in consol_outfiles.items()
+                    k: "{}_{}".format(output_prefix, v) for k, v in consol_outfiles.items()
                 }
                 consol_fhs = open_output_files(outdir, prefix_consol_outfiles)
             else:
