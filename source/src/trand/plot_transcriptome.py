@@ -214,7 +214,7 @@ def extract_genes_from_bins(geneList, data, results, types):
     results.append(each)
     
 
-def visualize_combined(list_main, list_e, list_eu, df_ratio_IR, f_donor_ratio, df_ratio_e, df_ratio_f_lensum, out, kbins=4):
+def visualize_combined(list_main, list_e, list_eu, df_ratio_IR, f_donor_ratio, df_ratio_e, df_ratio_f_lensum, out, prefix, kbins=4):
     dat = list_main
     dat2 = list_e
     dat3 = list_eu
@@ -415,12 +415,15 @@ def visualize_combined(list_main, list_e, list_eu, df_ratio_IR, f_donor_ratio, d
     ax6.vlines(tick_pos, 0, heat_ylim-0.03, color = '#4682b4', linewidth=ticklinewidth)
     
 #    outfile = out + "/transcriptome_summary_plot.pdf"
-    outfile2 = out + "/transcriptome_summary_plot.png" 
+    if prefix is not None:
+        outfile = "{}/{}_transcriptome_summary_plot.png".format(out, prefix)
+    else:
+        outfile = "{}/transcriptome_summary_plot.png".format(out)
 #    plt.savefig(outfile, dpi=600, format='pdf')
-    plt.savefig(outfile2, dpi=600, format='png')
+    plt.savefig(outfile, dpi=600, format='png')
     return
 
-def plot_transcriptome(er_data, ef_data, ir_data, uniqex_data, outdir):
+def plot_transcriptome(er_data, ef_data, ir_data, uniqex_data, outdir, prefix):
     er_data['er_start'] = er_data['er_start'].astype(int)
     er_data['er_end'] = er_data['er_end'].astype(int)
     ef_data['ef_start'] = ef_data['ef_start'].astype(int)
@@ -471,7 +474,8 @@ def plot_transcriptome(er_data, ef_data, ir_data, uniqex_data, outdir):
         f_donor_ratio,
         df_ratio_e,
         df_ratio_f_lensum,
-        out = os.path.normpath(outdir)
+        prefix,
+        out = os.path.normpath(outdir),
     )
 
 

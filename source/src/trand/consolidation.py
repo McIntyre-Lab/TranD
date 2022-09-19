@@ -342,45 +342,24 @@ def consolidate_junctions(
                 tupleList[1] = int(tupleList[1])
                 tupleList[2] = int(tupleList[2])
                 bed_gene_data[transcript][val] = tuple(tupleList)
-            for row in sorted(bed_gene_data[transcript]):
-                num = num + 1
-                if num == 1:
-                    consol_gene = pd.concat(
+            # Check if monoexon to use the longest start and end
+            if len(bed_gene_data[transcript]) == 1:
+                consol_gene = pd.concat(
                         [
                             consol_gene,
                             pd.DataFrame(
                                 [
                                     [
-                                        row[0],
+                                        bed_gene_data[transcript][0][0],
                                         longest_df[
                                             longest_df["consolidation_transcript_id"]
                                             == consol_transcript
                                         ]["consol_start"].values[0],
-                                        int(row[2]),
-                                        row[5],
-                                        gene_id,
-                                        consol_transcript,
-                                    ]
-                                ],
-                                columns=consol_gene.columns,
-                            ),
-                        ],
-                        ignore_index=True,
-                    )
-                elif num == len(bed_gene_data[transcript]):
-                    consol_gene = pd.concat(
-                        [
-                            consol_gene,
-                            pd.DataFrame(
-                                [
-                                    [
-                                        row[0],
-                                        int(row[1]) + 1,
                                         longest_df[
                                             longest_df["consolidation_transcript_id"]
                                             == consol_transcript
                                         ]["consol_end"].values[0],
-                                        row[5],
+                                        bed_gene_data[transcript][0][5],
                                         gene_id,
                                         consol_transcript,
                                     ]
@@ -390,29 +369,78 @@ def consolidate_junctions(
                         ],
                         ignore_index=True,
                     )
-                else:
-                    consol_gene = pd.concat(
-                        [
-                            consol_gene,
-                            pd.DataFrame(
-                                [
+            else:
+                for row in sorted(bed_gene_data[transcript]):
+                    num = num + 1
+                    if num == 1:
+                        consol_gene = pd.concat(
+                            [
+                                consol_gene,
+                                pd.DataFrame(
                                     [
-                                        row[0],
-                                        int(row[1]) + 1,
-                                        int(row[2]),
-                                        row[5],
-                                        gene_id,
-                                        consol_transcript,
-                                    ]
-                                ],
-                                columns=consol_gene.columns,
-                            ),
-                        ],
-                        ignore_index=True,
-                    )
-                    consol_gene = consol_gene.sort_values(
-                        by=["transcript_id", "start"]
-                    ).reset_index(drop=True)
+                                        [
+                                            row[0],
+                                            longest_df[
+                                                longest_df["consolidation_transcript_id"]
+                                                == consol_transcript
+                                            ]["consol_start"].values[0],
+                                            int(row[2]),
+                                            row[5],
+                                            gene_id,
+                                            consol_transcript,
+                                        ]
+                                    ],
+                                    columns=consol_gene.columns,
+                                ),
+                            ],
+                            ignore_index=True,
+                        )
+                    elif num == len(bed_gene_data[transcript]):
+                        consol_gene = pd.concat(
+                            [
+                                consol_gene,
+                                pd.DataFrame(
+                                    [
+                                        [
+                                            row[0],
+                                            int(row[1]) + 1,
+                                            longest_df[
+                                                longest_df["consolidation_transcript_id"]
+                                                == consol_transcript
+                                            ]["consol_end"].values[0],
+                                            row[5],
+                                            gene_id,
+                                            consol_transcript,
+                                        ]
+                                    ],
+                                    columns=consol_gene.columns,
+                                ),
+                            ],
+                            ignore_index=True,
+                        )
+                    else:
+                        consol_gene = pd.concat(
+                            [
+                                consol_gene,
+                                pd.DataFrame(
+                                    [
+                                        [
+                                            row[0],
+                                            int(row[1]) + 1,
+                                            int(row[2]),
+                                            row[5],
+                                            gene_id,
+                                            consol_transcript,
+                                        ]
+                                    ],
+                                    columns=consol_gene.columns,
+                                ),
+                            ],
+                            ignore_index=True,
+                        )
+                        consol_gene = consol_gene.sort_values(
+                            by=["transcript_id", "start"]
+                        ).reset_index(drop=True)
     logger.debug(
         "Gene {} has {} transcript(s) before consolidation and {} transcript(s) after "
         "consolidation.",

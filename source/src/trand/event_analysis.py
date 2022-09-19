@@ -1132,7 +1132,13 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
         return
 
     # Full processing
-    out_fhs = open_output_files(outdir, outfiles)
+    if output_prefix is not None:
+        prefix_outfiles = {
+            k: "{}_{}".format(output_prefix,v) for k,v in outfiles.items()
+        }
+        out_fhs = open_output_files(outdir, prefix_outfiles)
+    else:
+        out_fhs = open_output_files(outdir, outfiles)
     # logger.debug("Output files: {}".format(outfiles))
     # Write out csv file headers
     if not skip_interm:
@@ -1167,7 +1173,7 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                 write_output(uniq_ex, out_fhs, 'ue_fh')
             # Output plots for 1 GTF gene mode
             if not skip_plots:
-                P1GG.plot_one_gtf_gene(er_data, ef_data, ir_df, uniq_ex, outdir)
+                P1GG.plot_one_gtf_gene(er_data, ef_data, ir_df, uniq_ex, outdir, prefix=output_prefix)
         # Pairwise EA
         else:
             ea_data, jct_data, td_data = loop_over_genes(
@@ -1184,7 +1190,7 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                 write_output(td_data, out_fhs, 'td_fh')
             # Output plots for 1 GTF pairwise mode
             if not skip_plots:
-                P1GP.plot_one_gtf_pairwise(outdir, td_data)
+                P1GP.plot_one_gtf_pairwise(outdir, td_data, prefix=output_prefix)
     # Parallel processing
     else:
         # Get lists for each process based on cpu_cores value
@@ -1228,7 +1234,7 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                 write_output(uniq_ex, out_fhs, 'ue_fh')
             # Output plots for 1 GTF gene mode
             if not skip_plots:
-                P1GG.plot_one_gtf_gene(er_cat, ef_cat, ir_df, uniq_ex, outdir)
+                P1GG.plot_one_gtf_gene(er_cat, ef_cat, ir_df, uniq_ex, outdir, prefix=output_prefix)
         # Pairwise EA
         else:
             ea_cat = pd.concat(ea_list, ignore_index=True)
@@ -1241,7 +1247,7 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                 write_output(td_cat, out_fhs, 'td_fh')
             # Output plots for 1 GTF pairwise mode
             if not skip_plots:
-                P1GP.plot_one_gtf_pairwise(outdir, td_cat)
+                P1GP.plot_one_gtf_pairwise(outdir, td_cat, prefix=output_prefix)
 
 
 def ea_pairwise_two_files(f1_data, f2_data, gene_id, name1, name2):
@@ -1270,7 +1276,7 @@ def ea_pairwise_two_files(f1_data, f2_data, gene_id, name1, name2):
 
 
 def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexity_only, skip_plots,
-                      skip_interm, name1, name2):
+                      skip_interm, name1, name2, output_prefix):
     """
     Pairwise transcript event analysis (TranD) on two GTF files.
     """
@@ -1286,6 +1292,10 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
     del(outfiles['ef_fh'])
     del(outfiles['ir_fh'])
     del(outfiles['ue_fh'])
+
+    # Check prefix
+    if output_prefix is None:
+        output_prefix = str(name1) + "_vs_" + str(name2)
 
     infile_1 = infiles[0]
     infile_2 = infiles[1]
@@ -1308,9 +1318,15 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
         del(outfiles['jc_fh'])
         del(outfiles['gtf1_fh'])
         del(outfiles['gtf2_fh'])
-        out_fhs = open_output_files(outdir, outfiles)
+        prefix_outfiles = {
+            k: "{}_{}".format(output_prefix,v) for k,v in outfiles.items()
+        }
+        out_fhs = open_output_files(outdir, prefix_outfiles)
     else:
-        out_fhs = open_output_files(outdir, outfiles)
+        prefix_outfiles = {
+            k: "{}_{}".format(output_prefix,v) for k,v in outfiles.items()
+        }
+        out_fhs = open_output_files(outdir, prefix_outfiles)
         out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
         out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
     logger.debug("Output files: {}".format(outfiles))
@@ -1366,7 +1382,7 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
         # Generate 2 GTF pairwise plots
         if not skip_plots:
             P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1=name1,
-                                       name2=name2)
+                                       name2=name2, prefix=output_prefix)
     # Parallel processing
     else:
         # Get lists for each process based on cpu_cores value
@@ -1404,7 +1420,7 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
         # Generate 2 GTF pairwise plots
         if not skip_plots:
             P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1=name1,
-                                       name2=name2)
+                                       name2=name2, prefix=output_prefix)
 
 def loop_over_consol(data, consol_prefix, gene_list):
     """
