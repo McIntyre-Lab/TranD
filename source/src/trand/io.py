@@ -107,9 +107,9 @@ def read_exon_data_from_file(infile):
             elif 'transcript_id' in item:
                 transcript_id = item.split('transcript_id')[-1].strip().strip('\"')
         if not gene_id:
-            logger.error("gene_id not found in '{}'", data[i])
+            logger.error("gene_id not found in '{}'", data.loc[i])
         if not transcript_id:
-            logger.error("transcript_id not found in '{}'", data[i])
+            logger.error("transcript_id not found in '{}'", data.loc[i])
         # logger.debug("Gene: {}, Transcript: {}", gene_id, transcript_id)
         data.at[i, "gene_id"] = gene_id
         data.at[i, "transcript_id"] = transcript_id

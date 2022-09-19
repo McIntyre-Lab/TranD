@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from . import plot_functions as PF
 
 
-def plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1, name2):
+def plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1, name2, prefix):
     """
     Plot 2 GTF Pairwise output including the following:
 
@@ -73,15 +73,15 @@ def plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1, name2):
     # Plot pie charts split by 1) all genes, 2) single transcript in at least 1 dataset,
     #   3) multi-transcript in at least 1 dataset, and 4) multi-transcript in both datasets
     PF.plot_transcript_in_gene_split_pie(md_data, f1_odds, f2_odds, name1,
-                                         name2, "{}/transcript_in_gene_split_pie.rtf".format(outdir))
-    plt.savefig("{}/transcript_in_gene_split_pie.png".format(outdir), dpi=600, format="png")
+                                         name2, "{}/{}_transcript_in_gene_split_pie.rtf".format(outdir, prefix))
+    plt.savefig("{}/{}_transcript_in_gene_split_pie.png".format(outdir, prefix), dpi=600, format="png")
     plt.clf()
 
 # Plot 2
     # Upset plot for number of transcripts in genes
     PF.plot_transcript_in_gene_upset(md_data, f1_odds, f2_odds, name1, name2,
-                                     "{}/transcript_in_gene_upset.rtf".format(outdir))
-    plt.savefig("{}/transcript_in_gene_upset.png".format(outdir), dpi=600, format="png")
+                                     "{}/{}_transcript_in_gene_upset.rtf".format(outdir, prefix))
+    plt.savefig("{}/{}_transcript_in_gene_upset.png".format(outdir, prefix), dpi=600, format="png")
     plt.clf()
 
 # Plot 3
@@ -89,16 +89,16 @@ def plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1, name2):
     #   1) all transcript pairs possible (Match:Reciprocal Pairs or Greater:Reciprocal Pairs)
     #   2) only some of the transcript pairs (Match:Partial Reciprocal Pairs or Greater:Partial Reciprocal Pairs)
     #   3) none of the transcript pars (Match:No Reciprocal Pairs or Greater:No Reciprocal Pairs)
-    PF.plot_gene_stack(md_data, name1, name2, "{}/transcript_in_gene_stackCount.rtf".format(outdir))
-    plt.savefig("{}/transcript_in_gene_stackCount.png".format(outdir), dpi=600, format="png")
+    PF.plot_gene_stack(md_data, name1, name2, "{}/transcript_in_gene_stackCount.rtf".format(outdir, prefix))
+    plt.savefig("{}/{}_transcript_in_gene_stackCount.png".format(outdir, prefix), dpi=600, format="png")
     plt.clf()
 
 # Plot 4
     # With percentage of genes instead of count
     PF.plot_gene_stack(md_data, name1, name2,
-                       "{}/transcript_in_gene_stack_proportion.rtf".format(outdir),
+                       "{}/{}_transcript_in_gene_stack_proportion.rtf".format(outdir, prefix),
                        useProp=True)
-    plt.savefig("{}/transcript_in_gene_stack_proportion.png".format(outdir), dpi=600, format="png")
+    plt.savefig("{}/{}_transcript_in_gene_stack_proportion.png".format(outdir, prefix), dpi=600, format="png")
     plt.clf()
 
 # Plot 5
@@ -106,9 +106,9 @@ def plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1, name2):
     # Upset plot for the number of transcripts with each kind of alternative splicing (AS)
     #   and the distribution of nt differences between the pairs plotted
     PF.plot_min_pair_AS_upset_nt_box(md_data, name1, name2,
-                                           "{}/all_min_pair_AS_upset_nt_box.rtf".format(outdir),
+                                           "{}/{}_all_min_pair_AS_upset_nt_box.rtf".format(outdir, prefix),
                                            reciprocal=False, pairs="all")
-    plt.savefig("{}/all_min_pair_AS_upset_nt_box.png".format(outdir), dpi=600, format="png")
+    plt.savefig("{}/{}_all_min_pair_AS_upset_nt_box.png".format(outdir, prefix), dpi=600, format="png")
     plt.clf()
 
 # Plot 6
@@ -136,9 +136,9 @@ def plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1, name2):
     # Upset plot for the number of transcripts with each kind of AS and the distribution
     #   of nt differences between the pairs plotted above
     PF.plot_min_pair_AS_upset_nt_box(md_data, name1, name2,
-                                           "{}/recip_min_pair_AS_upset_nt_box.rtf".format(outdir),
+                                           "{}/{}_recip_min_pair_AS_upset_nt_box.rtf".format(outdir, prefix),
                                            reciprocal=True)
-    plt.savefig("{}/recip_min_pair_AS_upset_nt_box.png".format(outdir), dpi=600, format="png")
+    plt.savefig("{}/{}_recip_min_pair_AS_upset_nt_box.png".format(outdir, prefix), dpi=600, format="png")
     plt.clf()
 
 # Plot 9
@@ -146,9 +146,9 @@ def plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1, name2):
     # Upset plot for the number of transcripts with each kind of AS and the distribution
     #   of nt differences between the pairs plotted above
     PF.plot_min_pair_AS_upset_nt_box(md_data, name1, name2,
-                                           "{}/extra_min_pair_AS_upset_nt_box.rtf".format(outdir),
+                                           "{}/{}_extra_min_pair_AS_upset_nt_box.rtf".format(outdir, prefix),
                                            reciprocal=False)
-    plt.savefig("{}/extra_min_pair_AS_upset_nt_box.png".format(outdir), dpi=600, format="png")
+    plt.savefig("{}/{}_extra_min_pair_AS_upset_nt_box.png".format(outdir, prefix), dpi=600, format="png")
     plt.clf()
 
 # Plot 10
@@ -158,22 +158,22 @@ def plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1, name2):
     #   the number of transcripts in each dataset, the avg number of nt different,
     #   and the avg proportion of nt different
     PF.plot_gene_recip_min_AS_upset(md_data, name1, name2,
-                                           "{}/recip_min_gene_AS_upset.rtf".format(outdir))
-    plt.savefig("{}/recip_min_gene_AS_upset.png".format(outdir), dpi=600, format="png")
+                                           "{}/{}_recip_min_gene_AS_upset.rtf".format(outdir, prefix))
+    plt.savefig("{}/{}_recip_min_gene_AS_upset.png".format(outdir, prefix), dpi=600, format="png")
     plt.clf()
 
 # Plot 11
     # Plot average number of nt different in recip. min match pairs against
     #   avg number of nt different in min pairs that are extra
     #   (either in the greater sets of in set that do not match)
-    PF.plot_gene_avg_nt_diff_pairs(md_data, name1, name2, "{}/gene_avg_nt_diff_pairs.rtf".format(outdir))
-    plt.savefig("{}/gene_avg_nt_diff_pairs.png".format(outdir), dpi=600, format="png")
+    PF.plot_gene_avg_nt_diff_pairs(md_data, name1, name2, "{}/{}_gene_avg_nt_diff_pairs.rtf".format(outdir, prefix))
+    plt.savefig("{}/{}_gene_avg_nt_diff_pairs.png".format(outdir, prefix), dpi=600, format="png")
     plt.clf()
 
 # Plot 12
     # Zoom in axises to the mean value of non-zero nt differences (max of the two means from recip. min pairs and extras)
     PF.plot_gene_avg_nt_diff_pairs(md_data, name1, name2,
-                                   "{}/gene_avg_nt_diff_pairs_zoomIn.rtf".format(outdir),
+                                   "{}/{}_gene_avg_nt_diff_pairs_zoomIn.rtf".format(outdir, prefix),
                                    zoomMean=True)
-    plt.savefig("{}/gene_avg_nt_diff_pairs_zoomIn.png".format(outdir), dpi=600, format="png")
+    plt.savefig("{}/{}_gene_avg_nt_diff_pairs_zoomIn.png".format(outdir, prefix), dpi=600, format="png")
     plt.clf()

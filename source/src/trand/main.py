@@ -93,7 +93,8 @@ def parse_args(print_help=False):
         action="store",
         type=str,
         required=False,
-        help="Output prefix of various output files. Default: no prefix.",
+        help="""Output prefix of various output files. "
+        Default: no prefix for 1GTF, 'name1_vs_name2' for 2GTF."""
     )
     parser.add_argument(
         "-l",
@@ -270,7 +271,7 @@ def parse_args(print_help=False):
     return args
 
 
-def setup_logging(debug, verbose, logfile):
+def setup_logging(debug, verbose, logfile, force):
     """Set the correct logging level and sinks."""
     logger.remove()
     if verbose:
@@ -288,18 +289,21 @@ def setup_logging(debug, verbose, logfile):
         if logfile:
             logger.info("Logging to {}", logfile)
     if logfile:
-        logger.add(logfile, level=level)
+        if force:
+            logger.add(logfile, level=level, mode='w')
+        else:
+            logger.add(logfile, level=level, mode='a')
     logger.debug("Logging level set to : {}", level)
 
 
 def cli():
     """CLI interface for the 'trand' executable"""
     args = parse_args()
-    setup_logging(args.debug, args.verbose, args.log_file)
-    logger.debug("Args: {}", args)
     if not args.outdir:
         args.outdir = str(Path.cwd())
         args.force = True
+    setup_logging(args.debug, args.verbose, args.log_file, args.force)
+    logger.debug("Args: {}", args)
     prepare_outdir(args.outdir, args.force)
     if len(args.infiles) == 1:
         logger.debug("Single file {} analysis", args.ea_mode)
@@ -344,6 +348,7 @@ def cli():
                 args.skip_interm,
                 args.name1,
                 args.name2,
+                args.outPrefix
             )
         finally:
             # Only for bedtools. Remove when bedtools are refactored out.
