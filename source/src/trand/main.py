@@ -348,7 +348,7 @@ def cli():
                 args.skip_interm,
                 args.name1,
                 args.name2,
-                args.outPrefix
+                args.prefix
             )
         finally:
             # Only for bedtools. Remove when bedtools are refactored out.
