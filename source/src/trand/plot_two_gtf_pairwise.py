@@ -89,7 +89,7 @@ def plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1, name2, prefi
     #   1) all transcript pairs possible (Match:Reciprocal Pairs or Greater:Reciprocal Pairs)
     #   2) only some of the transcript pairs (Match:Partial Reciprocal Pairs or Greater:Partial Reciprocal Pairs)
     #   3) none of the transcript pars (Match:No Reciprocal Pairs or Greater:No Reciprocal Pairs)
-    PF.plot_gene_stack(md_data, name1, name2, "{}/transcript_in_gene_stackCount.rtf".format(outdir, prefix))
+    PF.plot_gene_stack(md_data, name1, name2, "{}/{}_transcript_in_gene_stackCount.rtf".format(outdir, prefix))
     plt.savefig("{}/{}_transcript_in_gene_stackCount.png".format(outdir, prefix), dpi=600, format="png")
     plt.clf()
 
