@@ -176,7 +176,7 @@ def main():
         if mergeDFxcrpt.at[i, "gene_idx"] == 0:
             new_attribute = "gene_id \"" + mergeDFxcrpt.at[i, "gene_id_cmp"] + "\";" + ";".join(mergeDFxcrpt.at[i, "attribute"].split(";")[1:])
         else:
-            new_attribute = ";".join(mergeDFxcrpt.at[i, "attribute"].split(";")[0:mergeDFxcrpt.at[i, "gene_idx"]]) + "gene_id \"" + mergeDFxcrpt.at[i, "gene_id_cmp"] + "\";" + ";".join(mergeDFxcrpt.at[i, "attribute"].split(";")[mergeDFxcrpt.at[i, "gene_idx"]+1:])
+            new_attribute = ";".join(mergeDFxcrpt.at[i, "attribute"].split(";")[0:int(mergeDFxcrpt.at[i, "gene_idx"])]) + "; gene_id \"" + mergeDFxcrpt.at[i, "gene_id_cmp"] + "\";" + ";".join(mergeDFxcrpt.at[i, "attribute"].split(";")[int(mergeDFxcrpt.at[i, "gene_idx"])+1:])
         mergeDFxcrpt.at[i, "new_attribute"] = new_attribute
 
     # Output GTF file with associated_gene in new attribute
