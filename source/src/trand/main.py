@@ -15,13 +15,13 @@ import logging
 import re
 import os
 import sys
+from importlib.metadata import version
 from loguru import logger
 from pathlib import Path
 from pybedtools import cleanup
 from trand.io import prepare_outdir
 from trand.event_analysis import process_single_file
 from trand.event_analysis import process_two_files
-
 
 # CONFIGURATION
 # Output file selections
@@ -37,9 +37,7 @@ common_outfiles = {
     "ir_fh": "ir_transcripts.csv",
     "ue_fh": "uniq_exons_per_gene.csv",
 }
-pairwise_outfiles = {
-    "td_fh": "pairwise_transcript_distance.csv",
-}
+pairwise_outfiles = {"td_fh": "pairwise_transcript_distance.csv"}
 gene_outfiles = {
     "er_fh": "event_analysis_er.csv",
     "ef_fh": "event_analysis_ef.csv",
@@ -70,7 +68,7 @@ def parse_args(print_help=False):
 
     parser = MyParser(
         description="Perform transcript distance, complexity and "
-                    "transcriptome comparison analyses."
+        "transcriptome comparison analyses."
     )
     parser.add_argument(
         dest="infiles",
@@ -94,7 +92,7 @@ def parse_args(print_help=False):
         type=str,
         required=False,
         help="""Output prefix of various output files. "
-        Default: no prefix for 1GTF, 'name1_vs_name2' for 2GTF."""
+        Default: no prefix for 1GTF, 'name1_vs_name2' for 2GTF.""",
     )
     parser.add_argument(
         "-l",
@@ -217,6 +215,12 @@ def parse_args(print_help=False):
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
     parser.add_argument("-d", "--debug", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"{version('trand')}",
+        help="Display version",
+    )
     if print_help:
         parser.print_help()
         sys.exit(0)
@@ -230,13 +234,14 @@ def parse_args(print_help=False):
             logger.warning(
                 "EA 'gene' mode is ignored for two GTF files - only pairwise is done."
             )
-    regex = re.compile(r'^\w+$', re.ASCII)
+    regex = re.compile(r"^\w+$", re.ASCII)
     # Validate prefixes
     if not regex.match(args.consol_prefix):
-        logger.error("Invalid prefix format for consolidated transcript_id values: "
-                     "Must be alphanumeric."
-                     "Only '_' (underscore) special character is allowed"
-                     )
+        logger.error(
+            "Invalid prefix format for consolidated transcript_id values: "
+            "Must be alphanumeric."
+            "Only '_' (underscore) special character is allowed"
+        )
         parser.print_help()
         sys.exit(2)
     if not regex.match(args.name1):
@@ -255,9 +260,7 @@ def parse_args(print_help=False):
         sys.exit(2)
     # Multiprocessing checks
     if args.cpu_cores < 1:
-        logger.error(
-            "Invalid value for the number of CPU cores. Must be 1 or greater."
-        )
+        logger.error("Invalid value for the number of CPU cores. Must be 1 or greater.")
         parser.print_help()
         sys.exit(2)
     # os.sched_getaffinity is accurate and linux HPC specific. os.cpu_count = total system cores.
@@ -290,9 +293,9 @@ def setup_logging(debug, verbose, logfile, force):
             logger.info("Logging to {}", logfile)
     if logfile:
         if force:
-            logger.add(logfile, level=level, mode='w')
+            logger.add(logfile, level=level, mode="w")
         else:
-            logger.add(logfile, level=level, mode='a')
+            logger.add(logfile, level=level, mode="a")
     logger.debug("Logging level set to : {}", level)
 
 
@@ -326,7 +329,7 @@ def cli():
                 args.consolidate,
                 args.consol_prefix,
                 consol_outfiles,
-                args.prefix
+                args.prefix,
             )
         finally:
             # Only for bedtools. Remove when bedtools are refactored out.
@@ -348,7 +351,7 @@ def cli():
                 args.skip_interm,
                 args.name1,
                 args.name2,
-                args.prefix
+                args.prefix,
             )
         finally:
             # Only for bedtools. Remove when bedtools are refactored out.
