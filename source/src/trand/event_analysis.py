@@ -1301,6 +1301,18 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
     infile_2 = infiles[1]
     in_f1 = read_exon_data_from_file(infile_1)
     in_f2 = read_exon_data_from_file(infile_2)
+    logger.info(
+        "Found {} genes and {} transcripts in {} file",
+        len(in_f1.groupby("gene_id")),
+        len(in_f1.groupby.groupby(["gene_id", "transcript_id"])),
+        infile_1
+    )
+    logger.info(
+        "Found {} genes and {} transcripts in {} file",
+        len(in_f2.groupby("gene_id")),
+        len(in_f2.groupby.groupby(["gene_id", "transcript_id"])),
+        infile_2
+    )
 
     # Calculate complexity of individual transcriptomes
     COMP.calculate_complexity(outdir, in_f1, skip_plots, name1)
@@ -1346,16 +1358,18 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
         write_gtf(f1_odds, out_fhs, 'gtf1_fh')
         write_gtf(f2_odds, out_fhs, 'gtf2_fh')
     common_genes = f1_gene_names.difference(odd_genes)
+    logger.info("Found {} genes in common between {} and {}", len(common_genes),
+                infile_1, infile_2)
     valid_f1 = in_f1[in_f1['gene_id'].isin(common_genes)]
     valid_f2 = in_f2[in_f2['gene_id'].isin(common_genes)]
     f1_genes = valid_f1.groupby("gene_id")
     f1_transcripts = valid_f1.groupby(["gene_id", "transcript_id"])
     f2_genes = valid_f2.groupby("gene_id")
     f2_transcripts = valid_f2.groupby(["gene_id", "transcript_id"])
-    logger.info("Found {} genes and {} transcripts in {} file", len(f1_genes),
-                len(f1_transcripts), infile_1)
-    logger.info("Found {} genes and {} transcripts in {} file", len(f2_genes),
-                len(f2_transcripts), infile_2)
+    logger.info("Found {} transcripts in the {} common genes in {} file",
+                len(f1_transcripts), len(f1_genes), infile_1)
+    logger.info("Found {} transcripts in the {} common genes in {} file",
+                len(f2_transcripts), len(f2_genes), infile_2)
     gene_list = list(set(valid_f1['gene_id']))
     logger.debug("Genes to process: \n{}", gene_list)
     # Serial processing
