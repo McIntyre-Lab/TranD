@@ -21,11 +21,18 @@ tabular formatted nucleotide level distances for both 1GTF and 2 GTF.
 
 ## Installation
 
-To install TranD run
+The easiest way to install TranD is by using conda or mamba.
+
+```
+conda install -c bioconda trand
+```
+
+If you already have a suitable environment with bedtools installed and only want to add python
+packages run
 ```
 pip install trand
 ```
-in activated conda or virtualenv environment
+in an activated conda or virtualenv environment
 
 If you clone this repository you can use the source/requirements.txt file to pip install required dependencies with
 ```
