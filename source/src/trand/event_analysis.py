@@ -1304,7 +1304,7 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
     logger.info(
         "Found {} genes and {} transcripts in {} file",
         len(in_f1.groupby("gene_id")),
-        len(in_f1.groupby.groupby(["gene_id", "transcript_id"])),
+        len(in_f1.groupby(["gene_id", "transcript_id"])),
         infile_1
     )
     logger.info(
