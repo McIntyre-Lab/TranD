@@ -212,7 +212,7 @@ def get_junction_distance(singlePair, sorted_junction_df, tx1_name, tx2_name, fs
         # the other)
         elif sorted_junction_df["transcript_id"].nunique() == 1:
             # Only T1 is monoexon
-            if tx1_name in sorted_junction_df["transcript_id"].unique():
+            if tx2_name in sorted_junction_df["transcript_id"].unique():
                 singlePair[["num_junction_T1_only", "num_junction_shared"]] = 0
                 singlePair["prop_junction_similar"] = 0
                 singlePair["prop_junction_diff"] = 1
