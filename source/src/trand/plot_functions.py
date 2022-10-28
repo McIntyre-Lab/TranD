@@ -127,15 +127,18 @@ def plot_transcript_in_gene_split_pie(
             title = "Genes with >1 Transcript\n(in both datasets, n = {})".format(
                 geneCount.sum()
             )
-        geneCount.reindex(list(geneCountOrderDict)).plot(
-            kind="pie",
-            y="transcript_in_gene",
-            labels=None,
-            figsize=(12, 6),
-            autopct=(lambda pct: get_pie_label(pct, geneCount)),
-            colormap=ListedColormap(sns.color_palette("colorblind", 15).as_hex()),
-            ax=ax,
-        )
+        if len(geneCount) > 0:
+            geneCount.reindex(list(geneCountOrderDict)).plot(
+                kind="pie",
+                y="transcript_in_gene",
+                labels=None,
+                figsize=(12, 6),
+                autopct=(lambda pct: get_pie_label(pct, geneCount)),
+                colormap=ListedColormap(sns.color_palette("colorblind", 15).as_hex()),
+                ax=ax,
+            )
+        else:
+            ax.axis("off")
         ax.set_ylabel("")
         ax.set_title(title)
     plt.legend(bbox_to_anchor=(1.2, 1.2), loc="upper left", labels=legendLabels)
