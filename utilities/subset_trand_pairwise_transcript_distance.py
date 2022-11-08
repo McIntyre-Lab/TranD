@@ -125,9 +125,9 @@ def main():
         elif len(args.inInclude) == 2:
             if listVar == "transcript_id":
                 t1DF = pd.read_csv(args.inInclude[0], names=[listVar])
-                t1DF[listVar] = args.name1 + "_" + t1DF[listVar]
+                t1DF[listVar] = t1DF[listVar] + "_" + args.name1
                 t2DF = pd.read_csv(args.inInclude[1], names=[listVar])
-                t2DF[listVar] = args.name2 + "_" + t2DF[listVar]
+                t2DF[listVar] = t2DF[listVar] + "_" + args.name2
             else:
                 print("ERROR: -t must be transcript_id when more than one list provided.")
                 sys.exit()
@@ -141,9 +141,9 @@ def main():
         elif len(args.inExclude) == 2:
             if listVar == "transcript_id":
                 t1DF = pd.read_csv(args.inExclude[0], names=[listVar])
-                t1DF[listVar] = args.name1 + "_" + t1DF[listVar]
+                t1DF[listVar] = t1DF[listVar] + "_" + args.name1
                 t2DF = pd.read_csv(args.inExclude[1], names=[listVar])
-                t2DF[listVar] = args.name2 + "_" + t2DF[listVar]
+                t2DF[listVar] = t2DF[listVar] + "_" + args.name2
             else:
                 print("ERROR: -t must be transcript_id when more than one list provided.")
                 sys.exit()
