@@ -68,6 +68,31 @@ def getOptions():
             "transcript_2 in the pairwise file."
         )
     )
+    parser.add_argument(
+        "-n1",
+        "--name1",
+        dest="name1",
+        required=False,
+        default="d1",
+        help=(
+            "For 2 GTF pairwise distance file, name used for dataset 1 "
+            "that is appended to transcript_1 values "
+            "(Default: d1 if two lists provided)."
+        )
+    )
+    parser.add_argument(
+        "-n2",
+        "--name2",
+        dest="name2",
+        required=False,
+        default="d2",
+        help=(
+            "For 2 GTF pairwise distance file, name used for dataset 2 "
+            "that is appended to transcript_2 values "
+            "(Default: d2 if two lists provided)."
+        )
+    )
+    
 
     # Output data
     parser.add_argument(
@@ -100,7 +125,9 @@ def main():
         elif len(args.inInclude) == 2:
             if listVar == "transcript_id":
                 t1DF = pd.read_csv(args.inInclude[0], names=[listVar])
+                t1DF[listVar] = args.name1 + "_" + t1DF[listVar]
                 t2DF = pd.read_csv(args.inInclude[1], names=[listVar])
+                t2DF[listVar] = args.name2 + "_" + t2DF[listVar]
             else:
                 print("ERROR: -t must be transcript_id when more than one list provided.")
                 sys.exit()
@@ -114,7 +141,9 @@ def main():
         elif len(args.inExclude) == 2:
             if listVar == "transcript_id":
                 t1DF = pd.read_csv(args.inExclude[0], names=[listVar])
+                t1DF[listVar] = args.name1 + "_" + t1DF[listVar]
                 t2DF = pd.read_csv(args.inExclude[1], names=[listVar])
+                t2DF[listVar] = args.name2 + "_" + t2DF[listVar]
             else:
                 print("ERROR: -t must be transcript_id when more than one list provided.")
                 sys.exit()
