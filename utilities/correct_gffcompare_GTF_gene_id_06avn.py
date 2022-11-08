@@ -31,7 +31,21 @@ def getOptions():
         required=False,
         action="store_true",
         help=(
-            "When a reference gene_id was not associated, use original gene_id (Default: Replace with GFFcompare XLOC values)."
+            "When a reference gene_id was not associated, use original gene_id "
+            "(Default: Replace with GFFcompare XLOC values)."
+        )
+    )
+    parser.add_argument(
+        "-n",
+        "--use-gene_name",
+        dest="inName",
+        required=False,
+        action="store_true",
+        help=(
+            "When a ref_gene_id is not present in GFFcompare output for class "
+            "codes not in [s, x, y, i, p, r, u], check for ref_gene_name or "
+            "gene_name to use instead (Default: Only use ref_gene_id, else "
+            "replace with GFFcompare XLOC values or original gene_id if -k is used)."
         )
     )
     parser.add_argument(
@@ -91,28 +105,59 @@ def main():
         raw_attrs = xcrptDF.at[i, 'attribute']
         attr_list = [x.strip() for x in raw_attrs.strip().split(';')]
         ## previous gffcompare versions do not have "ref_gene"
-        exp_attrs = [x for x in attr_list if 'transcript_id' in x or 'gene_id' in x or 'xloc' in x]
-        transcript_id, orig_gene_id, ref_gene_id, xloc = np.nan, np.nan, np.nan, np.nan
+        exp_attrs = [x for x in attr_list if 'transcript_id' in x or 'gene_id' in x or 'xloc' in x or "gene_name" in x or "class_code" in x]
+        transcript_id, orig_gene_id, ref_gene_id, ref_gene_name, gene_name, xloc, classCode = np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
         for item in exp_attrs:
             if 'transcript_id' in item:
                 transcript_id = item.split('transcript_id')[-1].strip().strip('\"')
             elif 'ref_gene_id' in item:
                 ref_gene_id = item.split('ref_gene_id')[-1].strip().strip('\"')
+            elif 'ref_gene_name' in item:
+                ref_gene_name = item.split('ref_gene_name')[-1].strip().strip('\"')
+            elif 'gene_name' in item:
+                gene_name = item.split('gene_name')[-1].strip().strip('\"')
             elif 'gene_id' in item:
                 orig_gene_id = item.split('gene_id')[-1].strip().strip('\"')
             elif 'xloc' in item:
                 xloc = item.split('xloc')[-1].strip().strip('\"')
+            elif 'class_code' in item:
+                classCode = item.split('class_code')[-1].strip().strip('\"')
         if transcript_id is np.nan:
             print("WARNING: transcript_id not found in {}".format(xcrptDF[i]))
         keepOrigGene = args.inKeep
+        useGeneName = args.inName
         if ref_gene_id is np.nan:
-            if not keepOrigGene:
-                if xloc is np.nan:
-                    print("WARNING: no attribute for gene_id assignment (ref_gene_id or xloc) found in {}".format(xcrptDF[i]))
+            if not useGeneName:
+                if not keepOrigGene:
+                    if xloc is np.nan:
+                        print("WARNING: no attribute for gene_id assignment (ref_gene_id or xloc) found in {}".format(xcrptDF[i]))
+                    else:
+                        gene_id = xloc
                 else:
-                    gene_id = xloc
+                    gene_id = orig_gene_id
             else:
-                gene_id = orig_gene_id
+                if classCode not in ['s', 'x', 'y', 'i', 'p', 'r', 'u']:
+                    if ref_gene_name is np.nan and gene_name is np.nan:
+                        if not keepOrigGene:
+                            if xloc is np.nan:
+                                print("WARNING: no attribute for gene_id assignment (ref_gene_id or xloc) found in {}".format(xcrptDF[i]))
+                            else:
+                                gene_id = xloc
+                        else:
+                            gene_id = orig_gene_id
+                    else:
+                        if ref_gene_name is np.nan:
+                            gene_id = gene_name
+                        else:
+                            gene_id = ref_gene_name
+                else:
+                    if not keepOrigGene:
+                        if xloc is np.nan:
+                            print("WARNING: no attribute for gene_id assignment (ref_gene_id or xloc) found in {}".format(xcrptDF[i]))
+                        else:
+                            gene_id = xloc
+                    else:
+                        gene_id = orig_gene_id
         else:
             gene_id = ref_gene_id
         xcrptDF.at[i, 'gene_id'] = str(gene_id)
