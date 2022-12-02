@@ -50,7 +50,10 @@ def getOptions():
             "Cannot be used with exclusion list. The -i argument can be used "
             "twice to give two separate lists of transcript_id values. "
             "The first will be compared to transcript_1 and the second to "
-            "transcript_2 in the pairwise file."
+            "transcript_2 in the pairwise file. If no filtering is desired for "
+            "transcript_1 then provide the word 'all' for the first -i argument "
+            "and similarly for transcript_2 use the word 'all' for the second -i "
+            "argument."
         )
     )
     parser.add_argument(
@@ -124,10 +127,16 @@ def main():
             idDF = pd.read_csv(args.inInclude[0], names=[listVar])
         elif len(args.inInclude) == 2:
             if listVar == "transcript_id":
-                t1DF = pd.read_csv(args.inInclude[0], names=[listVar])
-                t1DF[listVar] = t1DF[listVar] + "_" + args.name1
-                t2DF = pd.read_csv(args.inInclude[1], names=[listVar])
-                t2DF[listVar] = t2DF[listVar] + "_" + args.name2
+                if args.inInclude[0] != "all":
+                    t1DF = pd.read_csv(args.inInclude[0], names=[listVar])
+                    t1DF[listVar] = t1DF[listVar] + "_" + args.name1
+                else:
+                    t1DF = tdDF[["transcript_1"]].rename(columns={"transcript_1": listVar})
+                if args.inInclude[1] != "all":
+                    t2DF = pd.read_csv(args.inInclude[1], names=[listVar])
+                    t2DF[listVar] = t2DF[listVar] + "_" + args.name2
+                else:
+                    t2DF = tdDF[["transcript_2"]].drop_duplicates().rename(columns={"transcript_2": listVar})
             else:
                 print("ERROR: -t must be transcript_id when more than one list provided.")
                 sys.exit()
