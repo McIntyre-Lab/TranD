@@ -192,7 +192,14 @@ def parse_args(print_help=False):
         required=False,
         help="Number of CPU cores to use for parallelization. Default: 1",
     )
-
+    parser.add_argument(
+        "--pairParallel",
+        dest="pair_parallel",
+        action="store_true",
+        default=False,
+        required=False,
+        help="For pairwise mode, parallelize by pair instead of by gene. Default: 1",
+    )
     parser.add_argument(
         "-f",
         "--force",
@@ -330,6 +337,7 @@ def cli():
                 args.consol_prefix,
                 consol_outfiles,
                 args.prefix,
+                args.pair_parallel,
             )
         finally:
             # Only for bedtools. Remove when bedtools are refactored out.
@@ -352,6 +360,7 @@ def cli():
                 args.name1,
                 args.name2,
                 args.prefix,
+                args.pair_parallel,
             )
         finally:
             # Only for bedtools. Remove when bedtools are refactored out.
