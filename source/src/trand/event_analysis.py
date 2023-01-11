@@ -1048,7 +1048,7 @@ def ea_pairwise(gene_id, data):
 
 def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                         complexity_only, skip_plots, skip_interm, consolidate,
-                        consol_prefix, consol_outfiles, output_prefix):
+                        consol_prefix, consol_outfiles, output_prefix, pair_parallel):
     """
     Pairwise or full gene transcript event analysis (TranD) on a single GTF file.
     """
@@ -1193,29 +1193,45 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                 P1GP.plot_one_gtf_pairwise(outdir, td_data, prefix=output_prefix)
     # Parallel processing
     else:
-        # Get lists for each process based on cpu_cores value
-        geneLists = chunks(list(genes.groups), cpu_cores)
-        # Generate multiprocess Pool with specified number of cpus
-        #     to loop through genes and calculate distances
-        pool = Pool(cpu_cores)
-        for genes in geneLists:
-            subset_data = data[data['gene_id'].isin(genes)]
-            if ea_mode == "gene":
-                pool.apply_async(loop_over_genes, args=(
-                        genes,
-                        out_fhs,
-                        "gene",
-                        keep_ir,
-                        subset_data
-                    ), callback=callback_gene_results)
-            else:
-                pool.apply_async(loop_over_genes, args=(
-                        genes,
+        if pair_parallel and ea_mode == "pairwise":
+            # Parallelize by transcript pair rather than gene if running pairwise mode
+            # Get lists of transcript pairs for each process based on cpu_cores value
+            pairsLists = chunks(list_pairs(data), cpu_cores)
+            # Generate multiprocess Pool with specified number of cpus
+            #     to loop through pairs and calculate distances
+            pool = Pool(cpu_cores)
+            for pairs in pairsLists:
+                pool.apply_async(loop_over_pairs, args=(
+                        pairs,
                         out_fhs,
                         "pairwise",
                         keep_ir,
-                        subset_data
+                        data
                     ), callback=callback_pair_results)
+        else:
+            # Get lists for each process based on cpu_cores value
+            geneLists = chunks(list(genes.groups), cpu_cores)
+            # Generate multiprocess Pool with specified number of cpus
+            #     to loop through genes and calculate distances
+            pool = Pool(cpu_cores)
+            for genes in geneLists:
+                subset_data = data[data['gene_id'].isin(genes)]
+                if ea_mode == "gene":
+                    pool.apply_async(loop_over_genes, args=(
+                            genes,
+                            out_fhs,
+                            "gene",
+                            keep_ir,
+                            subset_data
+                        ), callback=callback_gene_results)
+                else:
+                    pool.apply_async(loop_over_genes, args=(
+                            genes,
+                            out_fhs,
+                            "pairwise",
+                            keep_ir,
+                            subset_data
+                        ), callback=callback_pair_results)
         pool.close()
         pool.join()
         # Full Gene EA
@@ -1276,7 +1292,7 @@ def ea_pairwise_two_files(f1_data, f2_data, gene_id, name1, name2):
 
 
 def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexity_only, skip_plots,
-                      skip_interm, name1, name2, output_prefix):
+                      skip_interm, name1, name2, output_prefix, pair_parallel):
     """
     Pairwise transcript event analysis (TranD) on two GTF files.
     """
@@ -1399,24 +1415,44 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
                                        name2=name2, prefix=output_prefix)
     # Parallel processing
     else:
-        # Get lists for each process based on cpu_cores value
-        geneLists = chunks(gene_list, cpu_cores)
-        # Generate multiprocess Pool with specified number of cpus
-        #     to loop through genes and calculate distances
-        pool = Pool(cpu_cores)
-        for genes in geneLists:
-            subset_f1 = valid_f1[valid_f1['gene_id'].isin(genes)]
-            subset_f2 = valid_f2[valid_f2['gene_id'].isin(genes)]
-            pool.apply_async(loop_over_genes, args=(
-                    genes,
-                    out_fhs,
-                    "pairwise",
-                    True,
-                    subset_f1,
-                    subset_f2,
-                    name1,
-                    name2
-                ), callback=callback_pair_results)
+        if pair_parallel:
+            # Parallelize by transcript pair rather than gene if running pairwise mode
+            # Get lists of transcript pairs for each process based on cpu_cores value
+            pairsLists = chunks(list(list_pairs(valid_f1, valid_f2)), cpu_cores)
+            # Generate multiprocess Pool with specified number of cpus
+            #     to loop through pairs and calculate distances
+            pool = Pool(cpu_cores)
+            for pairs in pairsLists:
+                pool.apply_async(loop_over_pairs, args=(
+                        pairs,
+                        out_fhs,
+                        "pairwise",
+                        True,
+                        valid_f1,
+                        valid_f2,
+                        name1,
+                        name2
+                    ), callback=callback_pair_results)
+
+        else:
+            # Get lists for each process based on cpu_cores value
+            geneLists = chunks(gene_list, cpu_cores)
+            # Generate multiprocess Pool with specified number of cpus
+            #     to loop through genes and calculate distances
+            pool = Pool(cpu_cores)
+            for genes in geneLists:
+                subset_f1 = valid_f1[valid_f1['gene_id'].isin(genes)]
+                subset_f2 = valid_f2[valid_f2['gene_id'].isin(genes)]
+                pool.apply_async(loop_over_genes, args=(
+                        genes,
+                        out_fhs,
+                        "pairwise",
+                        True,
+                        subset_f1,
+                        subset_f2,
+                        name1,
+                        name2
+                    ), callback=callback_pair_results)
         pool.close()
         pool.join()
         ea_cat = pd.concat(ea_list, ignore_index=True)
@@ -1436,16 +1472,38 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
             P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1=name1,
                                        name2=name2, prefix=output_prefix)
 
+
+def list_pairs(f1_data, f2_data=None):
+    all_pairs = []
+    if f2_data is not None:
+        # make pairs for 2 GTF pairwise
+        for gene in f1_data["gene_id"].unique():
+            f1_transcripts = list(set(f1_data[f1_data["gene_id"] == gene]['transcript_id']))
+            f2_transcripts = list(set(f2_data[f2_data["gene_id"] == gene]['transcript_id']))
+            all_pairs = all_pairs + list(itertools.product(f1_transcripts, f2_transcripts))
+    else:
+        for gene in f1_data["gene_id"].unique():
+            transcripts = f1_data[f1_data["gene_id"] == gene].groupby("transcript_id")
+            transcript_groups = transcripts.groups
+            tx_data = {}
+            for transcript in transcript_groups:
+                transcript_df = f1_data[(f1_data["gene_id"] == gene) & (f1_data['transcript_id'] == transcript)]
+                tx_data[transcript] = transcript_df
+            all_pairs = all_pairs + list(itertools.combinations(tx_data.keys(), 2))
+    logger.debug("There are {} total transcript pairs: {}".format(len(all_pairs), all_pairs))
+    return all_pairs
+
+
 def loop_over_consol(data, consol_prefix, gene_list):
     """
     Loop over genes in given gene list and consolidate identical splice junctions
         within each gene
-    """        
+    """
     consol_data, consol_genes, keys = CONSOL.consolidate_transcripts(data, consol_prefix, gene_list)
     data_list.append(consol_data)
     keys_list.append(keys)
     return [consol_data, consol_genes, keys]
-    
+
 
 def loop_over_genes(gene_list, out_fhs, ea_mode, keep_ir, data1, data2=None,
                     name1=None, name2=None):
@@ -1536,3 +1594,62 @@ def loop_over_genes(gene_list, out_fhs, ea_mode, keep_ir, data1, data2=None,
             jct_data_cat = pd.concat(jct_data_list, ignore_index=True)
             td_data_cat = pd.concat(td_data_list, ignore_index=True)
             return [ea_data_cat, jct_data_cat, td_data_cat]
+
+
+def loop_over_pairs(pair_list, out_fhs, data1, keep_ir, data2=None, name1=None, name2=None):
+    """
+    Loop over transcript pairs in given pair list and process based on the files input:
+        1. If name1 and name2 provided then do 2 GTF analysis
+        2. If name1 and name2 NOT provided then do 1 GTF analysis pairwise
+    """
+    jct_data_list = []
+    # (1) name1 and name2 present, do 2 GTF analysis
+    if name1 is not None and name2 is not None:
+        ea_data_list = []
+        td_data_list = []
+        # Loop over pairs in a provided pair list
+        for pair in pair_list:
+            f1_data = data1[data1['transcript_id'] == pair[0]]
+            f2_data = data2[data2['transcript_id'] == pair[1]]
+            try:
+                ea_data, jct_data, td_data = ea_pairwise_two_files(
+                        f1_data,
+                        f2_data,
+                        "",
+                        name1,
+                        name2
+                    )
+            except ValueError as e:
+                logger.error(e)
+                continue
+            # Append output to list
+            ea_data_list.append(ea_data)
+            jct_data_list.append(jct_data)
+            td_data_list.append(td_data)
+        # Concatenate outputs
+        ea_data_cat = pd.concat(ea_data_list, ignore_index=True)
+        jct_data_cat = pd.concat(jct_data_list, ignore_index=True)
+        td_data_cat = pd.concat(td_data_list, ignore_index=True)
+        return [ea_data_cat, jct_data_cat, td_data_cat]
+    # (2) name1 and name2 not present, do 1 GTF analysis
+    else:
+        ea_data_list = []
+        td_data_list = []
+        # Loop over pairs in a provided pair list
+        for pair in pair_list:
+            pair_df = data1[
+                (data1['transcript_id'] == pair[0])
+                |(data1['transcript_id'] == pair[1])]
+            ea_data, jct_data, td_data = ea_pairwise(
+                "",
+                pair_df
+                )
+            # Append output to list
+            ea_data_list.append(ea_data)
+            jct_data_list.append(jct_data)
+            td_data_list.append(td_data)
+        # Concatenate outputs
+        ea_data_cat = pd.concat(ea_data_list, ignore_index=True)
+        jct_data_cat = pd.concat(jct_data_list, ignore_index=True)
+        td_data_cat = pd.concat(td_data_list, ignore_index=True)
+        return [ea_data_cat, jct_data_cat, td_data_cat]
