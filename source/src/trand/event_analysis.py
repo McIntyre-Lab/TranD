@@ -1101,8 +1101,6 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                                                                    genes.groups)
             # Parallel consolidation
             else:
-                # Get lists for each process based on cpu_cores value
-                geneLists = chunks(list(genes.groups), cpu_cores)
                 # Generate multiprocess Pool with specified number of cpus
                 #     to loop through genes and consolidate
                 # Create shared lists that can be accessed by multiple processes
@@ -1110,12 +1108,11 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                 keys_list = manager1.list()
                 # Create process pool
                 pool = Pool(cpu_cores)
-                for subset_gene in geneLists:
-                    subset_data = data[data['gene_id'].isin(subset_gene)]
+                for gene in list(genes.groups):
                     pool.apply_async(process_consol, args=(
-                            subset_data,
+                            data,
                             consol_prefix,
-                            subset_gene,
+                            [gene],
                             data_list,
                             keys_list
                         ))
@@ -1238,8 +1235,6 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                 pool.join()
             else:
                 logger.debug("Parallelizing by gene")
-                # Get lists for each process based on cpu_cores value
-                geneLists = chunks(list(genes.groups), cpu_cores)
                 # Generate multiprocess Pool with specified number of cpus
                 #     to loop through genes and calculate distances
                 # Create shared lists that can be accessed by multiple processes
@@ -1252,24 +1247,23 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                 result_managers["td_list"] = manager1.list()
                 # Create process pool
                 pool = Pool(cpu_cores)
-                for genes in geneLists:
-                    subset_data = data[data['gene_id'].isin(genes)]
+                for gene in list(genes.groups):
                     if ea_mode == "gene":
-                        pool.apply_async(loop_over_genes, args=(
-                                genes,
+                        pool.apply_async(process_gene, args=(
+                                gene,
                                 out_fhs,
                                 "gene",
                                 keep_ir,
-                                subset_data,
+                                data,
                                 result_managers,
                             ))
                     else:
-                        pool.apply_async(loop_over_genes, args=(
-                                genes,
+                        pool.apply_async(process_gene, args=(
+                                gene,
                                 out_fhs,
                                 "pairwise",
                                 keep_ir,
-                                subset_data,
+                                data,
                                 result_managers,
                             ))
                 pool.close()
@@ -1550,12 +1544,15 @@ def list_pairs(f1_data, f2_data=None):
     return all_pairs
 
 
-def process_consol(data, consol_prefix, gene_list, data_list, keys_list):
+def process_consol(data, consol_prefix, gene, data_list, keys_list):
     """
     Loop over genes in given gene list and consolidate identical splice junctions
         within each gene
+    NOTE: Currently gene must be a list with a single gene value in it since the
+        consolidation function utilizes a loop over a list of genes
     """
-    consol_data, consol_genes, keys = CONSOL.consolidate_transcripts(data, consol_prefix, gene_list)
+    subset_data = data[data["gene_id"] == gene[0]]
+    consol_data, consol_genes, keys = CONSOL.consolidate_transcripts(subset_data, consol_prefix, gene)
     data_list.append(consol_data)
     keys_list.append(keys)
 #    return [consol_data, consol_genes, keys]
@@ -1567,85 +1564,28 @@ def loop_over_genes(gene_list, out_fhs, ea_mode, keep_ir, data1, result_managers
     Loop over genes in given gene list and process based on the files input:
         1. If data1, data2, name1, and name2 provided then do 2 GTF analysis
         2. If data1 provided and not data2 then do 1 GTF analysis based on ea_mode
+    NOTE: This function should only be used for single CPU processing
     """
-    # (1) data2 present, do 2 GTF analysis
-    if data2 is not None:
-        # Loop over genes in a provided gene list
-        for gene in gene_list:
-            f1_data = data1[data1['gene_id'] == gene]
-            f2_data = data2[data2['gene_id'] == gene]
-            try:
-                ea_data, jct_data, td_data = ea_pairwise_two_files(
-                        f1_data,
-                        f2_data,
-                        gene,
-                        name1,
-                        name2
-                    )
-            except ValueError as e:
-                logger.error(e)
-                continue
-            # Append output to lists
-            result_managers["ea_list"].append(ea_data)
-            result_managers["jct_list"].append(jct_data)
-            result_managers["td_list"].append(td_data)
-
-        # Concatenate and return outputs if results managers are lists (from single cpu)
-        if type(result_managers["ea_list"]) is list:
-            ea_data_cat = pd.concat(result_managers["ea_list"], ignore_index=True)
-            jct_data_cat = pd.concat(result_managers["jct_list"], ignore_index=True)
-            td_data_cat = pd.concat(result_managers["td_list"], ignore_index=True)
-            return [ea_data_cat, jct_data_cat, td_data_cat]
-
-    # (2) data2 not present, do 1 GTF analysis
+    for gene in gene_list:
+        if ea_mode == "gene":
+            result_managers = process_gene(
+                    gene, out_fhs, ea_mode, keep_ir, data1, result_managers,
+                    data2, name1, name2)
+        else:
+            result_managers = process_gene(
+                    gene, out_fhs, ea_mode, keep_ir, data1, result_managers,
+                    data2, name1, name2)
+    if ea_mode == "gene":
+        er_data_cat = pd.concat(result_managers["er_list"], ignore_index=True)
+        ef_data_cat = pd.concat(result_managers["ef_list"], ignore_index=True)
+        jct_data_cat = pd.concat(result_managers["jct_list"], ignore_index=True)
+        ir_data_cat = sum(result_managers["ir_list"], [])     # concatenate list of ir transcript li>
+        return [er_data_cat, ef_data_cat, jct_data_cat, ir_data_cat]
     else:
-        # Loop over genes in a provided gene list
-        for gene in gene_list:
-            gene_df = data1[data1['gene_id'] == gene]
-            # Full Gene EA
-            if ea_mode == "gene":
-                try:
-                    er_data, ef_data, jct_data, ir_transcripts = do_ea_gene(
-                            gene_df,
-                            keep_ir=keep_ir
-                        )
-                except ValueError as e:
-                    logger.error(e)
-                    continue
-                # Append output to lists
-                result_managers["er_list"].append(er_data)
-                result_managers["ef_list"].append(ef_data)
-                result_managers["jct_list"].append(jct_data)
-                result_managers["ir_list"].append(ir_transcripts)
-
-            # Pairwise EA
-            else:
-                try:
-                    ea_data, jct_data, td_data = ea_pairwise(
-                            gene,
-                            gene_df
-                        )
-                except ValueError as e:
-                    logger.error(e)
-                    continue
-                # Append output to lists
-                result_managers["ea_list"].append(ea_data)
-                result_managers["jct_list"].append(jct_data)
-                result_managers["td_list"].append(td_data)
-
-        # Concatenate and return outputs if result managers are lists (from single cpu)
-        if type(result_managers["jct_list"]) is list:
-            if ea_mode == "gene":
-                er_data_cat = pd.concat(result_managers["er_list"], ignore_index=True)
-                ef_data_cat = pd.concat(result_managers["ef_list"], ignore_index=True)
-                jct_data_cat = pd.concat(result_managers["jct_list"], ignore_index=True)
-                ir_data_cat = sum(result_managers["ir_list"], [])     # concatenate list of ir transcript li>
-                return [er_data_cat, ef_data_cat, jct_data_cat, ir_data_cat]
-            else:
-                ea_data_cat = pd.concat(result_managers["ea_list"], ignore_index=True)
-                jct_data_cat = pd.concat(result_managers["jct_list"], ignore_index=True)
-                td_data_cat = pd.concat(result_managers["td_list"], ignore_index=True)
-                return [ea_data_cat, jct_data_cat, td_data_cat]
+        ea_data_cat = pd.concat(result_managers["ea_list"], ignore_index=True)
+        jct_data_cat = pd.concat(result_managers["jct_list"], ignore_index=True)
+        td_data_cat = pd.concat(result_managers["td_list"], ignore_index=True)
+        return [ea_data_cat, jct_data_cat, td_data_cat]
 
 
 def process_gene(gene, out_fhs, ea_mode, keep_ir, data1, result_managers,
@@ -1675,12 +1615,10 @@ def process_gene(gene, out_fhs, ea_mode, keep_ir, data1, result_managers,
         result_managers["jct_list"].append(jct_data)
         result_managers["td_list"].append(td_data)
 
-        # Concatenate and return outputs if results managers are lists (from single cpu)
-        if type(result_managers["ea_list"]) is list:
-            ea_data_cat = pd.concat(result_managers["ea_list"], ignore_index=True)
-            jct_data_cat = pd.concat(result_managers["jct_list"], ignore_index=True)
-            td_data_cat = pd.concat(result_managers["td_list"], ignore_index=True)
-            return [ea_data_cat, jct_data_cat, td_data_cat]
+        # Return result_managers dictionary object with new outputs appended
+        #   if results managers are lists (from single cpu)
+        if type(result_managers["jct_list"]) is list:
+            return result_managers
 
     # (2) data2 not present, do 1 GTF analysis
     else:
@@ -1716,19 +1654,10 @@ def process_gene(gene, out_fhs, ea_mode, keep_ir, data1, result_managers,
             result_managers["jct_list"].append(jct_data)
             result_managers["td_list"].append(td_data)
 
-        # Concatenate and return outputs if result managers are lists (from single cpu)
+        # Return result_managers dictionary object with new outputs appended
+        #   if results managers are lists (from single cpu)
         if type(result_managers["jct_list"]) is list:
-            if ea_mode == "gene":
-                er_data_cat = pd.concat(result_managers["er_list"], ignore_index=True)
-                ef_data_cat = pd.concat(result_managers["ef_list"], ignore_index=True)
-                jct_data_cat = pd.concat(result_managers["jct_list"], ignore_index=True)
-                ir_data_cat = sum(result_managers["ir_list"], [])     # concatenate list of ir transcript li>
-                return [er_data_cat, ef_data_cat, jct_data_cat, ir_data_cat]
-            else:
-                ea_data_cat = pd.concat(result_managers["ea_list"], ignore_index=True)
-                jct_data_cat = pd.concat(result_managers["jct_list"], ignore_index=True)
-                td_data_cat = pd.concat(result_managers["td_list"], ignore_index=True)
-                return [ea_data_cat, jct_data_cat, td_data_cat]
+            return result_managers
 
 def process_pair(pair, out_fhs, data1, keep_ir, result_managers,
                     data2=None, name1=None, name2=None):
