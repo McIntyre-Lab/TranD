@@ -31,6 +31,7 @@ for both 1GTF and 2 GTF.
 
 import itertools
 import pandas as pd
+import math
 from collections import namedtuple
 from dataclasses import dataclass
 from loguru import logger
@@ -1496,6 +1497,9 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
                 P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1=name1,
                                            name2=name2, prefix=output_prefix)
 
+def nCr(n, r):
+    f = math.factorial
+    return f(n) // f(r) // f(n-r)
 
 def list_pairs(f1_data, f2_data=None):
     if f2_data is not None:
@@ -1513,8 +1517,8 @@ def list_pairs(f1_data, f2_data=None):
                 yield pair
     else:
         # Calculate number of pairs that will be generated
-        total_pairs = (f1_data.groupby("gene_id")["transcript_id"].count() * (
-                f1_data.groupby("gene_id")["transcript_id"].count() - 1)/2).sum()
+        total_pairs= f1_data.groupby("gene_id")["transcript_id"].count().apply(
+                lambda x: nCr(x,2)).sum()
         logger.debug("There are {} total transcript pairs for the given genes".format(
                 total_pairs))
         for gene in f1_data["gene_id"].unique():
