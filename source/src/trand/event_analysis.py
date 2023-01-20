@@ -1052,7 +1052,7 @@ def ea_pairwise(gene_id, data):
 
 def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                         complexity_only, skip_plots, skip_interm, consolidate,
-                        consol_prefix, consol_outfiles, output_prefix, pair_parallel):
+                        consol_prefix, consol_outfiles, output_prefix):
     """
     Pairwise or full gene transcript event analysis (TranD) on a single GTF file.
     """
@@ -1209,7 +1209,7 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                     P1GP.plot_one_gtf_pairwise(outdir, td_data, prefix=output_prefix)
         # Parallel processing
         else:
-            if pair_parallel and ea_mode == "pairwise":
+            if ea_mode == "pairwise":
                 logger.debug("Parallelizing by pair")
                 # Parallelize by transcript pair rather than gene if running pairwise mode
                 # Generate multiprocess Pool with specified number of cpus
@@ -1219,7 +1219,6 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                 result_managers["ea_list"] = manager1.list()
                 result_managers["jct_list"] = manager1.list()
                 result_managers["td_list"] = manager1.list()
-                logger.debug(result_managers)
                 # Create process pool
                 pool = Pool(cpu_cores)
                 for pair in list_pairs(data):
@@ -1326,7 +1325,7 @@ def ea_pairwise_two_files(f1_data, f2_data, gene_id, name1, name2):
 
 
 def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexity_only, skip_plots,
-                      skip_interm, name1, name2, output_prefix, pair_parallel):
+                      skip_interm, name1, name2, output_prefix):
     """
     Pairwise transcript event analysis (TranD) on two GTF files.
     """
@@ -1461,50 +1460,25 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
             result_managers["ea_list"] = manager2.list()
             result_managers["jct_list"] = manager2.list()
             result_managers["td_list"] = manager2.list()
-            if pair_parallel:
-                logger.debug("Parallelizing by pair")
-                # Parallelize by transcript pair rather than gene if running pairwise mode
-                # Generate multiprocess Pool with specified number of cpus
-                #     to loop through pairs and calculate distances
-                # Create process pool
-                pool = Pool(cpu_cores)
-                for pair in list_pairs(valid_f1, valid_f2):
-                    pool.apply_async(process_pair, args=(
-                            pair,
-                            out_fhs,
-                            valid_f1,
-                            True,
-                            result_managers,
-                            valid_f2,
-                            name1,
-                            name2
-                        ))
-                pool.close()
-                pool.join()
-            else:
-                logger.debug("Parallelizing by gene")
-                # Get lists for each process based on cpu_cores value
-                geneLists = chunks(gene_list, cpu_cores)
-                # Generate multiprocess Pool with specified number of cpus
-                #     to loop through genes and calculate distances
-                # Create process pool
-                pool = Pool(cpu_cores)
-                for genes in geneLists:
-                    subset_f1 = valid_f1[valid_f1['gene_id'].isin(genes)]
-                    subset_f2 = valid_f2[valid_f2['gene_id'].isin(genes)]
-                    pool.apply_async(loop_over_genes, args=(
-                            genes,
-                            out_fhs,
-                            "pairwise",
-                            True,
-                            subset_f1,
-                            result_managers,
-                            subset_f2,
-                            name1,
-                            name2
-                        ))
-                pool.close()
-                pool.join()
+            logger.debug("Parallelizing by pair")
+            # Parallelize by transcript pair rather than gene if running pairwise mode
+            # Generate multiprocess Pool with specified number of cpus
+            #     to loop through pairs and calculate distances
+            # Create process pool
+            pool = Pool(cpu_cores)
+            for pair in list_pairs(valid_f1, valid_f2):
+                pool.apply_async(process_pair, args=(
+                        pair,
+                        out_fhs,
+                        valid_f1,
+                        True,
+                        result_managers,
+                        valid_f2,
+                        name1,
+                        name2
+                    ))
+            pool.close()
+            pool.join()
             ea_cat = pd.concat(result_managers["ea_list"], ignore_index=True)
             jct_cat = pd.concat(result_managers["jct_list"], ignore_index=True)
             td_cat = pd.concat(result_managers["td_list"], ignore_index=True)
@@ -1555,7 +1529,6 @@ def process_consol(data, consol_prefix, gene, data_list, keys_list):
     consol_data, consol_genes, keys = CONSOL.consolidate_transcripts(subset_data, consol_prefix, gene)
     data_list.append(consol_data)
     keys_list.append(keys)
-#    return [consol_data, consol_genes, keys]
 
 
 def loop_over_genes(gene_list, out_fhs, ea_mode, keep_ir, data1, result_managers,
