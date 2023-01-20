@@ -1512,14 +1512,14 @@ def list_pairs(f1_data, f2_data=None):
             for pair in itertools.product(f1_transcripts, f2_transcripts):
                 yield pair
     else:
-        # !!! need correct formula here
-#        total_pairs = f1_data.groupby("gene_id")["transcript_id"].count().sum() * (
-#                f1_data.groupby("gene_id")["transcript_id"].count().sum() - 1)/2
-#        logger.debug("There are {} total transcript pairs for the given genes".format(
-#                total_pairs))
+        # Calculate number of pairs that will be generated
+        total_pairs = (f1_data.groupby("gene_id")["transcript_id"].count() * (
+                f1_data.groupby("gene_id")["transcript_id"].count() - 1)/2).sum()
+        logger.debug("There are {} total transcript pairs for the given genes".format(
+                total_pairs))
         for gene in f1_data["gene_id"].unique():
             transcripts = f1_data[f1_data["gene_id"] == gene].groupby("transcript_id")
-            transcript_groups = transcripts.groups
+            transcript_groups  = transcripts.groups
             tx_data = {}
             for transcript in transcript_groups:
                 transcript_df = f1_data[(f1_data["gene_id"] == gene) & (f1_data['transcript_id'] == transcript)]
