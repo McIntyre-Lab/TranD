@@ -1498,14 +1498,25 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
 
 
 def list_pairs(f1_data, f2_data=None):
-    all_pairs = []
     if f2_data is not None:
         # make pairs for 2 GTF pairwise
+        # Calculate number of pairs that will be generated
+        total_pairs = (
+                f1_data["gene_id"].nunique()* f1_data.groupby("gene_id")["transcript_id"].nunique().sum()
+            )*(f2_data["gene_id"].nunique()* f2_data.groupby("gene_id")["transcript_id"].nunique().sum())
+        logger.debug("There are {} total transcript pairs for the given genes".format(
+                total_pairs))
         for gene in f1_data["gene_id"].unique():
             f1_transcripts = list(set(f1_data[f1_data["gene_id"] == gene]['transcript_id']))
             f2_transcripts = list(set(f2_data[f2_data["gene_id"] == gene]['transcript_id']))
-            all_pairs = all_pairs + list(itertools.product(f1_transcripts, f2_transcripts))
+            for pair in itertools.product(f1_transcripts, f2_transcripts):
+                yield pair
     else:
+        # !!! need correct formula here
+#        total_pairs = f1_data.groupby("gene_id")["transcript_id"].count().sum() * (
+#                f1_data.groupby("gene_id")["transcript_id"].count().sum() - 1)/2
+#        logger.debug("There are {} total transcript pairs for the given genes".format(
+#                total_pairs))
         for gene in f1_data["gene_id"].unique():
             transcripts = f1_data[f1_data["gene_id"] == gene].groupby("transcript_id")
             transcript_groups = transcripts.groups
@@ -1513,9 +1524,8 @@ def list_pairs(f1_data, f2_data=None):
             for transcript in transcript_groups:
                 transcript_df = f1_data[(f1_data["gene_id"] == gene) & (f1_data['transcript_id'] == transcript)]
                 tx_data[transcript] = transcript_df
-            all_pairs = all_pairs + list(itertools.combinations(tx_data.keys(), 2))
-    logger.debug("There are {} total transcript pairs: {}".format(len(all_pairs), all_pairs))
-    return all_pairs
+            for pair in itertools.combinations(tx_data.keys(), 2):
+                yield pair
 
 
 def process_consol(data, consol_prefix, gene, data_list, keys_list):
