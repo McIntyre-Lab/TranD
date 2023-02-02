@@ -11,8 +11,8 @@ Create a customizable upset plot using existing TranD output
 Can remove different types of Alternative Splicing
 """
 
-import plot_functions as PF
-import myio
+import trand.plot_functions as PF
+import io
 import argparse
 import numpy as np
 import pandas as pd
@@ -26,10 +26,10 @@ def getOptions():
     parser = argparse.ArgumentParser(description=
                                      "Make customizable plots using TranD ouput files "
                                      "with the option to ignore specific types of AS."
-                                     "Default plot will show " "all types of AS, 
+                                     "Default plot will show " "all types of AS," 
                                      "ignoring all wil show the number of pairs."
                                      "Input a trand output file (csv) (--indir), ignore options "
-                                     "(--ignore-3, --ignore-5 --ignoreAD, --ignoreAE, 
+                                     "(--ignore-3, --ignore-5 --ignoreAD, --ignoreAE, "
                                      "--ignoreIR, --ignoreNSNT), and output path (--outdir)."
                                      )
     
@@ -127,5 +127,12 @@ def getOptions():
     args = parser.parse_args()
     return args
 
-# Should this be here or in plot_functions?
-def plot_pairAS
+def main():
+        
+        return 'KSB'
+
+if __name__ == '__main__':
+    # Parse command line arguments
+    global args
+    args = getOptions()
+    main()

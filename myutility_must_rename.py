@@ -3,11 +3,12 @@
 """
 Created on Thu Jan 26 12:43:56 2023
 
-@author: knife
+@author: k.bankole
 """
 
-import plot_functions as PF
-import myio
+import trand.plot_functions as PF
+#import plot_functions as PF
+import trand.io
 import argparse
 import numpy as np
 import pandas as pd
@@ -248,7 +249,7 @@ def main():
 
     del35, delNSNT = check_args(args)
 
-    myio.prepare_outdir(args.outdir, args.force)
+    trand.io.prepare_outdir(args.outdir, args.force)
 
     inputDf = pd.read_csv(args.indir)
 
