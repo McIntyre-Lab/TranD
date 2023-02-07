@@ -12,6 +12,7 @@ import trand.io
 import argparse
 import numpy as np
 import pandas as pd
+from IPython.display import display
 
 # think about 1 vs 2 GTF
 # set arguments
@@ -142,6 +143,7 @@ def plot_pair_AS_upset_nt_box(td_data, legendOut, drop_5_3=False, drop_no_shared
             "prop_nt_diff": "Proportion\nNT Different",
         }
     )
+    
     if drop_5_3:
         # columns
         AScolsSubset = [
@@ -231,6 +233,8 @@ def plot_pair_AS_upset_nt_box(td_data, legendOut, drop_5_3=False, drop_no_shared
             )
         )
         PF.end_rtf(outFile)
+        
+        return pairAS
 
 
 def check_args(args):
@@ -260,8 +264,9 @@ def main():
         # remove no shared nucleotide
         print("lmaoz: " + str(delNSNT))
     else:
-        plot_pair_AS_upset_nt_box(inputDf, args.outdir)
+        tempDf = plot_pair_AS_upset_nt_box(inputDf, args.outdir)
 
+        print(tempDf)
     return 'KSB'
 
 
