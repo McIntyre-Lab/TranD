@@ -12,12 +12,6 @@ Can remove different types of Alternative Splicing
 """
 
 
-# removing all should just show a grey dot w number of pairs
-# default is to show all
-
-
-
-
 import trand.plot_functions as PF
 import trand.io
 import argparse
@@ -29,7 +23,6 @@ import matplotlib.pyplot as plt
 
 
 def getOptions():
-        
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="Make customizable plots using TranD ouput files "
                                      "with the option to ignore up to 4 types of AS."
@@ -120,10 +113,8 @@ def getOptions():
     return args
 
 
-# input is a data frame that comes from trand output i think?
-# move to plot functions?
 
-# input data frame, legend output directory, ignoreflags
+# input Dataframe (csv), Legend Output File Location, Ignore Column Flags
 def plot_custom_plot(in_Df, legendOut, ignore_dict):
     pairAS = in_Df[
         [
@@ -179,9 +170,6 @@ def plot_custom_plot(in_Df, legendOut, ignore_dict):
         }
     )
 
-    # set index, sets the index of the dataframe to whatever you want, can have multiple indices
-
-    # check that there's >1 columns, print error then exit()
     # Create Column Subset based on user arguments
     AScol = []
 
@@ -236,7 +224,6 @@ def ignore_dict_builder(args):
 def prefix_builder(args, ignore_dict):
         prefix = ""
         ignore_list = [args.ignore_3, args.ignore_5, args.ignore_AD, args.ignore_AE, args.ignore_IR, args.ignore_NSNT]
-        #turns the iterator into basically a list starting at index 1
         
         if ignore_list[0]:
                 prefix = prefix + "ignore_3_variation_"
@@ -303,6 +290,8 @@ def main():
     if num_ignore > 4:
             exit("ERROR: There must be 2+ types of AS to plot. You can ignore"
                  " up to 4 types of AS.")
+            
+    # input csv to dataframe        
     inputDf = pd.read_csv(args.indir)
 
     trand.io.prepare_outdir(args.outdir, args.force)
