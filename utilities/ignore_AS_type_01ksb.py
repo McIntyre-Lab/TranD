@@ -292,7 +292,7 @@ def main():
                  " up to 4 types of AS.")
             
     # input csv to dataframe        
-    inputDf = pd.read_csv(args.indir, encoding="utf-8")
+    inputDf = pd.read_csv(args.indir)
 
     trand.io.prepare_outdir(args.outdir, args.force)
 
