@@ -1498,8 +1498,11 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
                                            name2=name2, prefix=output_prefix)
 
 def nCr(n, r):
-    f = math.factorial
-    return f(n) // f(r) // f(n-r)
+    if n == 1:
+        return 0
+    else:
+        f = math.factorial
+        return f(n) // f(r) // f(n-r)
 
 def list_pairs(f1_data, f2_data=None):
     if f2_data is not None:
