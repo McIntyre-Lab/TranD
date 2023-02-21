@@ -188,7 +188,6 @@ def plot_custom_plot(in_Df, legendOut, ignore_dict):
             ],
         )
         
-# i dont think this is actually true... fix
     legendText = (
         "Number of transcript pairs with the specified types of alternative "
         "splicing indicated by the black dots below the histogram of transcript "
