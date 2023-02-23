@@ -24,6 +24,15 @@ import matplotlib.pyplot as plt
 
 
 def getOptions():
+    """
+            Function to receive user input via argparse.    
+
+        Returns
+        -------
+        args : ARGPARSE ARGUMENTS
+                User input via argparse.
+
+        """
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="Make customizable plots using TranD ouput files "
                                      "with the option to ignore up to 4 types of AS."
