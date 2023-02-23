@@ -116,8 +116,27 @@ def getOptions():
 
 
 # input Dataframe (csv), Legend Output File Location, Ignore Column Flags
-def plot_custom_plot(in_Df, legendOut, ignore_dict):
-    pairAS = in_Df[
+def plotCustomPlot(inDf, legendOut, ignoreDct):
+    """
+        Function to plot an upset plot based on TranD output with customizable
+        AS options.
+
+        Parameters
+        ----------
+        in_Df : DATAFRAME
+                INPUT DATAFRAME TO PLOT.
+        legendOut : STRING
+                CONTAINS PATH TO PLACE LEGEND OUTPUT.
+        ignoreDct : DICTIONARY
+                THE DICTIONARY CONTAINING THE AS TYPES AS A STRING AND WHETHER TO IGNORE THEM.
+
+        Returns
+        -------
+        None.
+
+    """
+        
+    pairAS = inDf[
         [
             "gene_id",
             "transcript_1",
@@ -172,15 +191,15 @@ def plot_custom_plot(in_Df, legendOut, ignore_dict):
     )
 
     # Create Column Subset based on user arguments
-    AScol = []
+    aSCols = []
 
-    for column_header, ignore_flag in ignore_dict.items():
+    for column_head, ignore_flag in ignoreDct.items():
         if not ignore_flag[0]:
-            AScol.append(column_header)
+            aSCols.append(column_head)
 
-    if (len(AScol) > 1):
+    if (len(aSCols) > 1):
         PF.plot_upset(
-            pairAS.set_index(AScol),
+            pairAS.set_index(aSCols),
             "",
             [
                 "# NT Different",
@@ -202,55 +221,104 @@ def plot_custom_plot(in_Df, legendOut, ignore_dict):
     )
 
     with open(legendOut, "w") as outFile:
-        start_rtf(outFile)
+        startRtf(outFile)
         outFile.write(
             r"\b Figure. Alternative splicing between pairs of transcripts \b0"
             r" \line {}".format(
                 legendText
             )
         )
-        end_rtf(outFile)
+        endRtf(outFile)
 
 
 # Builds a dictionary based on user input to customize plot headers
-def ignore_dict_builder(args):
-    i_dict = {"3' Variation": [args.ignore_3], "5' Variation": [args.ignore_5], "Alt. Exon": [args.ignore_AE],
+def buildIgnoreDct(args):
+    """
+        Support function to build an ignore dictionary based on user input from argparse.
+
+        Parameters
+        ----------
+        args : ARGPARSE ARGUMENTS
+                THE ARGS FROM ARGPARSE.
+
+        Returns
+        -------
+        iDct : DICTIONARY
+                THE DICTIONARY CONTAINING THE AS TYPES AS A STRING AND WHETHER TO IGNORE THEM.
+
+        """
+    iDct = {"3' Variation": [args.ignore_3], "5' Variation": [args.ignore_5], "Alt. Exon": [args.ignore_AE],
               "Alt. Donor/Acceptor": [args.ignore_AD], "Intron Retention": [args.ignore_IR],
               "No Shared NT": [args.ignore_NSNT]}
 
-    return i_dict
+    return iDct
 
 # uses args to build file name
-def prefix_builder(args, ignore_dict):
+def buildPrefix(args, ignoreDct):
+        """
+        Support function to build a prefix for the output file name.
+
+        Parameters
+        ----------
+        args : ARGPARSE ARGUMENTS
+                THE ARGS FROM ARGPARSE.
+        ignoreDct : TYPE
+                THE DICTIONARY CONTAINING THE AS TYPES AND WHETHER TO IGNORE THEM.
+
+        Returns
+        -------
+        prefix : STRING
+                A PREFIX FOR THE FILE NAME CONTAINING WHICH AS TYPES WERE IGNORED.
+
+        """
         prefix = ""
-        ignore_list = [args.ignore_3, args.ignore_5, args.ignore_AD, args.ignore_AE, args.ignore_IR, args.ignore_NSNT]
+        ignoreLst = [args.ignore_3, args.ignore_5, args.ignore_AD, args.ignore_AE, args.ignore_IR, args.ignore_NSNT]
         
-        if ignore_list[0]:
+        if ignoreLst[0]:
                 prefix = prefix + "ignore_3_variation_"
-        if ignore_list[1]:
+        if ignoreLst[1]:
                 prefix = prefix + "ignore_5_variation_"
-        if ignore_list[2]:
+        if ignoreLst[2]:
                 prefix = prefix + "ignore_Alt_Donor_Acceptor_"
-        if ignore_list[3]:
+        if ignoreLst[3]:
                 prefix = prefix + "ignore_Alt_Exon_"
-        if ignore_list[4]:
+        if ignoreLst[4]:
                 prefix = prefix + "ignore_Intron_Retention_"
-        if ignore_list[5]:
+        if ignoreLst[5]:
                 prefix = prefix + "ignore_No_Shared_Nucleotides_"
                 
         return prefix
 
 #creates legend text
-def start_rtf(outFile):
+def startRtf(outFile):
     """
-    Open RTF file
-    """
+        Support function used to output legend text as RTF file.
+        
+        Parameters
+        ----------
+        outFile : FILE
+                OUTPUT RTF FILE.
+
+        Returns
+        -------
+        None.
+
+        """
     outFile.write(
         r"{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fswiss\fcharset0 Arial;}}"
     )
 
 
-def get_citation():
+def getCitation():
+    """
+        Support function used to output legend text as RTF file.
+
+        Returns
+        -------
+        str
+                RETURNS CITATION.
+
+        """
     return (
         r" \line \line 1. Nanni, A., Titus-McQuillan, J., Moskalenko, O., "
         r"Pardo-Palacios, F., Liu, Z., Conesa, A., Rogers, R. L., & McIntyre, "
@@ -261,33 +329,43 @@ def get_citation():
     )
 
 
-def end_rtf(outFile):
+def endRtf(outFile):
     """
-    Close RTF file
-    """
+        Support function used to output legend text as RTF file.
+
+        Parameters
+        ----------
+        outFile : FILE
+                OUTPUT RTF FILE.
+
+        Returns
+        -------
+        None.
+
+        """
     outFile.write(
         r" Transcriptome analyses performed by TranD [1]. {}"
         r" \line \line \line \i Disclaimer:  While automated captions of "
         r"TranD have been carefully constructed, users are advised to verify "
         r"caption contents before use and report any errors to the TranD "
         r"github.\i0 ".format(
-            get_citation()
+            getCitation()
         )
     )
     outFile.write(r"}\n\x00")     
 
 #run the program
 def main():
-    ignore_dictionary = ignore_dict_builder(args)
+    ignoreDictionary = buildIgnoreDct(args)
     
     # check that there are >1 columns selected
-    num_ignore = 0
-    for ignore_flag in ignore_dictionary.values():
+    num_ignored = 0
+    for ignore_flag in ignoreDictionary.values():
             if ignore_flag[0]:
-                    num_ignore += 1
+                    num_ignored += 1
 
 
-    if num_ignore > 4:
+    if num_ignored > 4:
             exit("ERROR: There must be 2+ types of AS to plot. You can ignore"
                  " up to 4 types of AS.")
             
@@ -300,11 +378,11 @@ def main():
     input_file_name = os.path.splitext(os.path.basename(args.indir))[0]
 
     # prefix and ouput file prep
-    output_file_name = "custom_{}{}".format(prefix_builder(args, ignore_dictionary), input_file_name)
+    output_file_name = "custom_{}{}".format(buildPrefix(args, ignoreDictionary), input_file_name)
     output_rtf_file = "{}/{}.rtf".format(args.outdir, output_file_name)
     
     #plot and output
-    plot_custom_plot(inputDf, output_rtf_file, ignore_dictionary)
+    plotCustomPlot(inputDf, output_rtf_file, ignoreDictionary)
     plt.savefig("{}/{}.png".format(args.outdir, output_file_name), dpi=600, format="png")
     
     return 'KSB'
