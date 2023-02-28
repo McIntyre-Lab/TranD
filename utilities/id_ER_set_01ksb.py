@@ -12,6 +12,7 @@ Identify possible ER sets using TRAND ouptput of a 1 or 2 GTF pairwise file
 """
 
 import argparse
+import pandas as pd
 
 def getOptions():
         """
@@ -75,11 +76,50 @@ def getOptions():
 # -> new dataframe: t1, t2, flag_ER (with all IR removed if excludeIR = true)
 
 
+
+
+def identifyERSet(inDf, intronRetention):
+        
+        pairERInfo = inDf[
+                [
+                        "gene_id",
+                        "transcript_1",
+                        "transcript_2",
+                        "prop_ER_similar",
+                        "flag_IR"
+                ]
+        ].copy()
+
+        if (not intronRetention):
+                invlvdInIR = (pd.concat(pairERInfo[pairERInfo["flag_IR"==1]["transcript_1"]], 
+                                                   pairERInfo[pairERInfo["flag_IR"==1]["transcript_2"]]).unique())
+                exRegInfo = pairERInfo[(pairERInfo["flag_IR"] == 0)]
+        # delete this post-testing
+        else:
+                invlvdInIR = pd.DataFrame({"boing": [1,2]})
+                
+        outDf = invlvdInIR
+        return outDf, pairERInfo
+
 def main():
+        
+        # input csv to dataframe
+        inputDf = pd.read_csv(args.indir)
+        
         return 'KSB'
 
 if __name__ == '__main__':
         global args
         args = getOptions()
+        
+        inputDf = pd.read_csv(args.indir)
+
+        if (args.includeIR == 'Y'):
+                outputDf,pairER = identifyERSet(inputDf, True)
+        elif (args.includeIR == 'N'):
+                outputDf,pairER = identifyERSet(inputDf, False)
+                
+        
+        output = pd.DataFrame.to_csv(outputDf)
         main()
         
