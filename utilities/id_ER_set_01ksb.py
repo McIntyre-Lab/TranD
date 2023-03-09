@@ -14,9 +14,9 @@ Identify possible ER sets using TRAND ouptput of a 1 or 2 GTF pairwise file
 import argparse
 import pandas as pd
 from collections import Counter
-from pathlib import Path
 import os
 import trand.io
+import time
 
 def getOptions():
         """
@@ -97,17 +97,18 @@ def identifyERSet(inDf, intronRetention):
                 print ("IR Retention excluded")
                 # working, stores all IR flaggged xscripts in a bin ->
                 invlvdInIR = pd.concat([pairERInfo[pairERInfo['flag_IR']==1]['transcript_1'],
-                                       pairERInfo[pairERInfo['flag_IR']==1]['transcript_2']]).unique()
-                                
-                print (invlvdInIR)
+                                       pairERInfo[pairERInfo['flag_IR']==1]['transcript_2']]
+                                       ).unique().copy().tolist()
+        
                 # working, -> remove all IR xscripts from working dataframe
                 exRegInfo = pairERInfo[pairERInfo["flag_IR"] == 0]
         else: # just here for testing purposes, will remove
                 print("IR Retention included")
+                exRegInfo = pairERInfo
 
 
 
-        exRegInfo = pairERInfo[
+        exRegInfo = exRegInfo[
                 [
                         'transcript_1',
                         'transcript_2',
@@ -165,9 +166,11 @@ def identifyERSet(inDf, intronRetention):
                         for lst in exRegSetLst:
                                 if (xscript1 in lst) and (xscript1 not in removedXscriptLst):
                                         lftvrXscriptLst.remove(xscript1)
+                                        if (not intronRetention and xscript1 in invlvdInIR): invlvdInIR.remove(xscript1)
                                         removedXscriptLst.append(xscript1)
                                 if (xscript2 in lst) and (xscript2 not in removedXscriptLst):
                                         lftvrXscriptLst.remove(xscript2)
+                                        if (not intronRetention and xscript2 in invlvdInIR): invlvdInIR.remove(xscript2)
                                         removedXscriptLst.append(xscript2)
                 else:
                         continue
@@ -175,6 +178,14 @@ def identifyERSet(inDf, intronRetention):
         # add leftovers as their own er set
         for leftover in lftvrXscriptLst:
                 exRegSetLst.append([leftover])
+                if (not intronRetention and leftover in invlvdInIR): invlvdInIR.remove(leftover)
+
+        
+        # if there is something is in invlvd, add as own set
+        if invlvdInIR:
+                for irModel in invlvdInIR:
+                        exRegSetLst.append([irModel])        
+        
         
         #DONE!!! all thats left is: configuring the data into proper table format in main
         #and ir stuff....
@@ -219,8 +230,6 @@ def createOutputDf(mstrERSetLst, mstrXscriptLst):
         for er_set in mstrERSetLst:
                 xscript_counter.append(dict(Counter(er_set)))
         
-        # print(xscript_counter)
-
         loopCnt = 0;
         for counter in xscript_counter:
                 setSize = len(counter)
@@ -240,46 +249,34 @@ def createOutputDf(mstrERSetLst, mstrXscriptLst):
 
 def main():
         
-        # input csv to dataframe
-        inputDf = pd.read_csv(args.indir)
-        # if (args.includeIR == 'Y'):
-        #         setTest = identifyERSet(inputDf, True)
-        #         outputTest = createOutputDf(setTest)
-        # elif (args.includeIR == 'N'):
-        #         setTest = identifyERSet(inputDf, False)
-        #         outputTest = createOutputDf(setTest)
-
-                
-        # print("complete")
         
-        return 'KSB'
-
-# dont forget to move all of this to main()
-if __name__ == '__main__':
-        global args
-        args = getOptions()
         
         inputDf = pd.read_csv(args.indir)
+
+        inputDf = pd.read_csv(args.indir)
+        input_file_name = os.path.splitext(os.path.basename(args.indir))[0]
         
+        tic = time.perf_counter()
         if (args.includeIR == 'Y'):
                 erSetLst, allXscriptLst = identifyERSet(inputDf, True)
                 outputTest = createOutputDf(erSetLst, allXscriptLst)
+                output_file_name = "{}/{}_ER_set_output.csv".format(args.outdir, input_file_name)
         elif (args.includeIR == 'N'):
                 erSetLst, allXscriptLst = identifyERSet(inputDf, False)
                 outputTest = createOutputDf(erSetLst, allXscriptLst)
-                
-        print("complete")
-        
-        
-        input_file_name = os.path.splitext(os.path.basename(args.indir))[0]
-        
-        output_file_name = "{}/{}_ER_set_output.csv".format(args.outdir, input_file_name)
+                output_file_name = "{}/{}_ER_set_output_noIR.csv".format(args.outdir, input_file_name)
+
+        toc = time.perf_counter()       
+        print(f"complete, operation took {toc-tic:0.4f} seconds")
                 
         trand.io.prepare_outdir(args.outdir, args.force)
 
         outputTest.to_csv(output_file_name,index=False)
-        
-        
-        #output = pd.DataFrame.to_csv(outputDf)
-        #main()
+                        
+        return 'KSB'
+
+if __name__ == '__main__':
+        global args
+        args = getOptions()
+        main()
         
