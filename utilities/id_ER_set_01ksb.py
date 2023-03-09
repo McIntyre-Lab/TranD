@@ -13,6 +13,10 @@ Identify possible ER sets using TRAND ouptput of a 1 or 2 GTF pairwise file
 
 import argparse
 import pandas as pd
+from collections import Counter
+from pathlib import Path
+import os
+import trand.io
 
 def getOptions():
         """
@@ -95,7 +99,7 @@ def identifyERSet(inDf, intronRetention):
                 invlvdInIR = pd.concat([pairERInfo[pairERInfo['flag_IR']==1]['transcript_1'],
                                        pairERInfo[pairERInfo['flag_IR']==1]['transcript_2']]).unique()
                                 
-                
+                print (invlvdInIR)
                 # working, -> remove all IR xscripts from working dataframe
                 exRegInfo = pairERInfo[pairERInfo["flag_IR"] == 0]
         else: # just here for testing purposes, will remove
@@ -191,7 +195,7 @@ def iterateAllERSet(xscript1, xscript2, erSetLst):
                 
         return [xscript1,xscript2]
 
-def createOutputDf(msterERSetLst, mstrXscriptLst):
+def createOutputDf(mstrERSetLst, mstrXscriptLst):
         
         # ok so,,,, the output headers are the following: model_ID, set_num, num_pairs, num_in_set
         # model_ID = model_ID, extracted from each list in the master list
@@ -204,21 +208,34 @@ def createOutputDf(msterERSetLst, mstrXscriptLst):
                                      'xscript_model_id', 
                                      'ER_set_num', 
                                      'xscript_freq_in_set', 
-                                     'ER_set_size'])
-        
-        
-        # add model IDs to dataframe
-        outDf['xscript_model_id'] = mstrXscriptLst                
+                                     'ER_set_size'])            
         
         # for every er set (list), we need to get:
                 # the number of times a transcript appears
                 # the number of transcripts in the lst
-                #
+                # the index of the set
         
-        for er_set in msterERSetLst:
-                break;
+        xscript_counter = []
+        for er_set in mstrERSetLst:
+                xscript_counter.append(dict(Counter(er_set)))
         
-        return  outDf
+        # print(xscript_counter)
+
+        loopCnt = 0;
+        for counter in xscript_counter:
+                setSize = len(counter)
+                for key, value in counter.items():
+                        tmpDf = pd.DataFrame(
+                                {'xscript_model_id':[key], 
+                                 'ER_set_num':[loopCnt+1], 
+                                 'xscript_freq_in_set':[value], 
+                                 'ER_set_size':[setSize]})
+                        
+                        outDf = pd.concat([outDf,tmpDf])
+                loopCnt+=1
+        
+        print(outDf)
+        return outDf
         
 
 def main():
@@ -250,12 +267,19 @@ if __name__ == '__main__':
         elif (args.includeIR == 'N'):
                 erSetLst, allXscriptLst = identifyERSet(inputDf, False)
                 outputTest = createOutputDf(erSetLst, allXscriptLst)
-
                 
         print("complete")
         
         
+        input_file_name = os.path.splitext(os.path.basename(args.indir))[0]
+        
+        output_file_name = "{}/{}_ER_set_output.csv".format(args.outdir, input_file_name)
+                
+        trand.io.prepare_outdir(args.outdir, args.force)
+
+        outputTest.to_csv(output_file_name,index=False)
+        
         
         #output = pd.DataFrame.to_csv(outputDf)
-        main()
+        #main()
         
