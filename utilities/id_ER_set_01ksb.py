@@ -75,9 +75,6 @@ def getOptions():
 # necessary columns: t1, t2, flag_IR, prop_ER
 # -> new dataframe: t1, t2, flag_ER (with all IR removed if excludeIR = true)
 
-
-
-
 def identifyERSet(inDf, intronRetention):
         
         # unfiltered input dataframe, chopped to neccessary info
@@ -93,6 +90,7 @@ def identifyERSet(inDf, intronRetention):
         
         
         if (not intronRetention): 
+                print ("IR Retention excluded")
                 # working, stores all IR flaggged xscripts in a bin ->
                 invlvdInIR = pd.concat([pairERInfo[pairERInfo['flag_IR']==1]['transcript_1'],
                                        pairERInfo[pairERInfo['flag_IR']==1]['transcript_2']]).unique()
@@ -121,7 +119,7 @@ def identifyERSet(inDf, intronRetention):
         
         exRegInfo = exRegInfo.rename(columns={"prop_ER_similar":"flag_ER_full_overlap"})
         
-        # this could end up being useful??
+        # this could end up being useful?? it is useful!!
         xscriptMstrLst = pd.concat([exRegInfo['transcript_1'], exRegInfo['transcript_2']]).unique()
         
         lftvrXscriptLst = xscriptMstrLst.copy().tolist()
@@ -132,7 +130,6 @@ def identifyERSet(inDf, intronRetention):
         # structure: each row is a dictionary
         # key = column header (same for every row)
         # value = specific row value
-        
         # access flag_ER: row['flag_ER_full_overlap']
         # access xscript: row['transcript_1'] or row['transcript_2']
         iterDict = exRegInfo.to_dict('records')
@@ -140,7 +137,6 @@ def identifyERSet(inDf, intronRetention):
         # contains all exon region sets        
         exRegSetLst = []      
 
-        # counting the number of exon region sets
         for row in iterDict:
                 fullOvlpFlag = row['flag_ER_full_overlap']
                 xscript1 = row['transcript_1']
@@ -155,11 +151,13 @@ def identifyERSet(inDf, intronRetention):
                         else:
                                 newLst = iterateAllERSet(xscript1, xscript2, exRegSetLst)
                                 
+                                #returns none if already in an existing set
                                 if newLst is not None:
                                         exRegSetLst.append(newLst)
                                         
                         # removes transcript pair from leftover list (new variable name!!)
                         # removes if not already removed
+                        # perhaps: move this to an already existing loop if possible, to save time
                         for lst in exRegSetLst:
                                 if (xscript1 in lst) and (xscript1 not in removedXscriptLst):
                                         lftvrXscriptLst.remove(xscript1)
@@ -176,7 +174,7 @@ def identifyERSet(inDf, intronRetention):
         
         #DONE!!! all thats left is: configuring the data into proper table format in main
         #and ir stuff....
-        return exRegSetLst
+        return exRegSetLst, xscriptMstrLst
 
 # change name
 # description here
@@ -193,13 +191,53 @@ def iterateAllERSet(xscript1, xscript2, erSetLst):
                 
         return [xscript1,xscript2]
 
+def createOutputDf(msterERSetLst, mstrXscriptLst):
+        
+        # ok so,,,, the output headers are the following: model_ID, set_num, num_pairs, num_in_set
+        # model_ID = model_ID, extracted from each list in the master list
+        # set_num = index + 1, index from master list
+        # num_pairs = count of model_ID in that specific set
+        # num_in_set = size of list, doesnt change between. ok. this shouldnt be bad
+        
+        # set up output dataframe w proper headers
+        outDf = pd.DataFrame(columns=[
+                                     'xscript_model_id', 
+                                     'ER_set_num', 
+                                     'xscript_freq_in_set', 
+                                     'ER_set_size'])
+        
+        
+        # add model IDs to dataframe
+        outDf['xscript_model_id'] = mstrXscriptLst                
+        
+        # for every er set (list), we need to get:
+                # the number of times a transcript appears
+                # the number of transcripts in the lst
+                #
+        
+        for er_set in msterERSetLst:
+                break;
+        
+        return  outDf
+        
+
 def main():
         
         # input csv to dataframe
         inputDf = pd.read_csv(args.indir)
+        # if (args.includeIR == 'Y'):
+        #         setTest = identifyERSet(inputDf, True)
+        #         outputTest = createOutputDf(setTest)
+        # elif (args.includeIR == 'N'):
+        #         setTest = identifyERSet(inputDf, False)
+        #         outputTest = createOutputDf(setTest)
+
+                
+        # print("complete")
         
         return 'KSB'
 
+# dont forget to move all of this to main()
 if __name__ == '__main__':
         global args
         args = getOptions()
@@ -207,9 +245,12 @@ if __name__ == '__main__':
         inputDf = pd.read_csv(args.indir)
         
         if (args.includeIR == 'Y'):
-                setTest = identifyERSet(inputDf, True)
+                erSetLst, allXscriptLst = identifyERSet(inputDf, True)
+                outputTest = createOutputDf(erSetLst, allXscriptLst)
         elif (args.includeIR == 'N'):
-                setTest = identifyERSet(inputDf, False)
+                erSetLst, allXscriptLst = identifyERSet(inputDf, False)
+                outputTest = createOutputDf(erSetLst, allXscriptLst)
+
                 
         print("complete")
         
