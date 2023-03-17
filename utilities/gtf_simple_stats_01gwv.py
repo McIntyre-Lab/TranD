@@ -26,6 +26,7 @@ def getOptions():
         "-g1",
         "--gtf1",
         dest="gtf1",
+        required=True,
         help="Input one GTF file to calculate the pairs of transcripts in the one," 
              "otherwise it will be used to find the pairs between the first inputted" 
              "GTF file and the second"
@@ -74,20 +75,15 @@ def pairs2(gtf1_df, gtf2_df):
     return (total_pairs_between)
 
 def main():
-   
+    #Convert gtf to df and stats calculated
+    gtf1_df = validate_input(args.gtf1)
+    gtf1_genes = gtf1_df.loc[:, 'gene_id'].nunique()
+    gtf1_transcripts = gtf1_df.loc[:, 'transcript_id'].nunique()
+    gtf1_chromosomes = gtf1_df.loc[:, 'seqname'].nunique()
+    gtf1_pairs = pairs1(gtf1_df)
 
-    if args.gtf1 is not None:
-        #If a gtf file is inputed, it is converted to df and stats calculated
-        gtf1_df = validate_input(args.gtf1)
-        gtf1_genes = gtf1_df.loc[:, 'gene_id'].nunique()
-        gtf1_transcripts = gtf1_df.loc[:, 'transcript_id'].nunique()
-        gtf1_chromosomes = gtf1_df.loc[:, 'seqname'].nunique()
-        gtf1_pairs = pairs1(gtf1_df)
-    else:
-       exit("No gtf1 file inputed. Must input files starting with gtf1, then gtf2 if applicable.") 
-        
     if args.gtf1 is not None and args.gtf2 is None:
-        #Iff one gtf file is inputed, the stats are added to output csv
+        #Iff one gtf file is input, the stats are added to output csv
         single_info = [gtf1_genes, gtf1_transcripts, gtf1_chromosomes, gtf1_pairs]
         single_info_df = pd.DataFrame(data = single_info, index = ['genes', 'transcripts', 'chromosomes', 'pairs'])
         single_info_df.to_csv(args.outFile, header=False) 
