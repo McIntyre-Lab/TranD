@@ -265,13 +265,13 @@ def checkAllERSGrps(xscript1, xscript2, ersGrpLst):
 
 
 
-def createOutputDf(mstrersGrpLst, mstrXscriptLst):
+def createOutputDf(mstrERSGrpLst, mstrXscriptLst):
         """
         Converts list output from idSharedExonRegion into a Dataframe
         
         Parameters
         ----------
-        mstrersGrpLst : LIST (OF LISTS)
+        mstrERSGrpLst : LIST (OF LISTS)
                 INPUT OF ALL ERS GROUPS IN LIST FORM (A LIST OF LISTS).
         mstrXscriptLst : LIST (OF STRINGS)
                 INPUT OF ALL XSCRIPT IDs IN LIST FORM.
@@ -292,7 +292,7 @@ def createOutputDf(mstrersGrpLst, mstrXscriptLst):
         
         # Create a counter for each ERS Group for displaying xscript freq
         counterLst = [] # List of Counters for each ERS Group
-        for ers_grp in mstrersGrpLst:
+        for ers_grp in mstrERSGrpLst:
                 counterLst.append(dict(Counter(ers_grp)))
         
         # Note on the counter: it is a dictionary
@@ -339,7 +339,7 @@ def main():
                 ersGrpLst, allXscriptLst = idSharedExonRegion(inDf=inputDf, intronRetention=True)
                 
                 # Converts above into a df to be output to csv
-                outputDf = createOutputDf(mstrersGrpLst=ersGrpLst, mstrXscriptLst=allXscriptLst)
+                outputDf = createOutputDf(mstrERSGrpLst=ersGrpLst, mstrXscriptLst=allXscriptLst)
                 
                 # Configure descriptive file name
                 output_file_name = "{}/{}_ERS_grp_output.csv".format(args.outdir, input_file_name)
@@ -347,7 +347,7 @@ def main():
         elif (args.includeIR.upper() == 'N'):
                 ersGrpLst, allXscriptLst = idSharedExonRegion(inDf=inputDf, intronRetention=False)
                 
-                outputDf = createOutputDf(mstrersGrpLst=ersGrpLst, mstrXscriptLst=allXscriptLst)
+                outputDf = createOutputDf(mstrERSGrpLst=ersGrpLst, mstrXscriptLst=allXscriptLst)
                 
                 output_file_name = "{}/{}_ERS_grp_output_noIR.csv".format(args.outdir, input_file_name)
 
