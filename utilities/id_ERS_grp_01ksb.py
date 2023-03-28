@@ -9,6 +9,8 @@ Created on Thu Feb 23 14:43:44 2023
 """
 Identify possible exon region shared (ERS) groups using TRAND ouptput of a 1 or 2 GTF pairwise file 
 
+Version 1.0 (Last Updated 3/21)
+
 """
 
 import argparse
