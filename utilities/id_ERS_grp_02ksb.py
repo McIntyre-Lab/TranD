@@ -15,6 +15,7 @@ Version 2
 
 import argparse
 import pandas as pd
+import numpy as np
 from collections import Counter
 import os
 import trand.io
@@ -273,6 +274,70 @@ def checkAllERSGrps(xscript1, xscript2, ersGrpLst):
         return [xscript1,xscript2]
 
 
+def findNonolpPair(mstrERSGrpLst, anomalyXscript):
+        """
+        
+        Helper function to create piped string containing a list of
+        non-overlapping transcripts for the output dataframe
+
+        Parameters
+        ----------
+        mstrERSGrpLst : LIST (OF LISTS)
+                INPUT OF ALL ERS GROUPS IN LIST FORM (A LIST OF LISTS).
+        anomalyXscript : STRING
+                THE SPECIFIC XSCRIPT THAT HAS AT LEAST ONE NONOVERLAPPING PAIR
+                WITHIN THE GROUP
+
+        Returns
+        -------
+        outputString : STRING
+                PIPED LIST OF TRANSCRIPTS IN STRING FORM TO BE OUTPUT TO DATAFRAME.
+
+        """
+        # Anomaly = Transcript that is in a group but does not pair with one of the xscripts
+                # in the group
+        
+        # Contains all unique Xscript Pairs that have the anomaly in them 
+        # if the anomaly is on an odd index you want it and the one before
+        # index = even or 0 you want it and the one after                        
+        comparisonSet = set(())
+        
+        # Just a set of all unique transcripts in the group with the anomaly
+        allXscriptSet = set(())       
+        
+
+        
+        # look for the group that contains the anomaly
+        for ers_grp in mstrERSGrpLst:
+                
+                # found it! 
+                if anomalyXscript in ers_grp:
+                        
+                        # loop through the group containing the anomaly
+                        for index, model in enumerate(ers_grp): 
+                                
+                                # grab just the xscript ID
+                                xscript = model.split('/')[1]
+                                
+                                # creating list of unique xscripts
+                                allXscriptSet.add(xscript)
+                                
+                                # if at the anomaly, add it and the one
+                                # before/after the comparison set
+                                # essentially grabs the transcript pair
+                                # makes sure to grab just the xscript (remove geneid)
+                                if (model == anomalyXscript):
+                                        comparisonSet.add(xscript)
+                                        if index%2 == 0:
+                                                comparisonSet.add(ers_grp[index+1].split('/')[1])
+                                        else:
+                                                comparisonSet.add(ers_grp[index-1].split('/')[1])
+        
+        # Create piped list of all xscripts that do not overlap with the anomaly
+        outputString = "|".join(allXscriptSet - comparisonSet)
+        
+        return outputString
+
 
 def createOutputDf(mstrERSGrpLst, mstrXscriptLst):
         """
@@ -298,8 +363,8 @@ def createOutputDf(mstrERSGrpLst, mstrXscriptLst):
                                      'gene_id',
                                      'xscript_model_id', 
                                      'ERS_grp_num', 
-                                     'xscript_freq_in_grp', 
-                                     'ERS_grp_size'])
+                                     'ERS_grp_size',
+                                     'flag_nonolp_pair'])
         
         # Create a counter for each ERS Group for displaying xscript freq
         counterLst = [] # List of Counters for each ERS Group
@@ -311,7 +376,7 @@ def createOutputDf(mstrERSGrpLst, mstrXscriptLst):
         
         # Used for counting which group we are on, for displaying ERS Group num
         grpCount = 0;
-        
+                
         # Loop through all of the counters (1 for each group)
         for counter in counterLst:
                 grpSize = len(counter)
@@ -321,16 +386,32 @@ def createOutputDf(mstrERSGrpLst, mstrXscriptLst):
                         
                         #Split xscript_id into an array, gene (0) and transcript (1)
                         keySplit = key.split('/')
+                        geneID = keySplit[0]
+                        xscriptID = keySplit[1]
                         
+                        # flag if there is a pair with no overlap in the group
+                        flag_nonolp = value < grpSize - 1
+                        
+                        # string containing possible list of nonoverlapping transcripts
+                        nonolpXscript = None
+                        
+                        # if flage true, run function to create list of nonoverlapping transcripts
+                        if flag_nonolp: 
+                                nonolpXscript = findNonolpPair(mstrERSGrpLst=mstrERSGrpLst, anomalyXscript=key)
+                        
+                        # Create Row of DF With All Necessary Info
                         tmpDf = pd.DataFrame(
-                                {'gene_id':[keySplit[0]],
-                                 'xscript_model_id':[keySplit[1]], 
+                                {'gene_id':[geneID],
+                                 'xscript_model_id':[xscriptID], 
                                  'ERS_grp_num':[grpCount+1], 
-                                 'xscript_freq_in_grp':[value], 
-                                 'ERS_grp_size':[grpSize]})
+                                 'ERS_grp_size':[grpSize],
+                                 'flag_nonolp_pair':['1' if flag_nonolp else '0'],
+                                 'nonolp_xscript_id':[nonolpXscript]
+                                 })
                         
-                        # Append xscript to the outDf
+                        # Append Row to the Output Dataframe
                         outDf = pd.concat([outDf,tmpDf])
+
                 grpCount+=1
         
         return outDf
@@ -377,10 +458,10 @@ def main():
         # Output Df to CSV
         outputDf.to_csv(output_file_name,index=False)
                         
-        return ersGrpLst
+        return ersGrpLst, outputDf
 
 if __name__ == '__main__':
         global args
         args = getOptions()
-        test = main()
+        test, test2 = main()
         
