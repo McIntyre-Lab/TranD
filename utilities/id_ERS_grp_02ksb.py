@@ -9,13 +9,12 @@ Created on Thu Feb 23 14:43:44 2023
 """
 Identify possible exon region shared (ERS) groups using TRAND ouptput of a 1 or 2 GTF pairwise file 
 
-Version 2
+Version 2 (3/30/2023)
 
 """
 
 import argparse
 import pandas as pd
-import numpy as np
 from collections import Counter
 import os
 import trand.io
@@ -294,8 +293,8 @@ def findNonolpPair(mstrERSGrpLst, anomalyXscript):
                 PIPED LIST OF TRANSCRIPTS IN STRING FORM TO BE OUTPUT TO DATAFRAME.
 
         """
-        # Anomaly = Transcript that is in a group but does not pair with one of the xscripts
-                # in the group
+        # Anomaly = Transcript that is in a group but does not have overlap 
+        # with one of the xscripts in the group
         
         # Contains all unique Xscript Pairs that have the anomaly in them 
         # if the anomaly is on an odd index you want it and the one before
@@ -319,13 +318,13 @@ def findNonolpPair(mstrERSGrpLst, anomalyXscript):
                                 # grab just the xscript ID
                                 xscript = model.split('/')[1]
                                 
-                                # creating list of unique xscripts
+                                # creating list of all unique xscripts
                                 allXscriptSet.add(xscript)
                                 
                                 # if at the anomaly, add it and the one
                                 # before/after the comparison set
                                 # essentially grabs the transcript pair
-                                # makes sure to grab just the xscript (remove geneid)
+                                # makes sure to grab just the xscript (removes geneid)
                                 if (model == anomalyXscript):
                                         comparisonSet.add(xscript)
                                         if index%2 == 0:
@@ -395,7 +394,7 @@ def createOutputDf(mstrERSGrpLst, mstrXscriptLst):
                         # string containing possible list of nonoverlapping transcripts
                         nonolpXscript = None
                         
-                        # if flage true, run function to create list of nonoverlapping transcripts
+                        # if flag true, run function to create list of nonoverlapping transcripts
                         if flag_nonolp: 
                                 nonolpXscript = findNonolpPair(mstrERSGrpLst=mstrERSGrpLst, anomalyXscript=key)
                         
