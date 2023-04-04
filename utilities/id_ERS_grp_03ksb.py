@@ -124,7 +124,7 @@ def idSharedExonRegion(inDf, intronRetention):
                 irSspctLst = pd.concat([basicERInfoDf[basicERInfoDf['flag_IR']==1]['transcript_1'],
                                        basicERInfoDf[basicERInfoDf['flag_IR']==1]['transcript_2']]
                                        ).unique().copy().tolist()
-        
+                
                 # Removes all IR involved xscripts from working dataframe
                 erInfoDf = basicERInfoDf[basicERInfoDf["flag_IR"] == 0]
         
@@ -133,6 +133,7 @@ def idSharedExonRegion(inDf, intronRetention):
                 print("IR Retention included")
                 erInfoDf = basicERInfoDf
                 irSspctLst = None
+
 
 
 
@@ -229,7 +230,8 @@ def idSharedExonRegion(inDf, intronRetention):
         # in their own group
         if irSspctLst:
                 for irModel in irSspctLst:
-                        exRegShrdGrpLst.append([irModel])        
+                        # "EXCLUDED" indicates it is alone due to IR, used for ERS output
+                        exRegShrdGrpLst.append([irModel, "EXCLUDED"])        
         
         
         return exRegShrdGrpLst, unqXscriptLst
@@ -362,13 +364,18 @@ def createXscriptOutDf(mstrERSGrpLst, mstrXscriptLst):
                                      'gene_id',
                                      'xscript_model_id', 
                                      'ERS_grp_num', 
-                                     'ERS_grp_size',
                                      'flag_nonolp_pair'])
         
         # Create a counter for each ERS Group for displaying xscript freq
         counterLst = [] # List of Counters for each ERS Group
         for ers_grp in mstrERSGrpLst:
-                counterLst.append(dict(Counter(ers_grp)))
+                if ("EXCLUDED" in ers_grp):
+                        ers_grp.remove("EXCLUDED")
+                        counterLst.append(dict(Counter(ers_grp)))
+                        ers_grp.append("EXCLUDED")
+                else:
+                        counterLst.append(dict(Counter(ers_grp)))
+
         
         # Note on the counter: it is a dictionary
         # key = xscript ID, value = the number of times the xscript appears in the group
@@ -382,7 +389,6 @@ def createXscriptOutDf(mstrERSGrpLst, mstrXscriptLst):
                 
                 # Loop through all of the xscripts in each counter and add their info to the Df
                 for key, value in counter.items():
-                        
                         #Split xscript_id into an array, gene (0) and transcript (1)
                         keySplit = key.split('/')
                         geneID = keySplit[0]
@@ -403,7 +409,6 @@ def createXscriptOutDf(mstrERSGrpLst, mstrXscriptLst):
                                 {'gene_id':[geneID],
                                  'xscript_model_id':[xscriptID], 
                                  'ERS_grp_num':[grpCount+1], 
-                                 'ERS_grp_size':[grpSize],
                                  'flag_nonolp_pair':['1' if flag_nonolp else '0'],
                                  'nonolp_xscript_id':[nonolpXscript]
                                  })
@@ -418,23 +423,94 @@ def createXscriptOutDf(mstrERSGrpLst, mstrXscriptLst):
 def createERSOutDf(mstrERSGrpLst, mstrXscriptLst):
         
          
-        # Set up empty Df with proper headers
         # Come up with ideas for other things to add to the columns
+        # oh boy oh boy oh boy i have to restructure this whole thing
+        # Ideas:
+        # Minimum number of nucleotides different between pairs
+        # Average number of nucleotides different between pairs
+        # Max number of nucleotides different between pairs
+        # Proportion of IR in set
+        # Sets per gene
+        # Number of exon regions
+        
+        # msterERSGrpList: a list of lists of transcripts        
+        
+        # is flag_IR_exclusion a good idea? should it be in transcript focused or here?
+        # IR exclusion: alone in an ERS group due to IR
+        
+        # Set up empty Df with proper headers
         outDf = pd.DataFrame(columns=[
-                                     'gene_id',
                                      'ERS_grp_num', 
-                                     'ERS_grp_size', 
+                                     'ERS_grp_size',
+                                     'gene_id',
+                                     'xscripts',
                                      'flag_nonolp_pair',
-                                     'flag_IR'])
+                                     'flag_IR_exclusion'])
+        
+        # ERS groups but all the xscripts are unique
+        unqERSLst = []
+        for ers_grp in mstrERSGrpLst:
+                unqERSLst.append(set(ers_grp))
+        
+        counterLst = []
+        for ers_grp in mstrERSGrpLst:
+                if ("EXCLUDED" in ers_grp):
+                        ers_grp.remove("EXCLUDED")
+                        counterLst.append(dict(Counter(ers_grp)))
+                        ers_grp.append("EXCLUDED")
+                else:
+                        counterLst.append(dict(Counter(ers_grp)))
         
         
-        # move ERS_grp_size here
-        # waga baga. boo.
+        # Short little thing to detect if a set has nonolp pairs
+        nonOlpDict = {}
+        countGrp = 0
+        for counter in counterLst:
+                if ("EXCLUDED" in counter):
+                        del counter["EXCLUDED"]
+                for key, value in counter.items():
+                        if (value < len(counter) - 1):
+                                nonOlpDict.update({countGrp: True})
+                                break;
+                        else:
+                                nonOlpDict.update({countGrp: False})
+                countGrp += 1
+
         
+        grpCount = 0
+        for ers_set in unqERSLst:
+                
+                grpCount += 1
+                
+                flag_IR_exclusion = False
+                if ("EXCLUDED" in ers_set):
+                        ers_set.remove("EXCLUDED")
+                        flag_IR_exclusion = True
+
+                grpSize = len(ers_set)
+
+                geneID = list(ers_set)[0].split("/")[0]
+                
+                xscriptLst = set()
+                for xscript in ers_set:
+                        xscriptLst.add(xscript.split("/")[1])
+                
+                xscriptStr = "|".join(list(xscriptLst))                
+                
+                tmpDf = pd.DataFrame(
+                        {'ERS_grp_num':[grpCount],
+                         'ERS_grp_size':[grpSize],
+                         'gene_id':[geneID],
+                         'xscripts':[xscriptStr],
+                         'flag_nonolp_pair':['1' if nonOlpDict.get(grpCount - 1) else '0'],
+                         'flag_IR_exclusion':['1' if flag_IR_exclusion else '0']
+                        })
+                
+                outDf = pd.concat([outDf, tmpDf])
+        
+                
         return outDf
         
-        
-
 # Run the Program
 def main():
         
@@ -480,11 +556,12 @@ def main():
         
         # Output Df to CSV
         xscriptDf.to_csv(xscript_output_file,index=False)
+        ersDf.to_csv(ers_output_file,index=False)
                         
-        return ersGrpLst, xscriptDf
+        return ersGrpLst, xscriptDf, ersDf
 
 if __name__ == '__main__':
         global args
         args = getOptions()
-        test, test2 = main()
+        test, test2, test3 = main()
         
