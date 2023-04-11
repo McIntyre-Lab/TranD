@@ -9,7 +9,7 @@ Created on Thu Feb 23 14:43:44 2023
 """
 Identify possible exon region shared (ERS) groups using TRAND ouptput of a 1 or 2 GTF pairwise file 
 
-Version 3 (Include Nucleotide Math)
+Version 3 (Output 2-3 Files)
 
 """
 
@@ -79,25 +79,6 @@ def getOptions():
 
 
 
-# IDEA: create a list matching the size of exRegShrdWhatever with any pertinent info (number exon regions, 
-# number nucleotides, etc)
-
-# idk where to put this but the output is now the list of xscripts and...
-# another list: index matching the ERS group num. values = a list of important numbers (some numbers may be in list format)!
-# this feels like a giant mess but imma make it work
-
-# list structure so far:
-        # {[num_exon_regions, [list of num nucleotide diff], [list of all prop nucleotide diff]]}
-        # so imptInfo[0][0] gives the num exon regions that set 1 has
-        # imptInfo[3][2][1] will give the second prop nucleotide diff of the 4th set
-        # and so forth
-        # imptInfo[i][0] = num exon regions
-        # imptInfo[i][1] = list of num nucleotide diff
-        # imptInfo[i][2] = list of prop nucleotide diff
-        # and so forth as I add more imptInfo
-# each index of curly brackets is another set
-
-
 def idSharedExonRegion(inDf, intronRetention):
         """
         
@@ -127,7 +108,6 @@ def idSharedExonRegion(inDf, intronRetention):
                         "gene_id",
                         "transcript_1",
                         "transcript_2",
-                        "num_ER_shared",
                         "prop_ER_similar",
                         "flag_IR"
                 ]
@@ -206,6 +186,7 @@ def idSharedExonRegion(inDf, intronRetention):
                 fullOvlpFlag = row['flag_ER_full_overlap']
                 xscript1 = row['transcript_1']
                 xscript2 = row['transcript_2']
+                irFlag = row['flag_IR']
                 
                 # If there is an exon region with full overlap, do the following:
                 if (fullOvlpFlag):
