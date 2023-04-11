@@ -9,7 +9,7 @@ Created on Thu Feb 23 14:43:44 2023
 """
 Identify possible exon region shared (ERS) groups using TRAND ouptput of a 1 or 2 GTF pairwise file 
 
-Version 3 (Output 2 Files)
+Version 3 (Output 2-3 Files)
 
 """
 
@@ -113,6 +113,9 @@ def idSharedExonRegion(inDf, intronRetention):
                 ]
         ].copy()
         
+        # Create a list of all unqiue genes (idek if this will be useful)        
+        unqGeneLst = pd.concat([basicERInfoDf['gene_id']]).unique()
+        
         # Concatenate Gene_ID onto transcript for later extraction
         basicERInfoDf['transcript_1'] = basicERInfoDf['gene_id'] + "/" + basicERInfoDf['transcript_1']
         basicERInfoDf['transcript_2'] = basicERInfoDf['gene_id'] + "/" + basicERInfoDf['transcript_2']
@@ -134,15 +137,19 @@ def idSharedExonRegion(inDf, intronRetention):
                 erInfoDf = basicERInfoDf
                 irSspctLst = None
 
+        
+        irXscripts = pd.concat([basicERInfoDf[basicERInfoDf['flag_IR']==1]['transcript_1'],
+                                 basicERInfoDf[basicERInfoDf['flag_IR']==1]['transcript_2']]
+                                ).unique().copy().tolist()
 
 
-
-        # Chop IR info and gene_ID out of working Df (no longer necessary)
+        # Chop gene_ID out of working Df (no longer necessary)
         erInfoDf = erInfoDf[
                 [
                         'transcript_1',
                         'transcript_2',
-                        'prop_ER_similar'
+                        'prop_ER_similar',
+                        'flag_IR'
                 ]
         ]        
                 
@@ -157,15 +164,11 @@ def idSharedExonRegion(inDf, intronRetention):
         erInfoDf = erInfoDf.rename(columns={"prop_ER_similar":"flag_ER_full_overlap"})
         
         
-        
-        # Create the master list of all unique xscripts    
+        # Create the master list of all unique xscripts and genes
         unqXscriptLst = pd.concat([erInfoDf['transcript_1'], erInfoDf['transcript_2']]).unique()
         
         # Create a list of leftover xscripts for checking that all xscripts are appear in an ERS group at least once
-        lftvrLst = unqXscriptLst.copy().tolist()
-        
-        # Create a list to check against leftover xscripts to assure only correct xscripts are removed
-        removedXscriptLst = []                
+        lftvrLst = unqXscriptLst.copy().tolist()               
         
         # Convert Df to dictionary for faster iteration
         # Dictionary structure: 
@@ -183,36 +186,45 @@ def idSharedExonRegion(inDf, intronRetention):
                 fullOvlpFlag = row['flag_ER_full_overlap']
                 xscript1 = row['transcript_1']
                 xscript2 = row['transcript_2']
+                irFlag = row['flag_IR']
                 
                 # If there is an exon region with full overlap, do the following:
                 if (fullOvlpFlag):
+                        
+                        # if (irFlag):
+                        #         xscript1 = "IR/" + xscript1
+                        #         xscript2 = "IR/" + xscript2
                         
                         # If its the first group (master list is empty), just create a new group with
                         # no looping 
                         if not exRegShrdGrpLst:
                                 exRegShrdGrpLst.append([xscript1, xscript2])
+                                
+                                if xscript1 in lftvrLst: lftvrLst.remove(xscript1)
+                                if xscript2 in lftvrLst: lftvrLst.remove(xscript2)
+                                
+                                if irSspctLst:
+                                        if xscript1 in irSspctLst: irSspctLst.remove(xscript1)
+                                        if xscript2 in irSspctLst: irSspctLst.remove(xscript2)
                         
                         # Otherwise check all other lists to see if that xscript is already in an existing group
                         else:
                                 newLst = checkAllERSGrps(xscript1=xscript1, 
                                                        xscript2=xscript2, 
-                                                       ersGrpLst=exRegShrdGrpLst)
+                                                       ersGrpLst=exRegShrdGrpLst,
+                                                       lftvrLst=lftvrLst,
+                                                       irSspctLst=irSspctLst)
                                 
                                 # Above function call returns none if already in an existing group
                                 if newLst is not None:
                                         exRegShrdGrpLst.append(newLst)
                                         
-                        # Removes transcript pair from leftover list if not already removed
-                        # Potential Improvement: move this to an already existing loop if possible, to save time
-                        for lst in exRegShrdGrpLst:
-                                if (xscript1 in lst) and (xscript1 not in removedXscriptLst):
-                                        lftvrLst.remove(xscript1)
-                                        if (not intronRetention and xscript1 in irSspctLst): irSspctLst.remove(xscript1)
-                                        removedXscriptLst.append(xscript1)
-                                if (xscript2 in lst) and (xscript2 not in removedXscriptLst):
-                                        lftvrLst.remove(xscript2)
-                                        if (not intronRetention and xscript2 in irSspctLst): irSspctLst.remove(xscript2)
-                                        removedXscriptLst.append(xscript2)
+                                        if xscript1 in lftvrLst: lftvrLst.remove(xscript1)
+                                        if xscript2 in lftvrLst: lftvrLst.remove(xscript2)
+                                        
+                                        if irSspctLst:
+                                                if xscript1 in irSspctLst: irSspctLst.remove(xscript1)
+                                                if xscript2 in irSspctLst: irSspctLst.remove(xscript2)
                 
                 # Otherwise do nothing
                 else:
@@ -230,14 +242,12 @@ def idSharedExonRegion(inDf, intronRetention):
         # in their own group
         if irSspctLst:
                 for irModel in irSspctLst:
-                        # "EXCLUDED" indicates it is alone due to IR, used for ERS output
-                        exRegShrdGrpLst.append([irModel, "EXCLUDED"])        
-        
-        
-        return exRegShrdGrpLst, unqXscriptLst
+                        exRegShrdGrpLst.append([irModel])        
+                        
+        return exRegShrdGrpLst, unqXscriptLst, unqGeneLst, irXscripts
 
 # i know there's an S but it really does not make sense if its not plural
-def checkAllERSGrps(xscript1, xscript2, ersGrpLst):
+def checkAllERSGrps(xscript1, xscript2, ersGrpLst, lftvrLst, irSspctLst):
         """
         Loops over all exisiting ERS groups to see if an xscript should be added to an existing group.
         Otherwise creates a new ERS group.
@@ -258,13 +268,21 @@ def checkAllERSGrps(xscript1, xscript2, ersGrpLst):
         
         """
         
-        for lst in ersGrpLst:
+        # if its in a list (after append) and not already removed, remove it
+        for lst in ersGrpLst: 
                 for xscript in lst:
-                        
                         # Add xscript1 and 2 to group if already in an existing one, end loop.
+                        # Remove xscripts from leftovers and irSspct if intron retention is excluded
                         if xscript1 == xscript or xscript2 == xscript:
                                 lst.append(xscript1)
                                 lst.append(xscript2)
+                                
+                                if xscript1 in lftvrLst: lftvrLst.remove(xscript1)
+                                if xscript2 in lftvrLst: lftvrLst.remove(xscript2)
+                                
+                                if irSspctLst:
+                                        if xscript1 in irSspctLst: irSspctLst.remove(xscript1)
+                                        if xscript2 in irSspctLst: irSspctLst.remove(xscript2)
                                 return;
                                 
                         # Otherwise keep looping
@@ -306,17 +324,13 @@ def findNonolpPair(mstrERSGrpLst, anomalyXscript):
         # Just a set of all unique transcripts in the group with the anomaly
         allXscriptSet = set(())       
         
-
-        
         # look for the group that contains the anomaly
-        for ers_grp in mstrERSGrpLst:
-                
+        for ers_grp in mstrERSGrpLst:                
                 # found it! 
                 if anomalyXscript in ers_grp:
                         
                         # loop through the group containing the anomaly
-                        for index, model in enumerate(ers_grp): 
-                                
+                        for index, model in enumerate(ers_grp):
                                 # grab just the xscript ID
                                 xscript = model.split('/')[1]
                                 
@@ -328,6 +342,7 @@ def findNonolpPair(mstrERSGrpLst, anomalyXscript):
                                 # essentially grabs the transcript pair
                                 # makes sure to grab just the xscript (removes geneid)
                                 if (model == anomalyXscript):
+                                        
                                         comparisonSet.add(xscript)
                                         if index%2 == 0:
                                                 comparisonSet.add(ers_grp[index+1].split('/')[1])
@@ -369,11 +384,6 @@ def createXscriptOutDf(mstrERSGrpLst, mstrXscriptLst):
         # Create a counter for each ERS Group for displaying xscript freq
         counterLst = [] # List of Counters for each ERS Group
         for ers_grp in mstrERSGrpLst:
-                if ("EXCLUDED" in ers_grp):
-                        ers_grp.remove("EXCLUDED")
-                        counterLst.append(dict(Counter(ers_grp)))
-                        ers_grp.append("EXCLUDED")
-                else:
                         counterLst.append(dict(Counter(ers_grp)))
 
         
@@ -420,7 +430,7 @@ def createXscriptOutDf(mstrERSGrpLst, mstrXscriptLst):
         
         return outDf
 
-def createERSOutDf(mstrERSGrpLst, mstrXscriptLst):
+def createERSOutDf(mstrERSGrpLst, mstrXscriptLst, irXscripts):
         
          
         # Come up with ideas for other things to add to the columns
@@ -435,8 +445,7 @@ def createERSOutDf(mstrERSGrpLst, mstrXscriptLst):
         
         # msterERSGrpList: a list of lists of transcripts        
         
-        # is flag_IR_exclusion a good idea? should it be in transcript focused or here?
-        # IR exclusion: alone in an ERS group due to IR
+
         
         # Set up empty Df with proper headers
         outDf = pd.DataFrame(columns=[
@@ -445,29 +454,24 @@ def createERSOutDf(mstrERSGrpLst, mstrXscriptLst):
                                      'gene_id',
                                      'xscripts',
                                      'flag_nonolp_pair',
-                                     'flag_IR_exclusion'])
+                                     'flag_IR_in_set',
+                                     'num_IR_xscripts',
+                                     'prop_IR'])
         
         # ERS groups but all the xscripts are unique
         unqERSLst = []
         for ers_grp in mstrERSGrpLst:
                 unqERSLst.append(set(ers_grp))
         
+        # Short little thing to detect if a set has nonolp pairs
         counterLst = []
         for ers_grp in mstrERSGrpLst:
-                if ("EXCLUDED" in ers_grp):
-                        ers_grp.remove("EXCLUDED")
-                        counterLst.append(dict(Counter(ers_grp)))
-                        ers_grp.append("EXCLUDED")
-                else:
-                        counterLst.append(dict(Counter(ers_grp)))
+                counterLst.append(dict(Counter(ers_grp)))
         
         
-        # Short little thing to detect if a set has nonolp pairs
         nonOlpDict = {}
         countGrp = 0
         for counter in counterLst:
-                if ("EXCLUDED" in counter):
-                        del counter["EXCLUDED"]
                 for key, value in counter.items():
                         if (value < len(counter) - 1):
                                 nonOlpDict.update({countGrp: True})
@@ -482,11 +486,6 @@ def createERSOutDf(mstrERSGrpLst, mstrXscriptLst):
                 
                 grpCount += 1
                 
-                flag_IR_exclusion = False
-                if ("EXCLUDED" in ers_set):
-                        ers_set.remove("EXCLUDED")
-                        flag_IR_exclusion = True
-
                 grpSize = len(ers_set)
 
                 geneID = list(ers_set)[0].split("/")[0]
@@ -497,18 +496,48 @@ def createERSOutDf(mstrERSGrpLst, mstrXscriptLst):
                 
                 xscriptStr = "|".join(list(xscriptLst))                
                 
+                irXscriptsInSet = set(irXscripts) & ers_set
+                
                 tmpDf = pd.DataFrame(
                         {'ERS_grp_num':[grpCount],
                          'ERS_grp_size':[grpSize],
                          'gene_id':[geneID],
                          'xscripts':[xscriptStr],
                          'flag_nonolp_pair':['1' if nonOlpDict.get(grpCount - 1) else '0'],
-                         'flag_IR_exclusion':['1' if flag_IR_exclusion else '0']
+                         'flag_IR_in_set':['1' if not irXscriptsInSet == set() else '0'],
+                         'num_IR_xscripts':[len(irXscriptsInSet)],
+                         'prop_IR':[len(irXscriptsInSet)/grpSize]
                         })
                 
                 outDf = pd.concat([outDf, tmpDf])
         
                 
+        return outDf
+
+def createGeneOutDf(mstrERSGrpLst, mstrXscriptLst, mstrGeneLst):
+        
+        outDf = pd.DataFrame(columns=[
+                                     'gene_id', 
+                                     'num_sets',
+                                     'anotherheader'])
+
+
+        
+        for geneID in mstrGeneLst:
+                
+                setCount = 0;
+                for ers_grp in mstrERSGrpLst:
+                        
+                        if (geneID == ers_grp[0].split("/")[0]):
+                                setCount+=1
+                        
+                
+                tmpDf = pd.DataFrame(
+                        {'gene_id':[geneID],
+                         'num_sets':[setCount],
+                         'anotherheader':[0]
+                        })
+                outDf = pd.concat([outDf, tmpDf])
         return outDf
         
 # Run the Program
@@ -525,28 +554,27 @@ def main():
         
         # Two options based on if IR is included or excluded
         if (args.includeIR.upper() == 'Y'):
-                
                 # List of all ERS Groups and all transcripts in the input data
-                ersGrpLst, allXscriptLst = idSharedExonRegion(inDf=inputDf, intronRetention=True)
-                
-                # Converts above into 2 dfs to be output to csv
-                xscriptDf = createXscriptOutDf(mstrERSGrpLst=ersGrpLst, mstrXscriptLst=allXscriptLst)
-                ersDf = createERSOutDf(mstrERSGrpLst=ersGrpLst, mstrXscriptLst=allXscriptLst)
+                ersGrpLst, allXscriptLst, allGeneLst, irXscripts = idSharedExonRegion(inDf=inputDf, intronRetention=True)
 
                 # Configure descriptive file name
                 xscript_output_file = "{}/{}_xscript_output.csv".format(args.outdir, input_file_name)
                 ers_output_file = "{}/{}_ers_output.csv".format(args.outdir, input_file_name)
+                gene_output_file = "{}/{}_gene_output.csv".format(args.outdir, input_file_name)
                 
         elif (args.includeIR.upper() == 'N'):
-                ersGrpLst, allXscriptLst = idSharedExonRegion(inDf=inputDf, intronRetention=False)
-                
-                xscriptDf = createXscriptOutDf(mstrERSGrpLst=ersGrpLst, mstrXscriptLst=allXscriptLst)
-                ersDf = createERSOutDf(mstrERSGrpLst=ersGrpLst, mstrXscriptLst=allXscriptLst)
+                ersGrpLst, allXscriptLst, allGeneLst, irXscripts = idSharedExonRegion(inDf=inputDf, intronRetention=False)
                 
                 xscript_output_file = "{}/{}_xscript_output_noIR.csv".format(args.outdir, input_file_name)
-                ers_output_file = "{}/{}_ers_output.csv".format(args.outdir, input_file_name)
+                ers_output_file = "{}/{}_ers_output_noIR.csv".format(args.outdir, input_file_name)
+                gene_output_file = "{}/{}_gene_output_noIR.csv".format(args.outdir, input_file_name)
 
 
+        # Converts above into 2 dfs to be output to csv
+        xscriptDf = createXscriptOutDf(mstrERSGrpLst=ersGrpLst, mstrXscriptLst=allXscriptLst)
+        ersDf = createERSOutDf(mstrERSGrpLst=ersGrpLst, mstrXscriptLst=allXscriptLst, irXscripts=irXscripts)
+        geneDf = createGeneOutDf(mstrERSGrpLst=ersGrpLst, mstrXscriptLst=allXscriptLst, mstrGeneLst=allGeneLst)
+        
         # End timer to track how long the looping process takes
         toc = time.perf_counter()       
         print(f"complete, operation took {toc-tic:0.4f} seconds")
@@ -557,11 +585,12 @@ def main():
         # Output Df to CSV
         xscriptDf.to_csv(xscript_output_file,index=False)
         ersDf.to_csv(ers_output_file,index=False)
+        geneDf.to_csv(gene_output_file, index=False)
                         
-        return ersGrpLst, xscriptDf, ersDf
+        return ersGrpLst, xscriptDf, ersDf, geneDf
 
 if __name__ == '__main__':
         global args
         args = getOptions()
-        test, test2, test3 = main()
+        test, test2, test3, test4 = main()
         
