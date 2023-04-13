@@ -9,8 +9,7 @@ Created on Thu Feb 23 14:43:44 2023
 """
 Identify possible exon region shared (ERS) groups using TRAND ouptput of a 1 or 2 GTF pairwise file 
 
-Version 3 (Include Nucleotide Math)
-
+Version 5 (Turn ERS groups into an object!!)
 """
 
 import argparse
@@ -19,6 +18,68 @@ from collections import Counter
 import os
 import trand.io
 import time
+from dataclasses import dataclass
+
+
+# Using a class to make it far far far easier to add any further functionality
+# to the utility if necessary
+
+@dataclass
+class ERS_GRP:
+        # is num really necessary? they will be in a list
+        num: int
+        xscriptLst: list
+        size: int
+        gene_id: str
+        num_exon_regions: int
+
+@dataclass
+class PAIR:
+        gene_id: str
+        xscript1: str
+        xscript2: str
+        ers_grp_num: int
+        flag_IR: int
+        # num_exon_regions: int
+        # num_nuc_diff: int
+        # prop_nuc_diff: int
+
+        
+
+# frequency?
+
+# -> convert pairs into xscripts?
+
+# explain each parameter
+@dataclass
+class XSCRIPT:
+        
+        xscript_id: str
+        gene_id: str
+        
+        def __eq__(self, other):
+                return self.xscript_id == other.xscript_id
+        
+        def __str__(self):
+                return self.xscript_id
+        
+        def compare(self, other):
+                return self.xscript_id == other
+        
+        # ers_grp_num: int
+        # frequency: int
+        # olpXscriptLst: list
+        # flag_IR: bool
+        # num_exon_regions: int
+        # num_nuc_diff: list
+        # prop_nuc_diff: list
+
+# i dont think this will be useful... lets keep it for now
+@dataclass
+class GENE:
+        gene_id: str
+        num_sets: int
+        
 
 def getOptions():
         """
@@ -79,67 +140,138 @@ def getOptions():
 
 
 
-# IDEA: create a list matching the size of exRegShrdWhatever with any pertinent info (number exon regions, 
-# number nucleotides, etc)
-
-# idk where to put this but the output is now the list of xscripts and...
-# another list: index matching the ERS group num. values = a list of important numbers (some numbers may be in list format)!
-# this feels like a giant mess but imma make it work
-
-# so output is a list of xscripts: [[T1, T6, T5], [T3, T4, T7]], each index is a group
-# and the other output is:         [[36,[8,9,100,34],[.8,.7,.6,.8]], [36,[8,9,100,34],[.8,.7,.6,.8]]] each index is a group
-# wait we can just like. combine these. later though
-
-# just kidding we're doing OOP.
-
-# structure of the omega list
-
-# list structure so far:
-        # {[num_exon_regions, [list of num nucleotide diff], [list of all prop nucleotide diff]]}
-        # so imptInfo[0][0] gives the num exon regions that set 1 has
-        # imptInfo[3][2][1] will give the second prop nucleotide diff of the 4th set
-        # and so forth
-        # imptInfo[i][0] = num exon regions
-        # imptInfo[i][1] = list of num nucleotide diff
-        # imptInfo[i][2] = list of prop nucleotide diff
-        # and so forth as I add more imptInfo
-# each index of curly brackets is another set
-
-
-def idSharedExonRegion(inDf, intronRetention):
-        """
+def convertInputDataFrame(inDf):
         
-        Take a dataframe from TranD output data, extract only the necesssary information
-        and identify all of the ERS groups in the data. Outputs all of the ERS groups in list format as
-        well as a list of all of the unique transcript IDs.
+        erInfoDf = inDf[
+                [
+                        "gene_id",
+                        "transcript_1",
+                        "transcript_2",
+                        "prop_ER_similar",
+                        "flag_IR"
+                ]
+        ].copy()
+        
+        
+        # basically. is there a way to search through the whole dataframe ONCE and pull out each xscript with all of its info
+        # i think yes
+        
+        unqXscriptLst = pd.concat([erInfoDf['transcript_1'], erInfoDf['transcript_2']]).unique()
+        
+        xscriptLst = []
+        
+        addedXscripts = []
+        
+        iterDct = erInfoDf.to_dict('records')
+        for row in iterDct:
+                xscript1 = row['transcript_1']
+                xscript2 = row['transcript_2']
+                
+                if (not xscript1 in addedXscripts):
+                        
+                        tmpXscript = XSCRIPT(xscript1, row['gene_id'])
+                        
+                        xscriptLst.append(tmpXscript)
+                        
+                        addedXscripts.append(xscript1)
+                        
+                if (not xscript2 in addedXscripts):
+                        tmpXscript = XSCRIPT(xscript2, row['gene_id'])
+
+                        xscriptLst.append(tmpXscript)
+
+                        addedXscripts.append(xscript2)
+                
+                
+                
+                
+        
+
+        
+        # for row in iterDct:
+        #         if (row['prop_ER_similar'] == 1):
+                        
+
+        #                 irFlag = row['flag_IR']
+                        
+                        
+        #                 tmpPair = PAIR(row['gene_id'], xscript1, xscript2, 0, irFlag)
+                        
+                        
+        #                 pairLst.append(tmpPair)
+        
+        
+        # dont forget to deal with 1. leftovers 2. xscripts completely removed due to IR(?)
+        return xscriptLst
+
+def convPairsToXscript(pairLst):
+        
+        xscriptLst = []
+        
+        return xscriptLst
+
+
+def checkAllERSGrps(xscript1, xscript2, ersGrpLst, lftvrLst, irSspctLst):
+        """
+        Loops over all exisiting ERS groups to see if an xscript should be added to an existing group.
+        Otherwise creates a new ERS group.
 
         Parameters
         ----------
-        inDf : DATAFRAME
-                TRAND OUTPUT DATA CONVERTED FROM CSV TO DATAFRAME.
-        intronRetention : BOOLEAN
-                DECIDES IF THE PRESENCE OF INTRON RETENTION WILL INCLUDE OR EXCLUDE XSCRIPTS FROM ERS GROUPS.
+        xscript1 : STRING
+                ONE XSCRIPT ID TO CHECK.
+        xscript2 : STRING
+                OTHER XSCRIPT ID TO CHECK.
+        ersGrpLst : LIST (OF LISTS)
+                LIST OF ALL ALREADY EXISTING ERS GROUPS.
 
         Returns
         -------
-        exRegShrdGrpLst : LIST (OF LISTS)
-                LIST OF ALL ERS GROUPS (AS LISTS).
-        unqXscriptLst : LIST (OF STRINGS)
-                LIST OF ALL UNIQUE XSCRIPT IDs.
-
+        Quits loop and returns None if xscript already in existing group. 
+        Otherwise returns a new LIST (new ERS group).
+        
         """
+        
+        # if its in a list (after append) and not already removed, remove it
+        for lst in ersGrpLst: 
+                for xscript in lst:
+                        # Add xscript1 and 2 to group if already in an existing one, end loop.
+                        # Remove xscripts from leftovers and irSspct if intron retention is excluded
+                        if xscript1 == xscript or xscript2 == xscript:
+                                lst.append(xscript1)
+                                lst.append(xscript2)
+                                
+                                if xscript1 in lftvrLst: lftvrLst.remove(xscript1)
+                                if xscript2 in lftvrLst: lftvrLst.remove(xscript2)
+                                
+                                if irSspctLst:
+                                        if xscript1 in irSspctLst: irSspctLst.remove(xscript1)
+                                        if xscript2 in irSspctLst: irSspctLst.remove(xscript2)
+                                return;
+                                
+                        # Otherwise keep looping
+                        else:
+                                continue
+        
+        # If looped through all groups and found nothing, create new group
+        return [xscript1,xscript2]
 
+def idSharedExonRegion(inDf, intronRetention):
         # Chop down input data frame into only the information on exon regions
+        # add stuff necessary for nucleotides later
+        
         basicERInfoDf = inDf[
                 [
                         "gene_id",
                         "transcript_1",
                         "transcript_2",
-                        "num_ER_shared",
                         "prop_ER_similar",
                         "flag_IR"
                 ]
         ].copy()
+        
+        
+        
         
         # Create a list of all unqiue genes (idek if this will be useful)        
         unqGeneLst = pd.concat([basicERInfoDf['gene_id']]).unique()
@@ -214,6 +346,7 @@ def idSharedExonRegion(inDf, intronRetention):
                 fullOvlpFlag = row['flag_ER_full_overlap']
                 xscript1 = row['transcript_1']
                 xscript2 = row['transcript_2']
+                irFlag = row['flag_IR']
                 
                 # If there is an exon region with full overlap, do the following:
                 if (fullOvlpFlag):
@@ -566,58 +699,71 @@ def createGeneOutDf(mstrERSGrpLst, mstrXscriptLst, mstrGeneLst):
                         })
                 outDf = pd.concat([outDf, tmpDf])
         return outDf
-        
-# Run the Program
+
 def main():
+        inputDf = pd.read_csv (args.indir)
         
-        # Input CSV to Df
-        inputDf = pd.read_csv(args.indir)
-        
-        # Get input File Name
-        input_file_name = os.path.splitext(os.path.basename(args.indir))[0]
-        
-        # Start timer to track how long the looping process takes
         tic = time.perf_counter()
+
+        test = convertInputDataFrame(inputDf)
         
-        # Two options based on if IR is included or excluded
-        if (args.includeIR.upper() == 'Y'):
-                # List of all ERS Groups and all transcripts in the input data
-                ersGrpLst, allXscriptLst, allGeneLst, irXscripts = idSharedExonRegion(inDf=inputDf, intronRetention=True)
-
-                # Configure descriptive file name
-                xscript_output_file = "{}/{}_xscript_output.csv".format(args.outdir, input_file_name)
-                ers_output_file = "{}/{}_ers_output.csv".format(args.outdir, input_file_name)
-                gene_output_file = "{}/{}_gene_output.csv".format(args.outdir, input_file_name)
-                
-        elif (args.includeIR.upper() == 'N'):
-                ersGrpLst, allXscriptLst, allGeneLst, irXscripts = idSharedExonRegion(inDf=inputDf, intronRetention=False)
-                
-                xscript_output_file = "{}/{}_xscript_output_noIR.csv".format(args.outdir, input_file_name)
-                ers_output_file = "{}/{}_ers_output_noIR.csv".format(args.outdir, input_file_name)
-                gene_output_file = "{}/{}_gene_output_noIR.csv".format(args.outdir, input_file_name)
-
-
-        # Converts above into 2 dfs to be output to csv
-        xscriptDf = createXscriptOutDf(mstrERSGrpLst=ersGrpLst, mstrXscriptLst=allXscriptLst)
-        ersDf = createERSOutDf(mstrERSGrpLst=ersGrpLst, mstrXscriptLst=allXscriptLst, irXscripts=irXscripts)
-        geneDf = createGeneOutDf(mstrERSGrpLst=ersGrpLst, mstrXscriptLst=allXscriptLst, mstrGeneLst=allGeneLst)
         
-        # End timer to track how long the looping process takes
         toc = time.perf_counter()       
         print(f"complete, operation took {toc-tic:0.4f} seconds")
         
-        # Assures that the outdir is empty or -f is enabled to overwrite existing directory
-        trand.io.prepare_outdir(args.outdir, args.force)
+        return test
+
+# Run the Program
+# def main():
         
-        # Output Df to CSV
-        xscriptDf.to_csv(xscript_output_file,index=False)
-        ersDf.to_csv(ers_output_file,index=False)
-        geneDf.to_csv(gene_output_file, index=False)
+#         # Input CSV to Df
+#         inputDf = pd.read_csv(args.indir)
+        
+#         # Get input File Name
+#         input_file_name = os.path.splitext(os.path.basename(args.indir))[0]
+        
+#         # Start timer to track how long the looping process takes
+#         tic = time.perf_counter()
+        
+#         # Two options based on if IR is included or excluded
+#         if (args.includeIR.upper() == 'Y'):
+#                 # List of all ERS Groups and all transcripts in the input data
+#                 ersGrpLst, allXscriptLst, allGeneLst, irXscripts = idSharedExonRegion(inDf=inputDf, intronRetention=True)
+
+#                 # Configure descriptive file name
+#                 xscript_output_file = "{}/{}_xscript_output.csv".format(args.outdir, input_file_name)
+#                 ers_output_file = "{}/{}_ers_output.csv".format(args.outdir, input_file_name)
+#                 gene_output_file = "{}/{}_gene_output.csv".format(args.outdir, input_file_name)
+                
+#         elif (args.includeIR.upper() == 'N'):
+#                 ersGrpLst, allXscriptLst, allGeneLst, irXscripts = idSharedExonRegion(inDf=inputDf, intronRetention=False)
+                
+#                 xscript_output_file = "{}/{}_xscript_output_noIR.csv".format(args.outdir, input_file_name)
+#                 ers_output_file = "{}/{}_ers_output_noIR.csv".format(args.outdir, input_file_name)
+#                 gene_output_file = "{}/{}_gene_output_noIR.csv".format(args.outdir, input_file_name)
+
+
+#         # Converts above into 2 dfs to be output to csv
+#         xscriptDf = createXscriptOutDf(mstrERSGrpLst=ersGrpLst, mstrXscriptLst=allXscriptLst)
+#         ersDf = createERSOutDf(mstrERSGrpLst=ersGrpLst, mstrXscriptLst=allXscriptLst, irXscripts=irXscripts)
+#         geneDf = createGeneOutDf(mstrERSGrpLst=ersGrpLst, mstrXscriptLst=allXscriptLst, mstrGeneLst=allGeneLst)
+        
+#         # End timer to track how long the looping process takes
+#         toc = time.perf_counter()       
+#         print(f"complete, operation took {toc-tic:0.4f} seconds")
+        
+#         # Assures that the outdir is empty or -f is enabled to overwrite existing directory
+#         trand.io.prepare_outdir(args.outdir, args.force)
+        
+#         # Output Df to CSV
+#         xscriptDf.to_csv(xscript_output_file,index=False)
+#         ersDf.to_csv(ers_output_file,index=False)
+#         geneDf.to_csv(gene_output_file, index=False)
                         
-        return ersGrpLst, xscriptDf, ersDf, geneDf
+#         return ersGrpLst, xscriptDf, ersDf, geneDf
 
 if __name__ == '__main__':
         global args
         args = getOptions()
-        test, test2, test3, test4 = main()
+        test = main()
         

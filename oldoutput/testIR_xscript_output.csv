@@ -1,0 +1,9 @@
+gene_id,xscript_model_id,ERS_grp_num,flag_nonolp_pair,nonolp_xscript_id
+FBgn0038740,T1,1,0,
+FBgn0038740,T2,1,1,T6
+FBgn0038740,T5,1,0,
+FBgn0038740,T6,1,1,T2
+FBgn0038740,T3,2,0,
+FBgn0038740,T4,2,0,
+FBgn0038740,T7,2,0,
+FBgn0038740,T8,3,0,

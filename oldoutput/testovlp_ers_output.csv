@@ -1,0 +1,5 @@
+ERS_grp_num,ERS_grp_size,gene_id,xscripts,flag_nonolp_pair,flag_IR_exclusion
+1,5,FBgn0038740,T9|T2|T1|T8|T5,1,0
+2,3,FBgn0038740,T7|T3|T4,1,0
+3,2,FBgn0038741,T20|T21,0,0
+4,1,FBgn0038740,T6,0,0

@@ -1,0 +1,6 @@
+ERS_grp_num,ERS_grp_size,gene_id,xscripts,flag_nonolp_pair,flag_IR_in_set,num_IR_xscripts,prop_IR
+1,4,FBgn0030089,FBtr0071298|FBtr0071295|FBtr0112965|FBtr0333808,0,0,0,0.0
+2,2,FBgn0030089,FBtr0309255|FBtr0071297,0,0,0,0.0
+3,1,FBgn0030089,FBtr0071294,0,0,0,0.0
+4,1,FBgn0030089,FBtr0071296,0,0,0,0.0
+5,1,FBgn0030089,FBtr0309254,0,0,0,0.0
