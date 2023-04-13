@@ -14,7 +14,7 @@ Version 5 (Turn ERS groups into an object!!)
 
 import argparse
 import pandas as pd
-from collections import Counter
+from collections import Counter, defaultdict
 import os
 import trand.io
 import time
@@ -27,24 +27,17 @@ from dataclasses import dataclass
 @dataclass
 class ERS_GRP:
         # is num really necessary? they will be in a list
-        num: int
-        xscriptLst: list
-        size: int
-        gene_id: str
-        num_exon_regions: int
-
-@dataclass
-class PAIR:
-        gene_id: str
-        xscript1: str
-        xscript2: str
-        ers_grp_num: int
-        flag_IR: int
         # num_exon_regions: int
-        # num_nuc_diff: int
-        # prop_nuc_diff: int
-
         
+        def __init__(self, num, size, gene_id):
+                self.num = num
+                self.size = size
+                self.gene_id = gene_id
+                self.xscriptLst = []
+        
+        def addXscript(self, xscript):
+                self.xscriptLst.append(xscript)
+                self.size+=1
 
 # frequency?
 
@@ -52,19 +45,25 @@ class PAIR:
 
 # explain each parameter
 @dataclass
-class XSCRIPT:
-        
-        xscript_id: str
-        gene_id: str
-        
+class XSCRIPT:        
+        def __init__(self, xscript_id, gene_id):
+                self.xscript_id=xscript_id
+                self.gene_id=gene_id
+                self.ovlpSet = set()
+                self.ovlpCnt = 0
+                
         def __eq__(self, other):
                 return self.xscript_id == other.xscript_id
         
         def __str__(self):
-                return self.xscript_id
+                return self.xscript_id + ", ovlp set: " + str(self.ovlpSet)
         
         def compare(self, other):
                 return self.xscript_id == other
+        
+        def addOlp(self, olp):
+                self.ovlpSet.add(olp)
+                self.ovlpCnt+=1
         
         # ers_grp_num: int
         # frequency: int
@@ -152,64 +151,134 @@ def convertInputDataFrame(inDf):
                 ]
         ].copy()
         
+        erInfoDf['transcript_1'] = erInfoDf['gene_id'] + "/" + erInfoDf['transcript_1']
+        erInfoDf['transcript_2'] = erInfoDf['gene_id'] + "/" + erInfoDf['transcript_2']
+        
+        unqXscriptSet = set(pd.concat([erInfoDf['transcript_1'], erInfoDf['transcript_2']]).unique())
         
         # basically. is there a way to search through the whole dataframe ONCE and pull out each xscript with all of its info
         # i think yes
-        
-        unqXscriptLst = pd.concat([erInfoDf['transcript_1'], erInfoDf['transcript_2']]).unique()
-        
-        xscriptLst = []
-        
-        addedXscripts = []
+        # i did it!!
+                
+        xscriptDct = {}
+        addedXscripts = set()
         
         iterDct = erInfoDf.to_dict('records')
         for row in iterDct:
-                xscript1 = row['transcript_1']
-                xscript2 = row['transcript_2']
+                # print()
+                # print (row)
+                # print()
                 
-                if (not xscript1 in addedXscripts):
-                        
-                        tmpXscript = XSCRIPT(xscript1, row['gene_id'])
-                        
-                        xscriptLst.append(tmpXscript)
-                        
-                        addedXscripts.append(xscript1)
-                        
-                if (not xscript2 in addedXscripts):
-                        tmpXscript = XSCRIPT(xscript2, row['gene_id'])
-
-                        xscriptLst.append(tmpXscript)
-
-                        addedXscripts.append(xscript2)
+                model1 = row['transcript_1']
+                model2 = row['transcript_2']
+                
+                geneid = model1.split('/')[0]
+                xscript1 = model1.split('/')[1]
+                xscript2 = model2.split('/')[1]
+                flagFullOvlp = row['prop_ER_similar'] == 1
                 
                 
+                if (flagFullOvlp):
+                        
+                        if (xscript1 in addedXscripts):
+                                tmpXscript1 = xscriptDct.get(xscript1)
+                        else:
+                                tmpXscript1 = XSCRIPT(xscript1, geneid)
+                                
+                        if (xscript2 in addedXscripts):
+                                tmpXscript2 = xscriptDct.get(xscript2)
+                        else:
+                                tmpXscript2 = XSCRIPT(xscript2, geneid)                                
+                                
+                                
+                        # print ("xscript 2: " + xscript2)
+                        # print ("xscript 1: " + xscript1)
+                        # print ("oxscript 2: " + str(tmpXscript2))
+                        # print ("oxscript 1: " + str(tmpXscript1))
+                        
+                        tmpXscript1.addOlp(xscript2)
+                        tmpXscript2.addOlp(xscript1)
+                
+                        # print ("olp list 1: " + str(tmpXscript1.ovlpSet))
+                        # print ("olp list 2: " + str(tmpXscript2.ovlpSet))
+                        
+                        
+                        if (xscript1 not in addedXscripts):
+                                xscriptDct[xscript1] = tmpXscript1
+                                addedXscripts.add(xscript1)
+
+                        if (xscript2 not in addedXscripts):
+                                xscriptDct[xscript2] = tmpXscript2
+                                addedXscripts.add(xscript2)
                 
                 
+        allOlpXscripts = set(pd.concat([erInfoDf[erInfoDf['prop_ER_similar']==1]['transcript_1'],
+                                 erInfoDf[erInfoDf['prop_ER_similar']==1]['transcript_2']]
+                                ).unique())
         
+        leftovers = unqXscriptSet - allOlpXscripts
+        
+        for leftover in leftovers:
+                geneid = leftover.split('/')[0]
+                xscript = leftover.split('/')[1]
+                
+                tmpXscript = XSCRIPT(geneid, xscript)
+                xscriptDct[xscript] = tmpXscript
+        
+        # dont forget to deal with 2. xscripts completely removed due to IR(?)
+        return xscriptDct
 
+# i will battle you next time.
+def xscriptToGrp(xscriptDct):                
         
-        # for row in iterDct:
-        #         if (row['prop_ER_similar'] == 1):
-                        
+        groups = []
+        
+        for key, value in xscriptDct.items():
+                
+                for group in groups:
+                        if (value.ovlpSet.intersection(group) != set()):
+                                group.add(value)
+                        else:
+                                print (value.ovlpSet)
+                                print(value.ovlpSet.intersection(group))
+                                print ("yippee!")
+                                tmpSet = set()
+                                tmpSet.add([value])
+                                groups.append(tmpSet)
+                            
+                           
+                # print (value.ovlpSet.intersection( groups[0]))
+                # for group in groups:
+                #         if (value.ovlpSet - group:
+                #                 print (value.ovlpSet - group)
+                #                 break
+                #         else:
+                #                 groups.append(set(key))
+        
+        
+        return groups
 
-        #                 irFlag = row['flag_IR']
-                        
-                        
-        #                 tmpPair = PAIR(row['gene_id'], xscript1, xscript2, 0, irFlag)
-                        
-                        
-        #                 pairLst.append(tmpPair)
-        
-        
-        # dont forget to deal with 1. leftovers 2. xscripts completely removed due to IR(?)
-        return xscriptLst
+# get(T1)
+# if T1.ovlpSet.contains(Twhatever) add to group...?
 
-def convPairsToXscript(pairLst):
+def main():
+        inputDf = pd.read_csv (args.indir)
         
-        xscriptLst = []
-        
-        return xscriptLst
+        tic = time.perf_counter()
 
+        test = convertInputDataFrame(inputDf)
+        test2 = xscriptToGrp(test)
+        
+        
+        toc = time.perf_counter()       
+        print(f"complete, operation took {toc-tic:0.4f} seconds")
+        
+        return test, test2
+
+if __name__ == '__main__':
+        global args
+        args = getOptions()
+        test, test2 = main()
 
 def checkAllERSGrps(xscript1, xscript2, ersGrpLst, lftvrLst, irSspctLst):
         """
@@ -700,18 +769,6 @@ def createGeneOutDf(mstrERSGrpLst, mstrXscriptLst, mstrGeneLst):
                 outDf = pd.concat([outDf, tmpDf])
         return outDf
 
-def main():
-        inputDf = pd.read_csv (args.indir)
-        
-        tic = time.perf_counter()
-
-        test = convertInputDataFrame(inputDf)
-        
-        
-        toc = time.perf_counter()       
-        print(f"complete, operation took {toc-tic:0.4f} seconds")
-        
-        return test
 
 # Run the Program
 # def main():
@@ -762,8 +819,5 @@ def main():
                         
 #         return ersGrpLst, xscriptDf, ersDf, geneDf
 
-if __name__ == '__main__':
-        global args
-        args = getOptions()
-        test = main()
+
         
