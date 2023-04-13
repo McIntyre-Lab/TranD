@@ -112,6 +112,18 @@ def getOptions():
     )
 
     parser.add_argument(
+        "-x",
+        "--prefix",
+        dest="prefix",
+        required=False,
+        default="",
+        help=(
+            "Prefix for output file, (will appear after custom_) (not required)"
+            "Prefix will default to the original file name if nothing entered"
+        )
+    )    
+
+    parser.add_argument(
         "-f",
         "--force",
         dest="force",
@@ -280,7 +292,10 @@ def buildPrefix(args, ignoreDct):
                 A PREFIX FOR THE FILE NAME CONTAINING WHICH AS TYPES WERE IGNORED.
 
         """
+        
         prefix = ""
+        
+        
         ignoreLst = [args.ignore_3, args.ignore_5, args.ignore_AD, args.ignore_AE, args.ignore_IR, args.ignore_NSNT]
         
         if ignoreLst[0]:
@@ -294,8 +309,8 @@ def buildPrefix(args, ignoreDct):
         if ignoreLst[4]:
                 prefix = prefix + "ignore_Intron_Retention_"
         if ignoreLst[5]:
-                prefix = prefix + "ignore_No_Shared_Nucleotides_"
-                
+                prefix = prefix + "ignore_No_Shared_Nucleotides_"                
+        
         return prefix
 
 #creates legend text
@@ -387,9 +402,15 @@ def main():
     input_file_name = os.path.splitext(os.path.basename(args.indir))[0]
 
     # prefix and ouput file prep
-    output_file_name = "custom_{}{}".format(buildPrefix(args, ignoreDictionary), input_file_name)
-    output_rtf_file = "{}/{}.rtf".format(args.outdir, output_file_name)
     
+    
+    if (args.prefix == ""):
+            output_file_name = "custom_{}_{}".format(input_file_name, buildPrefix(args, ignoreDictionary)).removesuffix('_')
+            output_rtf_file = "{}/{}.rtf".format(args.outdir, output_file_name)
+    else:
+            output_file_name = "custom_{}_{}".format(args.prefix, buildPrefix(args, ignoreDictionary)).removesuffix('_')
+            output_rtf_file = "{}/{}.rtf".format(args.outdir, output_file_name)
+            
     #plot and output
     plotCustomPlot(inputDf, output_rtf_file, ignoreDictionary)
     plt.savefig("{}/{}.png".format(args.outdir, output_file_name), dpi=600, format="png")
