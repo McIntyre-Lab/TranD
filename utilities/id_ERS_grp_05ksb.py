@@ -234,18 +234,21 @@ def xscriptToGrp(xscriptDct):
         groups = []
         
         for key, value in xscriptDct.items():
+                print (key, value)
                 
-                for group in groups:
-                        if (value.ovlpSet.intersection(group) != set()):
-                                group.add(value)
-                        else:
-                                print (value.ovlpSet)
-                                print(value.ovlpSet.intersection(group))
-                                print ("yippee!")
-                                tmpSet = set()
-                                tmpSet.add([value])
-                                groups.append(tmpSet)
-                            
+                if groups:
+                        print ("yipee")
+                        print(groups)
+                        
+                        for group in groups:
+                                if (group.intersection(value.ovlpSet) != set()):
+                                        group.union(value.ovlpSet)
+                                else:
+                                        groups.append(value.ovlpSet)
+                else:
+                        groups.append(value.ovlpSet)
+                                
+
                            
                 # print (value.ovlpSet.intersection( groups[0]))
                 # for group in groups:
