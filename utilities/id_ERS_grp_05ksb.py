@@ -14,7 +14,6 @@ Version 5 (Turn ERS groups into an object!!)
 
 import argparse
 import pandas as pd
-from collections import Counter, defaultdict
 import os
 import trand.io
 import time
@@ -29,19 +28,25 @@ class ERS_GRP:
         # is num really necessary? they will be in a list
         # num_exon_regions: int
         
-        def __init__(self, num, size, gene_id):
+        def __init__(self, num, gene_id):
                 self.num = num
-                self.size = size
+                self.size = 0
                 self.gene_id = gene_id
-                self.xscriptLst = []
+                self.xscriptSet = set()
         
         def addXscript(self, xscript):
-                self.xscriptLst.append(xscript)
+                self.xscriptSet.add(xscript)
                 self.size+=1
+                
+        def __str__(self):
+                return "ERS GROUP NUMBER: " + str(self.num) + ", XSCRIPT LIST: " + str(self.xscriptSet)
+        
+        def __iter__(self):
+                return self
+        
+        def __next__(self):
+                return self
 
-# frequency?
-
-# -> convert pairs into xscripts?
 
 # explain each parameter
 @dataclass
@@ -51,6 +56,7 @@ class XSCRIPT:
                 self.gene_id=gene_id
                 self.ovlpSet = set()
                 self.ovlpCnt = 0
+                self.ers_grp_num = None
                 
         def __eq__(self, other):
                 return self.xscript_id == other.xscript_id
@@ -64,10 +70,8 @@ class XSCRIPT:
         def addOlp(self, olp):
                 self.ovlpSet.add(olp)
                 self.ovlpCnt+=1
+
         
-        # ers_grp_num: int
-        # frequency: int
-        # olpXscriptLst: list
         # flag_IR: bool
         # num_exon_regions: int
         # num_nuc_diff: list
@@ -154,7 +158,7 @@ def convertInputDataFrame(inDf):
         erInfoDf['transcript_1'] = erInfoDf['gene_id'] + "/" + erInfoDf['transcript_1']
         erInfoDf['transcript_2'] = erInfoDf['gene_id'] + "/" + erInfoDf['transcript_2']
         
-        unqXscriptSet = set(pd.concat([erInfoDf['transcript_1'], erInfoDf['transcript_2']]).unique())
+        unqXscriptSet = set(pd.concat([erInfoDf['transcript_1'], erInfoDf['transcript_2']]))
         
         # basically. is there a way to search through the whole dataframe ONCE and pull out each xscript with all of its info
         # i think yes
@@ -222,111 +226,238 @@ def convertInputDataFrame(inDf):
                 geneid = leftover.split('/')[0]
                 xscript = leftover.split('/')[1]
                 
-                tmpXscript = XSCRIPT(geneid, xscript)
+                tmpXscript = XSCRIPT(xscript, geneid)
                 xscriptDct[xscript] = tmpXscript
         
         # dont forget to deal with 2. xscripts completely removed due to IR(?)
         return xscriptDct
 
-# i will battle you next time.
 def xscriptToGrp(xscriptDct):                
         
-        groups = []
+        ersGrpLst = []
         
-        for key, value in xscriptDct.items():
-                print (key, value)
+        groupCount = 0;
+        for value in xscriptDct.values():
+                # print ("a: ")
+                # print (value)
+                # print()
                 
-                if groups:
-                        print ("yipee")
-                        print(groups)
+                if ersGrpLst:
+                        # print ("oh rilly?")
+                        # print ()
                         
-                        for group in groups:
-                                if (group.intersection(value.ovlpSet) != set()):
-                                        group.union(value.ovlpSet)
-                                else:
-                                        groups.append(value.ovlpSet)
-                else:
-                        groups.append(value.ovlpSet)
+                        for ersGrp in ersGrpLst:
                                 
+                                # print ("b: ")
+                                # print (ersGrp)
+                                # print()
+                                
+                                if value.xscript_id in ersGrp.xscriptSet:
+                                        ersGrp.addXscript(value.xscript_id)
+                                        value.ers_grp_num = ersGrp.num
+                                        
+                                        ersGrp.xscriptSet.update(value.ovlpSet)
+                                        break
+                        else:
+                                groupCount += 1
+                                tmpERS = ERS_GRP(groupCount, value.gene_id)
+                                
+                                tmpERS.addXscript(value.xscript_id)
+                                value.ers_grp_num = tmpERS.num
 
-                           
-                # print (value.ovlpSet.intersection( groups[0]))
-                # for group in groups:
-                #         if (value.ovlpSet - group:
-                #                 print (value.ovlpSet - group)
-                #                 break
-                #         else:
-                #                 groups.append(set(key))
+                                tmpERS.xscriptSet.update(value.ovlpSet)
+                                ersGrpLst.append(tmpERS)                                
+                        
+                else:
+                        # print ("gene_id: ")
+                        # print (value.gene_id)
+                        groupCount += 1
+                        tmpERS = ERS_GRP(groupCount, value.gene_id)
+                        
+                        # if i need values from the xscript (doubtful) i'll add __hash__ to xscript
+                        tmpERS.addXscript(value.xscript_id)
+                        value.ers_grp_num = tmpERS.num
+
+                        tmpERS.xscriptSet.update(value.ovlpSet)
+
+                        # print ("tmpERS: " + str(tmpERS))
+                        # print()
+                        ersGrpLst.append(tmpERS)                        
+                        
+        return ersGrpLst
+
+def findNonolpPair(ersGrpLst, anomaly):
+        anomalyGrpXscriptSet = ersGrpLst[anomaly.ers_grp_num].xscriptSet
+        
+        outputString = "|".join(anomalyGrpXscriptSet - anomaly.ovlpSet)
+        
+        return outputString
+
         
         
-        return groups
+        
+def createXscriptOutDf(xscriptDct, ersGrpLst):
+        # Set up empty Df with proper headers
+        outDf = pd.DataFrame(columns=[
+                                     'gene_id',
+                                     'xscript_model_id', 
+                                     'ERS_grp_num', 
+                                     'flag_nonolp_pair'])
+        
+        geneIDLst = []
+        xscriptIDLst = []
+        grpNumLst = []
+        nonOlpLst = []
+        nonolpXscriptLst = []
+        
+        for xscript in xscriptDct.values():
+                ersGrp = ersGrpLst[xscript.ers_grp_num - 1]
+                
+                grpSize = ersGrp.size
+                flag_nonolp = xscript.ovlpCnt < grpSize - 1
+                
+                
+                geneIDLst.append(xscript.gene_id)
+                xscriptIDLst.append(xscript.xscript_id)
+                grpNumLst.append(xscript.ers_grp_num)
+                nonOlpLst.append('1' if flag_nonolp else '0')
+                
+                if flag_nonolp:
+                        tmpSet = set()
+                        tmpSet.update(ersGrp.xscriptSet)
+                        tmpSet.remove(xscript.xscript_id)
+                        
+                        nonOlpXscript = "|".join(tmpSet - xscript.ovlpSet)
+                        nonolpXscriptLst.append(nonOlpXscript)
+                else:
+                        nonolpXscriptLst.append(None)
 
-# get(T1)
-# if T1.ovlpSet.contains(Twhatever) add to group...?
+        
+        outDf = pd.DataFrame(
+                {
+                'gene_id':geneIDLst,
+                'xscript_model_id':xscriptIDLst, 
+                'ERS_grp_num':grpNumLst, 
+                'flag_nonolp_pair':nonOlpLst,
+                'nonolp_xscript_id':nonolpXscriptLst
+                })
+                
+        return outDf
+
+def createERSOutDf(ersGrpLst, xscriptDct):
+        outDf = pd.DataFrame(columns=[
+                                     'ERS_grp_num', 
+                                     'ERS_grp_size',
+                                     'gene_id',
+                                     'xscripts',
+                                     'flag_nonolp_pair',
+                                     'flag_IR_in_set',
+                                     'num_IR_xscripts',
+                                     'prop_IR'])
+        
+        numLst = []
+        sizeLst = []
+        geneIDLst = []
+        xscriptLst = []
+        flagNonOlpLst = []
+        # flagIRLst = []
+        # irNumLst = []
+        # propIRLst = []
+        
+        for ersGrp in ersGrpLst:
+                numLst.append(ersGrp.num)
+                sizeLst.append(ersGrp.size)
+                geneIDLst.append(ersGrp.gene_id)
+                xscriptLst.append("|".join(ersGrp.xscriptSet))
+                
+                for xscript in ersGrp.xscriptSet:
+                        if xscriptDct.get(xscript).ovlpCnt < ersGrp.size - 1:
+                                flagNonOlpLst.append('1')
+                                break
+                else:
+                                flagNonOlpLst.append('0')
+                
+                
+        outDf = pd.DataFrame(
+                {
+                'ERS_grp_num':numLst, 
+                'ERS_grp_size':sizeLst,
+                'gene_id':geneIDLst,
+                'xscripts':xscriptLst,
+                'flag_nonolp_pair':flagNonOlpLst,
+                })
+        
+        return outDf
+
+                
+
+        
 
 def main():
         inputDf = pd.read_csv (args.indir)
         
-        tic = time.perf_counter()
+        # Get input File Name
+        input_file_name = os.path.splitext(os.path.basename(args.indir))[0]
 
-        test = convertInputDataFrame(inputDf)
-        test2 = xscriptToGrp(test)
+        # Start timer to track how long the looping process takes
+        tic = time.perf_counter()
         
+        #         # Two options based on if IR is included or excluded
+        #         if (args.includeIR.upper() == 'Y'):
+        #                 # List of all ERS Groups and all transcripts in the input data
+        #                 ersGrpLst, allXscriptLst, allGeneLst, irXscripts = idSharedExonRegion(inDf=inputDf, intronRetention=True)
+
+
+                        
+        #         elif (args.includeIR.upper() == 'N'):
+        #                 ersGrpLst, allXscriptLst, allGeneLst, irXscripts = idSharedExonRegion(inDf=inputDf, intronRetention=False)
+                        
+        #                 xscript_output_file = "{}/{}_xscript_output_noIR.csv".format(args.outdir, input_file_name)
+        #                 ers_output_file = "{}/{}_ers_output_noIR.csv".format(args.outdir, input_file_name)
+        #                 gene_output_file = "{}/{}_gene_output_noIR.csv".format(args.outdir, input_file_name)
         
+        # dont forget IR stuffs
+        mstrXscriptDct = convertInputDataFrame(inputDf)
+        mstrERSGrpLst = xscriptToGrp(mstrXscriptDct)
+        
+        if (args.includeIR.upper() == 'Y'):
+                # Configure descriptive file name
+                xscript_output_file = "{}/{}_xscript_output.csv".format(args.outdir, input_file_name)
+                ers_output_file = "{}/{}_ers_output.csv".format(args.outdir, input_file_name)
+                gene_output_file = "{}/{}_gene_output.csv".format(args.outdir, input_file_name)
+                
+        elif (args.includeIR.upper() == 'N'):                
+                xscript_output_file = "{}/{}_xscript_output_noIR.csv".format(args.outdir, input_file_name)
+                ers_output_file = "{}/{}_ers_output_noIR.csv".format(args.outdir, input_file_name)
+                gene_output_file = "{}/{}_gene_output_noIR.csv".format(args.outdir, input_file_name)
+                
+                
+        # Converts above into 2 dfs to be output to csv
+        xscriptDf = createXscriptOutDf(xscriptDct=mstrXscriptDct, ersGrpLst=mstrERSGrpLst)
+        ersDf = createERSOutDf(ersGrpLst=mstrERSGrpLst, xscriptDct=mstrXscriptDct)
+
+        # Output Df to CSV
+        xscriptDf.to_csv(xscript_output_file,index=False)
+        ersDf.to_csv(ers_output_file,index=False)
+
+        # End timer to track how long the looping process takes
         toc = time.perf_counter()       
         print(f"complete, operation took {toc-tic:0.4f} seconds")
         
-        return test, test2
+        # Assures that the outdir is empty or -f is enabled to overwrite existing directory
+        #trand.io.prepare_outdir(args.outdir, args.force)
+                
+
+        
+                                
+        return mstrXscriptDct, mstrERSGrpLst, xscriptDf, ersDf
 
 if __name__ == '__main__':
         global args
         args = getOptions()
-        test, test2 = main()
+        mstrXscriptDct, mstrERSGrpLst, xscriptDf, ersDf = main()
 
-def checkAllERSGrps(xscript1, xscript2, ersGrpLst, lftvrLst, irSspctLst):
-        """
-        Loops over all exisiting ERS groups to see if an xscript should be added to an existing group.
-        Otherwise creates a new ERS group.
 
-        Parameters
-        ----------
-        xscript1 : STRING
-                ONE XSCRIPT ID TO CHECK.
-        xscript2 : STRING
-                OTHER XSCRIPT ID TO CHECK.
-        ersGrpLst : LIST (OF LISTS)
-                LIST OF ALL ALREADY EXISTING ERS GROUPS.
-
-        Returns
-        -------
-        Quits loop and returns None if xscript already in existing group. 
-        Otherwise returns a new LIST (new ERS group).
-        
-        """
-        
-        # if its in a list (after append) and not already removed, remove it
-        for lst in ersGrpLst: 
-                for xscript in lst:
-                        # Add xscript1 and 2 to group if already in an existing one, end loop.
-                        # Remove xscripts from leftovers and irSspct if intron retention is excluded
-                        if xscript1 == xscript or xscript2 == xscript:
-                                lst.append(xscript1)
-                                lst.append(xscript2)
-                                
-                                if xscript1 in lftvrLst: lftvrLst.remove(xscript1)
-                                if xscript2 in lftvrLst: lftvrLst.remove(xscript2)
-                                
-                                if irSspctLst:
-                                        if xscript1 in irSspctLst: irSspctLst.remove(xscript1)
-                                        if xscript2 in irSspctLst: irSspctLst.remove(xscript2)
-                                return;
-                                
-                        # Otherwise keep looping
-                        else:
-                                continue
-        
-        # If looped through all groups and found nothing, create new group
-        return [xscript1,xscript2]
 
 def idSharedExonRegion(inDf, intronRetention):
         # Chop down input data frame into only the information on exon regions
@@ -477,190 +608,6 @@ def idSharedExonRegion(inDf, intronRetention):
                         exRegShrdGrpLst.append([irModel])        
                         
         return exRegShrdGrpLst, unqXscriptLst, unqGeneLst, irXscripts
-
-# i know there's an S but it really does not make sense if its not plural
-def checkAllERSGrps(xscript1, xscript2, ersGrpLst, lftvrLst, irSspctLst):
-        """
-        Loops over all exisiting ERS groups to see if an xscript should be added to an existing group.
-        Otherwise creates a new ERS group.
-
-        Parameters
-        ----------
-        xscript1 : STRING
-                ONE XSCRIPT ID TO CHECK.
-        xscript2 : STRING
-                OTHER XSCRIPT ID TO CHECK.
-        ersGrpLst : LIST (OF LISTS)
-                LIST OF ALL ALREADY EXISTING ERS GROUPS.
-
-        Returns
-        -------
-        Quits loop and returns None if xscript already in existing group. 
-        Otherwise returns a new LIST (new ERS group).
-        
-        """
-        
-        # if its in a list (after append) and not already removed, remove it
-        for lst in ersGrpLst: 
-                for xscript in lst:
-                        # Add xscript1 and 2 to group if already in an existing one, end loop.
-                        # Remove xscripts from leftovers and irSspct if intron retention is excluded
-                        if xscript1 == xscript or xscript2 == xscript:
-                                lst.append(xscript1)
-                                lst.append(xscript2)
-                                
-                                if xscript1 in lftvrLst: lftvrLst.remove(xscript1)
-                                if xscript2 in lftvrLst: lftvrLst.remove(xscript2)
-                                
-                                if irSspctLst:
-                                        if xscript1 in irSspctLst: irSspctLst.remove(xscript1)
-                                        if xscript2 in irSspctLst: irSspctLst.remove(xscript2)
-                                return;
-                                
-                        # Otherwise keep looping
-                        else:
-                                continue
-        
-        # If looped through all groups and found nothing, create new group
-        return [xscript1,xscript2]
-
-
-def findNonolpPair(mstrERSGrpLst, anomalyXscript):
-        """
-        
-        Helper function to create piped string containing a list of
-        non-overlapping transcripts for the output dataframe
-
-        Parameters
-        ----------
-        mstrERSGrpLst : LIST (OF LISTS)
-                INPUT OF ALL ERS GROUPS IN LIST FORM (A LIST OF LISTS).
-        anomalyXscript : STRING
-                THE SPECIFIC XSCRIPT THAT HAS AT LEAST ONE NONOVERLAPPING PAIR
-                WITHIN THE GROUP
-
-        Returns
-        -------
-        outputString : STRING
-                PIPED LIST OF TRANSCRIPTS IN STRING FORM TO BE OUTPUT TO DATAFRAME.
-
-        """
-        # Anomaly = Transcript that is in a group but does not have overlap 
-        # with one of the xscripts in the group
-        
-        # Contains all unique Xscript Pairs that have the anomaly in them 
-        # if the anomaly is on an odd index you want it and the one before
-        # index = even or 0 you want it and the one after                        
-        comparisonSet = set(())
-        
-        # Just a set of all unique transcripts in the group with the anomaly
-        allXscriptSet = set(())       
-        
-        # look for the group that contains the anomaly
-        for ers_grp in mstrERSGrpLst:                
-                # found it! 
-                if anomalyXscript in ers_grp:
-                        
-                        # loop through the group containing the anomaly
-                        for index, model in enumerate(ers_grp):
-                                # grab just the xscript ID
-                                xscript = model.split('/')[1]
-                                
-                                # creating list of all unique xscripts
-                                allXscriptSet.add(xscript)
-                                
-                                # if at the anomaly, add it and the one
-                                # before/after the comparison set
-                                # essentially grabs the transcript pair
-                                # makes sure to grab just the xscript (removes geneid)
-                                if (model == anomalyXscript):
-                                        
-                                        comparisonSet.add(xscript)
-                                        if index%2 == 0:
-                                                comparisonSet.add(ers_grp[index+1].split('/')[1])
-                                        else:
-                                                comparisonSet.add(ers_grp[index-1].split('/')[1])
-        
-        # Create piped list of all xscripts that do not overlap with the anomaly
-        outputString = "|".join(allXscriptSet - comparisonSet)
-        
-        return outputString
-
-
-def createXscriptOutDf(mstrERSGrpLst, mstrXscriptLst):
-        """
-        Converts list output from idSharedExonRegion into a Dataframe
-        
-        Parameters
-        ----------
-        mstrERSGrpLst : LIST (OF LISTS)
-                INPUT OF ALL ERS GROUPS IN LIST FORM (A LIST OF LISTS).
-        mstrXscriptLst : LIST (OF STRINGS)
-                INPUT OF ALL XSCRIPT IDs IN LIST FORM.
-
-        Returns
-        -------
-        outDf : Dataframe
-                OUTPUTS ALL ERS GROUPS IN DATAFRAME FORM USING DESCRIPTIVE HEADERS.
-
-        """
-           
-        
-        # Set up empty Df with proper headers
-        outDf = pd.DataFrame(columns=[
-                                     'gene_id',
-                                     'xscript_model_id', 
-                                     'ERS_grp_num', 
-                                     'flag_nonolp_pair'])
-        
-        # Create a counter for each ERS Group for displaying xscript freq
-        counterLst = [] # List of Counters for each ERS Group
-        for ers_grp in mstrERSGrpLst:
-                        counterLst.append(dict(Counter(ers_grp)))
-
-        
-        # Note on the counter: it is a dictionary
-        # key = xscript ID, value = the number of times the xscript appears in the group
-        
-        # Used for counting which group we are on, for displaying ERS Group num
-        grpCount = 0;
-                
-        # Loop through all of the counters (1 for each group)
-        for counter in counterLst:
-                grpSize = len(counter)
-                
-                # Loop through all of the xscripts in each counter and add their info to the Df
-                for key, value in counter.items():
-                        #Split xscript_id into an array, gene (0) and transcript (1)
-                        keySplit = key.split('/')
-                        geneID = keySplit[0]
-                        xscriptID = keySplit[1]
-                        
-                        # flag if there is a pair with no overlap in the group
-                        flag_nonolp = value < grpSize - 1
-                        
-                        # string containing possible list of nonoverlapping transcripts
-                        nonolpXscript = None
-                        
-                        # if flag true, run function to create list of nonoverlapping transcripts
-                        if flag_nonolp: 
-                                nonolpXscript = findNonolpPair(mstrERSGrpLst=mstrERSGrpLst, anomalyXscript=key)
-                        
-                        # Create Row of DF With All Necessary Info
-                        tmpDf = pd.DataFrame(
-                                {'gene_id':[geneID],
-                                 'xscript_model_id':[xscriptID], 
-                                 'ERS_grp_num':[grpCount+1], 
-                                 'flag_nonolp_pair':['1' if flag_nonolp else '0'],
-                                 'nonolp_xscript_id':[nonolpXscript]
-                                 })
-                        
-                        # Append Row to the Output Dataframe
-                        outDf = pd.concat([outDf,tmpDf])
-
-                grpCount+=1
-        
-        return outDf
 
 def createERSOutDf(mstrERSGrpLst, mstrXscriptLst, irXscripts):
         
