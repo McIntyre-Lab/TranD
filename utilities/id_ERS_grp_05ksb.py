@@ -106,19 +106,21 @@ def getOptions():
 
         """
         
-        parser = argparse.ArgumentParser(description="Output a csv containing information on "
-                                         "the exon region shared groups for a list of transcripts using TRAND output "
+        parser = argparse.ArgumentParser(description="Output 3 csvs containing information on "
+                                         "the exon region shared groups (one transcript focused, one gene focused, and one ERS group focused)"
+                                         "for a list of transcripts using TRAND output "
                                          "data. Contains the option to include or exclude "
                                          "transcripts with intron retention events (--includeIR). "
-                                         "Input a TRAND output file (csv) (--indir), "
-                                         "IR inclusion (--includeIR), and an output path (--outdir)."
+                                         "Input a TRAND output file (csv) (--infile), "
+                                         "IR inclusion option (--includeIR), and an output path (--outdir)."
+                                         "Output directory must already exist. "
                                          )
         
         # INPUT
         parser.add_argument(
                 "-i",
-                "--indir",
-                dest="indir",
+                "--infile",
+                dest="infile",
                 required=True,
                 help="Location of TRAND output file")
         
@@ -139,14 +141,7 @@ def getOptions():
                 "--outdir",
                 dest="outdir",
                 required=True,
-                help="Location of output directory, created if missing")
-        
-        parser.add_argument(
-                "-f",
-                "--force",
-                dest="force",
-                action="store_true",
-                help="Force overwrite existing output directory and files within")
+                help="Location of output directory, must already exist.")
         
         args = parser.parse_args()
         return args
@@ -450,10 +445,10 @@ def createGeneOutDf(xscriptDct, ersGrpLst):
         
 
 def main():
-        inputDf = pd.read_csv (args.indir)
+        inputDf = pd.read_csv (args.infile)
         
         # Get input File Name
-        input_file_name = os.path.splitext(os.path.basename(args.indir))[0]
+        input_file_name = os.path.splitext(os.path.basename(args.infile))[0]
 
         # Start timer to track how long the looping process takes
         tic = time.perf_counter()
@@ -489,9 +484,12 @@ def main():
 
 
         # Output Df to CSV
-        xscriptDf.to_csv(xscript_output_file,index=False)
-        ersDf.to_csv(ers_output_file,index=False)
-        geneDf.to_csv(gene_output_file,index=False)
+        try:
+                xscriptDf.to_csv(xscript_output_file,index=False)
+                ersDf.to_csv(ers_output_file,index=False)
+                geneDf.to_csv(gene_output_file,index=False)
+        except OSError:
+                raise OSError("Output directory must already exist. ")
 
         # End timer to track how long the looping process takes
         toc = time.perf_counter()       
@@ -499,43 +497,12 @@ def main():
         
         # Assures that the outdir is empty or -f is enabled to overwrite existing directory
         #trand.io.prepare_outdir(args.outdir, args.force)
-                
-
-        
-                                
         return mstrXscriptDct, mstrERSGrpLst, xscriptDf, ersDf, geneDf
 
 if __name__ == '__main__':
         global args
         args = getOptions()
         mstrXscriptDct, mstrERSGrpLst, xscriptDf, ersDf, geneDf = main()
-        
-
-def createGeneOutDf(mstrERSGrpLst, mstrXscriptLst, mstrGeneLst):
-        
-        outDf = pd.DataFrame(columns=[
-                                     'gene_id', 
-                                     'num_sets',
-                                     'anotherheader'])
-
-
-        
-        for geneID in mstrGeneLst:
-                
-                setCount = 0;
-                for ers_grp in mstrERSGrpLst:
-                        
-                        if (geneID == ers_grp[0].split("/")[0]):
-                                setCount+=1
-                        
-                
-                tmpDf = pd.DataFrame(
-                        {'gene_id':[geneID],
-                         'num_sets':[setCount],
-                         'anotherheader':[0]
-                        })
-                outDf = pd.concat([outDf, tmpDf])
-        return outDf
 
 
         
