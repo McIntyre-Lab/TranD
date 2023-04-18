@@ -19,8 +19,10 @@ import argparse
 import numpy as np
 import pandas as pd
 from sys import exit
+import sys
 import os
 import matplotlib.pyplot as plt
+import logging
 
 
 def getOptions():
@@ -34,19 +36,20 @@ def getOptions():
 
         """
     # Parse command line arguments
-    parser = argparse.ArgumentParser(description="Make customizable plots using TranD ouput files "
+    parser = argparse.ArgumentParser(description="Make customizable plots of ALL pairs of a TranD ouput file "
                                      "with the option to ignore up to 4 types of AS."
                                      "Default plot will show all types of AS"
-                                     "Input a trand output file (csv) (--indir), ignore options (up to 4) "
+                                     "Input a trand output file (typically a .csv) (--indir), ignore options (up to 4), "
                                      "(--ignore-3, --ignore-5 --ignoreAD, --ignoreAE, "
-                                     "--ignoreIR, --ignoreNSNT), and output path (--outdir)."
+                                     "--ignoreIR, --ignoreNSNT), and output path (--outdir). The output directory"
+                                     "must exist before the script is run. "
                                      )
 
     # Input data
     parser.add_argument(
         "-i",
-        "--indir",
-        dest="indir",
+        "--infile",
+        dest="infile",
         required=True,
         help="Location of csv file containing transcriptome AS analysis")
 
@@ -106,8 +109,7 @@ def getOptions():
         dest="outdir",
         required=True,
         help=(
-            "Output directory, created if missing. "
-            "Default: current directory."
+            "Output directory, must already exist. "
         )
     )
 
@@ -123,13 +125,13 @@ def getOptions():
         )
     )    
 
-    parser.add_argument(
-        "-f",
-        "--force",
-        dest="force",
-        action="store_true",
-        help="Force overwrite existing output directory and files within.",
-    )
+    # parser.add_argument(
+    #     "-f",
+    #     "--force",
+    #     dest="force",
+    #     action="store_true",
+    #     help="Force overwrite existing output directory and files within.",
+    # )
 
     args = parser.parse_args()
     return args
@@ -240,16 +242,19 @@ def plotCustomPlot(inDf, legendOut, ignoreDct):
             pairAS["gene_id"].nunique()
         )
     )
-
+    
     with open(legendOut, "w") as outFile:
-        startRtf(outFile)
-        outFile.write(
-            r"\b Figure. Alternative splicing between pairs of transcripts \b0"
-            r" \line {}".format(
-                legendText
+            startRtf(outFile)
+            outFile.write(
+                r"\b Figure. Alternative splicing between pairs of transcripts \b0"
+                r" \line {}".format(
+                    legendText
+                )
             )
-        )
-        endRtf(outFile)
+            endRtf(outFile)
+
+           
+            
 
 
 # Builds a dictionary based on user input to customize plot headers
@@ -394,14 +399,16 @@ def main():
                  " up to 4 types of AS.")
             
     # input csv to dataframe        
-    inputDf = pd.read_csv(args.indir)
+    inputDf = pd.read_csv(args.infile)
 
-    trand.io.prepare_outdir(args.outdir, args.force)
+    # trand.io.prepare_outdir(args.outdir, args.force)
 
+        
     # retrieve name of input file
-    input_file_name = os.path.splitext(os.path.basename(args.indir))[0]
+    input_file_name = os.path.splitext(os.path.basename(args.infile))[0]
 
     # prefix and ouput file prep
+    
     
     
     if (args.prefix == ""):
@@ -412,9 +419,13 @@ def main():
             output_rtf_file = "{}/{}.rtf".format(args.outdir, output_file_name)
             
     #plot and output
-    plotCustomPlot(inputDf, output_rtf_file, ignoreDictionary)
-    plt.savefig("{}/{}.png".format(args.outdir, output_file_name), dpi=600, format="png")
+    try:
+            plotCustomPlot(inputDf, output_rtf_file, ignoreDictionary)
     
+        
+            plt.savefig("{}/{}.png".format(args.outdir, output_file_name), dpi=600, format="png")
+    except FileNotFoundError:
+            raise FileNotFoundError("Output directory must already exist. ")
     return 'KSB'
 
 
