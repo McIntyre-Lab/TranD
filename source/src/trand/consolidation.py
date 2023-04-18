@@ -64,7 +64,7 @@ def consolidate_junctions(
         for consol_transcript, transcript in (
             key_gene.groupby("consolidation_transcript_id")["transcript_id"]
             .first()
-            .iteritems()
+            .items()
         ):
             for row in bed_gene_data[transcript]:
                 consol_gene = pd.concat(
@@ -333,7 +333,7 @@ def consolidate_junctions(
         for consol_transcript, transcript in (
             key_gene.groupby("consolidation_transcript_id")["transcript_id"]
             .first()
-            .iteritems()
+            .items()
         ):
             num = 0
             # Make start and end values integers for proper sorting
