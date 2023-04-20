@@ -14,11 +14,11 @@ Version 5 (Turn ERS groups into an object!!)
 
 import argparse
 import pandas as pd
+import numpy as np
 import os
-import trand.io
 import time
 from dataclasses import dataclass
-from collections import Counter
+import statistics as stats
 
 
 # Using a class to make it far far far easier to add any further functionality
@@ -26,14 +26,13 @@ from collections import Counter
 
 @dataclass
 class ERS_GRP:
-        # is num really necessary? they will be in a list
-        # num_exon_regions: int
         
-        def __init__(self, num, gene_id):
+        def __init__(self, num, gene_id, num_er):
                 self.num = num
                 self.size = 0
                 self.gene_id = gene_id
                 self.xscriptSet = set()
+                self.num_er = num_er
         
         def addXscript(self, xscript):
                 self.xscriptSet.add(xscript)
@@ -47,29 +46,36 @@ class ERS_GRP:
         
         def __next__(self):
                 return self
+        
+        def __eq__(self, other):
+                return self.num == other.num
+        
+        def __hash__(self):
+                return hash(str(self))
 
 
 # explain each parameter
 @dataclass
 class XSCRIPT:        
-        def __init__(self, xscript_id, gene_id):
+        def __init__(self, xscript_id, gene_id, num_er):
                 self.xscript_id=xscript_id
                 self.gene_id=gene_id
                 self.ovlpSet = set()
                 self.ovlpCnt = 0
                 self.ers_grp_num = None
+                self.num_er = num_er
                 
                 self.irSet = set()
+                
+                self.num_nuc_diff = []
+                self.prop_nuc_diff = []
 
                 
         def __eq__(self, other):
                 return self.xscript_id == other.xscript_id
         
         def __str__(self):
-                return self.xscript_id + ", ovlp set: " + str(self.ovlpSet)
-        
-        def compare(self, other):
-                return self.xscript_id == other
+                return self.xscript_id + ", ovlp set: " + str(self.ovlpSet) + ", exon regions: " + str(self.num_er)
         
         def addOlp(self, olp):
                 self.ovlpSet.add(olp)
@@ -80,18 +86,25 @@ class XSCRIPT:
                 
         def flagIR(self):
                 return len(self.irSet) > 0
-
         
-        # flag_IR: bool
-        # num_exon_regions: int
-        # num_nuc_diff: list
-        # prop_nuc_diff: list
+        def addDiff(self, num, prop):
+                self.num_nuc_diff.append(num)
+                self.prop_nuc_diff.append(prop)
 
-# i dont think this will be useful... lets keep it for now
 @dataclass
 class GENE:
-        gene_id: str
-        num_sets: int
+        
+        def __init__(self, gene_id):
+                self.gene_id = gene_id
+                self.ersGrpSet = set()
+                self.numSets = 0
+        
+        def __str__(self):
+                return self.gene_id
+        
+        def addGrp(self, grp):
+                self.ersGrpSet.add(grp)
+                self.numSets += 1
         
 
 def getOptions():
@@ -146,8 +159,6 @@ def getOptions():
         args = parser.parse_args()
         return args
 
-
-
 def convertInputDataFrame(inDf, includeIR):
         
         erInfoDf = inDf[
@@ -155,19 +166,36 @@ def convertInputDataFrame(inDf, includeIR):
                         "gene_id",
                         "transcript_1",
                         "transcript_2",
+                        "num_ER_T1_only",
+                        "num_ER_T2_only",
+                        "num_ER_shared",
                         "prop_ER_similar",
+                        "num_nt_diff",
+                        "prop_nt_diff",
                         "flag_IR"
                 ]
         ].copy()
         
-        erInfoDf['transcript_1'] = erInfoDf['gene_id'] + "/" + erInfoDf['transcript_1']
-        erInfoDf['transcript_2'] = erInfoDf['gene_id'] + "/" + erInfoDf['transcript_2']
+        erInfoDf['num_ER_shared'] = erInfoDf['num_ER_shared'].astype(str)
+        erInfoDf['num_ER_T1_only'] = erInfoDf['num_ER_T1_only'].astype(str)
+        erInfoDf['num_ER_T2_only'] = erInfoDf['num_ER_T2_only'].astype(str)
+        erInfoDf['num_nt_diff'] = erInfoDf['num_nt_diff'].astype(str)
+        erInfoDf['prop_nt_diff'] = erInfoDf['prop_nt_diff'].astype(str)
+
+        
+        erInfoDf['transcript_1'] = (
+                erInfoDf['gene_id'] + "/" + 
+                erInfoDf['transcript_1'] + "/" + 
+                erInfoDf['num_ER_shared'] + "/" + 
+                erInfoDf['num_ER_T1_only'])
+        
+        erInfoDf['transcript_2'] = (
+                erInfoDf['gene_id'] + "/" + 
+                erInfoDf['transcript_2'] + "/" + 
+                erInfoDf['num_ER_shared'] + "/" + 
+                erInfoDf['num_ER_T2_only'])
         
         unqXscriptSet = set(pd.concat([erInfoDf['transcript_1'], erInfoDf['transcript_2']]))
-        
-        # basically. is there a way to search through the whole dataframe ONCE and pull out each xscript with all of its info
-        # i think yes
-        # i did it!!
                 
         xscriptDct = {}
         addedXscripts = set()
@@ -186,25 +214,28 @@ def convertInputDataFrame(inDf, includeIR):
                 xscript2 = model2.split('/')[1]
                 flagFullOvlp = row['prop_ER_similar'] == 1
                 flagIR = row['flag_IR'] == 1
-                
+                numER = row['num_ER_shared']
+                numNTDiff = row['num_nt_diff']
+                propNTDiff = row['prop_nt_diff']
                 
                 if (flagFullOvlp):
                         
                         if (xscript1 in addedXscripts):
                                 tmpXscript1 = xscriptDct.get(xscript1)
+                                tmpXscript1.addDiff(numNTDiff, propNTDiff)
                         else:
-                                tmpXscript1 = XSCRIPT(xscript1, geneid)
+                                tmpXscript1 = XSCRIPT(xscript1, geneid, numER)
+                                tmpXscript1.addDiff(numNTDiff, propNTDiff)
+
                                 
                         if (xscript2 in addedXscripts):
                                 tmpXscript2 = xscriptDct.get(xscript2)
+                                tmpXscript2.addDiff(numNTDiff, propNTDiff)
+
                         else:
-                                tmpXscript2 = XSCRIPT(xscript2, geneid)                                
+                                tmpXscript2 = XSCRIPT(xscript2, geneid, numER)
+                                tmpXscript2.addDiff(numNTDiff, propNTDiff)
                                 
-                                
-                        # print ("xscript 2: " + xscript2)
-                        # print ("xscript 1: " + xscript1)
-                        # print ("oxscript 2: " + str(tmpXscript2))
-                        # print ("oxscript 1: " + str(tmpXscript1))
                         
                         if (includeIR):
                                 tmpXscript1.addOlp(xscript2)
@@ -220,12 +251,6 @@ def convertInputDataFrame(inDf, includeIR):
                                 else:
                                         tmpXscript1.addOlp(xscript2)
                                         tmpXscript2.addOlp(xscript1)
-                                        
-                                        
-                                                                
-                
-                        # print ("olp list 1: " + str(tmpXscript1.ovlpSet))
-                        # print ("olp list 2: " + str(tmpXscript2.ovlpSet))
                         
                         
                         if (xscript1 not in addedXscripts):
@@ -242,15 +267,20 @@ def convertInputDataFrame(inDf, includeIR):
                                 ).unique())
         
         leftovers = unqXscriptSet - allOlpXscripts
-        
-        for leftover in leftovers:
-                geneid = leftover.split('/')[0]
-                xscript = leftover.split('/')[1]
                 
-                tmpXscript = XSCRIPT(xscript, geneid)
-                xscriptDct[xscript] = tmpXscript
-        
-        # dont forget to deal with 2. xscripts completely removed due to IR(?)
+        for leftover in leftovers:
+                  geneid = leftover.split('/')[0]
+                  xscript = leftover.split('/')[1]
+                  
+                  
+                  if (xscript not in addedXscripts): 
+                          numER = int(leftover.split('/')[2]) + int(leftover.split('/')[3])
+                          tmpXscript = XSCRIPT(xscript, geneid, numER)
+                          tmpXscript.addDiff(np.NaN,np.NaN)
+                          
+                          xscriptDct[xscript] = tmpXscript
+                          addedXscripts.add(xscript)
+                          
         return xscriptDct
 
 def xscriptToGrp(xscriptDct):                
@@ -259,19 +289,10 @@ def xscriptToGrp(xscriptDct):
         
         groupCount = 0;
         for value in xscriptDct.values():
-                # print ("a: ")
-                # print (value)
-                # print()
                 
                 if ersGrpLst:
-                        # print ("oh rilly?")
-                        # print ()
-                        
+
                         for ersGrp in ersGrpLst:
-                                
-                                # print ("b: ")
-                                # print (ersGrp)
-                                # print()
                                 
                                 if value.xscript_id in ersGrp.xscriptSet:
                                         ersGrp.addXscript(value.xscript_id)
@@ -281,7 +302,7 @@ def xscriptToGrp(xscriptDct):
                                         break
                         else:
                                 groupCount += 1
-                                tmpERS = ERS_GRP(groupCount, value.gene_id)
+                                tmpERS = ERS_GRP(groupCount, value.gene_id, value.num_er)
                                 
                                 tmpERS.addXscript(value.xscript_id)
                                 value.ers_grp_num = tmpERS.num
@@ -290,37 +311,26 @@ def xscriptToGrp(xscriptDct):
                                 ersGrpLst.append(tmpERS)                                
                         
                 else:
-                        # print ("gene_id: ")
-                        # print (value.gene_id)
                         groupCount += 1
-                        tmpERS = ERS_GRP(groupCount, value.gene_id)
+                        tmpERS = ERS_GRP(groupCount, value.gene_id, value.num_er)
                         
-                        # if i need values from the xscript (doubtful) i'll add __hash__ to xscript
                         tmpERS.addXscript(value.xscript_id)
                         value.ers_grp_num = tmpERS.num
 
                         tmpERS.xscriptSet.update(value.ovlpSet)
 
-                        # print ("tmpERS: " + str(tmpERS))
-                        # print()
                         ersGrpLst.append(tmpERS)                        
                         
         return ersGrpLst
         
         
-def createXscriptOutDf(xscriptDct, ersGrpLst):
-        # Set up empty Df with proper headers
-        outDf = pd.DataFrame(columns=[
-                                     'gene_id',
-                                     'xscript_model_id', 
-                                     'ERS_grp_num', 
-                                     'flag_nonolp_pair'])
-        
+def createXscriptOutDf(xscriptDct, ersGrpLst):        
         geneIDLst = []
         xscriptIDLst = []
         grpNumLst = []
         nonOlpLst = []
         nonolpXscriptLst = []
+        numERLst = []
         
         for xscript in xscriptDct.values():
                 ersGrp = ersGrpLst[xscript.ers_grp_num - 1]
@@ -332,6 +342,8 @@ def createXscriptOutDf(xscriptDct, ersGrpLst):
                 geneIDLst.append(xscript.gene_id)
                 xscriptIDLst.append(xscript.xscript_id)
                 grpNumLst.append(xscript.ers_grp_num)
+                numERLst.append(xscript.num_er)
+                
                 nonOlpLst.append('1' if flag_nonolp else '0')
                 
                 if flag_nonolp:
@@ -342,7 +354,7 @@ def createXscriptOutDf(xscriptDct, ersGrpLst):
                         nonOlpXscript = "|".join(tmpSet - xscript.ovlpSet)
                         nonolpXscriptLst.append(nonOlpXscript)
                 else:
-                        nonolpXscriptLst.append(None)
+                        nonolpXscriptLst.append(np.NaN)
 
         
         outDf = pd.DataFrame(
@@ -351,21 +363,13 @@ def createXscriptOutDf(xscriptDct, ersGrpLst):
                 'xscript_model_id':xscriptIDLst, 
                 'ERS_grp_num':grpNumLst, 
                 'flag_nonolp_pair':nonOlpLst,
-                'nonolp_xscript_id':nonolpXscriptLst
+                'nonolp_xscript_id':nonolpXscriptLst,
+                'num_ER':numERLst
                 })
                 
         return outDf
 
 def createERSOutDf(ersGrpLst, xscriptDct, includeIR):
-        outDf = pd.DataFrame(columns=[
-                                     'ERS_grp_num', 
-                                     'ERS_grp_size',
-                                     'gene_id',
-                                     'xscripts',
-                                     'flag_nonolp_pair',
-                                     'flag_IR_in_set',
-                                     'num_IR_xscripts',
-                                     'prop_IR'])
         
         numLst = []
         sizeLst = []
@@ -375,20 +379,50 @@ def createERSOutDf(ersGrpLst, xscriptDct, includeIR):
         flagIRLst = []
         irNumLst = []
         propIRLst = []
+        numERLst = []
+        minNumNTLst = []
+        maxNumNTLst = []
+        meanNumNTLst = []
+        medNumNTLst = []
+        minPropNTLst = []
+        maxPropNTLst = []
+        meanPropNTLst = []
+        medPropNTLst = []
         
         for ersGrp in ersGrpLst:
                 numLst.append(ersGrp.num)
                 sizeLst.append(ersGrp.size)
                 geneIDLst.append(ersGrp.gene_id)
+                numERLst.append(ersGrp.num_er)
+
                 xscriptLst.append("|".join(ersGrp.xscriptSet))
                 
                 for xscript in ersGrp.xscriptSet:
+                        
+                        numNTLst = []
+                        propNTLst = []
+                        for numDiff in xscriptDct.get(xscript).num_nuc_diff:
+                                numNTLst.append(float(numDiff))
+                                
+                        
+                        for propDiff in xscriptDct.get(xscript).prop_nuc_diff:
+                                propNTLst.append(float(propDiff))
+                        
                         if xscriptDct.get(xscript).ovlpCnt < ersGrp.size - 1:
                                 flagNonOlpLst.append('1')
                                 break
                 else:
                                 flagNonOlpLst.append('0')
                 
+                
+                minNumNTLst.append(min(numNTLst))
+                maxNumNTLst.append(max(numNTLst))
+                meanNumNTLst.append(stats.mean(numNTLst))
+                medNumNTLst.append(stats.median(numNTLst))
+                minPropNTLst.append(min(propNTLst))
+                maxPropNTLst.append(max(propNTLst))
+                meanPropNTLst.append(stats.mean(propNTLst))
+                medPropNTLst.append(stats.median(propNTLst))
                 
                 if (includeIR):
                         for xscript in ersGrp.xscriptSet:
@@ -410,6 +444,7 @@ def createERSOutDf(ersGrpLst, xscriptDct, includeIR):
                         flagIRLst.append('0')
                         irNumLst.append(0)
                         propIRLst.append(0/ersGrp.size)
+                                
 
                 
         outDf = pd.DataFrame(
@@ -421,23 +456,64 @@ def createERSOutDf(ersGrpLst, xscriptDct, includeIR):
                 'flag_nonolp_pair':flagNonOlpLst,
                 'flag_IR_in_set':flagIRLst,
                 'num_IR_xscripts':irNumLst,
-                'prop_IR':propIRLst
+                'prop_IR':propIRLst,
+                'num_ER':numERLst,
+                'min_num_nt_diff':minNumNTLst,
+                'max_num_nt_diff':maxNumNTLst,
+                'mean_num_nt_diff':meanNumNTLst,
+                'median_num_nt_diff':medNumNTLst,
+                'min_prop_nt_diff':minPropNTLst,
+                'max_prop_nt_diff':maxPropNTLst,
+                'mean_prop_nt_diff':meanPropNTLst,
+                'median_prop_nt_diff':medPropNTLst
                 })
         
         return outDf
 
-def createGeneOutDf(xscriptDct, ersGrpLst): 
-        outDf = pd.DataFrame(columns=[
-                                     'gene_id', 
-                                     'num_sets',
-                                ])
+def createGeneOutDf(xscriptDct, ersGrpLst):        
+        geneDct = {}
         
-        geneDct = Counter((grp.gene_id) for grp in ersGrpLst)
+        for grp in ersGrpLst:
+                if grp.gene_id in geneDct:
+                        tmpGene = geneDct.get(grp.gene_id)
+                        tmpGene.addGrp(grp)
+                else:
+                        tmpGene = GENE(grp.gene_id)
+                        tmpGene.addGrp(grp)
+                        
+                        geneDct[grp.gene_id] = tmpGene
+                        
+        
+        geneIDLst = []
+        numSetLst = []
+        minERLst = []
+        maxERLst = []
+        meanERLst = []
+        medERLst = []
+        
+        
+        for key, value in geneDct.items():
+                
+                geneIDLst.append(key)
+                numSetLst.append(len(value.ersGrpSet))
+                
+                numERLst = []
+                for grp in value.ersGrpSet:
+                        numERLst.append(int(grp.num_er))
+                
+                minERLst.append(min(numERLst))
+                maxERLst.append(max(numERLst))
+                meanERLst.append(stats.mean(numERLst))
+                medERLst.append(stats.median(numERLst))
         
         outDf = pd.DataFrame(
                 {
-                        'gene_id':geneDct.keys(),
-                        'num_sets':geneDct.values()
+                        'gene_id':geneIDLst,
+                        'num_sets':numSetLst,
+                        'min_ER':minERLst,
+                        'max_ER':maxERLst,
+                        'mean_ER':meanERLst,
+                        'median_ER':medERLst
                 })
         
         return outDf                        
@@ -477,17 +553,15 @@ def main():
                 ersDf = createERSOutDf(ersGrpLst=mstrERSGrpLst, xscriptDct=mstrXscriptDct, includeIR=False)
                 
         
-
         # Converts above into 2 dfs to be output to csv
         xscriptDf = createXscriptOutDf(xscriptDct=mstrXscriptDct, ersGrpLst=mstrERSGrpLst)
         geneDf = createGeneOutDf(xscriptDct=mstrXscriptDct,ersGrpLst=mstrERSGrpLst)
 
-
         # Output Df to CSV
         try:
-                xscriptDf.to_csv(xscript_output_file,index=False)
-                ersDf.to_csv(ers_output_file,index=False)
-                geneDf.to_csv(gene_output_file,index=False)
+                xscriptDf.to_csv(xscript_output_file,index=False, encoding='utf-16')
+                ersDf.to_csv(ers_output_file,index=False, encoding='utf-16')
+                geneDf.to_csv(gene_output_file,index=False, encoding='utf-16')
         except OSError:
                 raise OSError("Output directory must already exist. ")
 
@@ -495,8 +569,6 @@ def main():
         toc = time.perf_counter()       
         print(f"complete, operation took {toc-tic:0.4f} seconds")
         
-        # Assures that the outdir is empty or -f is enabled to overwrite existing directory
-        #trand.io.prepare_outdir(args.outdir, args.force)
         return mstrXscriptDct, mstrERSGrpLst, xscriptDf, ersDf, geneDf
 
 if __name__ == '__main__':
