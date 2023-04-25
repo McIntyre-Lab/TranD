@@ -145,7 +145,7 @@ class GENE:
                 
         ersGrpSet (set of ERS_GRP objects): A set of all ERS groups belonging to this gene.
                 
-        numSets (int): The size of ersGrpSet.
+        numSet (int): The size of ersGrpSet.
                 
         """
         
@@ -153,14 +153,14 @@ class GENE:
                 self.gene_id = gene_id
                 
                 self.ersGrpSet = set()
-                self.numSets = 0
+                self.numGrp = 0
         
         def __str__(self):
                 return self.gene_id
         
         def addGrp(self, grp):
                 self.ersGrpSet.add(grp)
-                self.numSets += 1
+                self.numGrp += 1
         
 
 def getOptions():
@@ -474,8 +474,8 @@ def createERSGrps(xscriptDct):
 def createXscriptOutDf(xscriptDct, ersGrpLst):
         """
         
-        Creates an output dataframe based on the information gleaned and sorted
-        into the XSCRIPT dictionary and ERS_GRP list. Transcript focused.
+        Creates an output dataframe based on the information gleaned and stored
+        in the XSCRIPT dictionary and ERS_GRP list. Transcript focused.
 
         Parameters
         ----------
@@ -548,8 +548,8 @@ def createXscriptOutDf(xscriptDct, ersGrpLst):
 
 def createERSOutDf(ersGrpLst, xscriptDct, includeIR):
         """
-        Creates an output dataframe based on the information gleaned and sorted
-        into the XSCRIPT dictionary and ERS_GRP list. ERS_GRP focused.
+        Creates an output dataframe based on the information gleaned and stored
+        in the XSCRIPT dictionary and ERS_GRP list. ERS_GRP focused.
 
         Parameters
         ----------
@@ -676,8 +676,8 @@ def createERSOutDf(ersGrpLst, xscriptDct, includeIR):
 def createGeneOutDf(xscriptDct, ersGrpLst):
         """
         
-        Creates a dictionary of GENE objects based on the information gleaned and sorted
-        into the XSCRIPT dictionary and ERS_GRP list. Then creates a gene focused 
+        Creates a dictionary of GENE objects based on the information gleaned and stored
+        in the XSCRIPT dictionary and ERS_GRP list. Then creates a gene focused 
         output dataframe.
 
         Parameters
@@ -818,7 +818,7 @@ def main():
                 ersDf.to_csv(ers_output_file,index=False, encoding='utf-16')
                 geneDf.to_csv(gene_output_file,index=False, encoding='utf-16')
         except OSError:
-                raise OSError("Output directory must already exist. ")
+                raise OSError("Output directory must already exist.")
 
         # End timer to track how long the process takes
         toc = time.perf_counter()       
