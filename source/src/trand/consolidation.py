@@ -36,6 +36,24 @@ def create_junction_catalog_str(gene, tx, tx_data):
         left_end = int(e.end) - 10
     return junctions
 
+def consolidate_single_xcrpt(
+    gene_df, gene_id, prefix="tr"
+):
+    logger.debug("Gene {} has a single transcript.", gene_id)
+    transcript_id = gene_df["transcript_id"].unique()[0]
+    consol_xcrpt_id = prefix + "_" + gene_id + "_1"
+    gene_df["transcript_id"] = consol_xcrpt_id
+    consol_gene = gene_df.sort_values(by=["transcript_id", "start"]).reset_index(drop=True)
+    key_gene = pd.DataFrame({"gene_id": [gene_id], "transcript_id": [transcript_id], "consolidation_transcript_id": [consol_xcrpt_id]})
+    logger.debug(
+        "Gene {} has {} transcript(s) before consolidation and {} transcript(s) after "
+        "consolidation.",
+        gene_id,
+        len(key_gene),
+        key_gene["consolidation_transcript_id"].nunique(),
+    )
+    return consol_gene, key_gene
+
 
 def consolidate_junctions(
     bed_gene_data, pre_consol_jct_df, prefix="tr"
@@ -47,51 +65,8 @@ def consolidate_junctions(
     consol_gene_cols = ["seqname", "start", "end", "strand", "gene_id", "transcript_id"]
     consol_gene = pd.DataFrame(columns=consol_gene_cols)
 
-    # Check if single transcript, if yes then it cannot be consolidated
-    if len(bed_gene_data["transcript_list"]) == 1:
-        logger.debug("Gene {} has a single transcript.", gene_id)
-        xcrpt_all = pd.DataFrame(
-            bed_gene_data["transcript_list"], columns=["transcript_id"]
-        )
-        xcrpt_all["gene_id"] = gene_id
-        xcrpt_all["chr"] = bed_gene_data[xcrpt_all["transcript_id"][0]][0][0]
-        xcrpt_all["strand"] = bed_gene_data[xcrpt_all["transcript_id"][0]][0][5]
-        xcrpt_all["consolidation_transcript_id"] = prefix + "_" + gene_id + "_1"
-        key_gene = xcrpt_all[
-            ["gene_id", "transcript_id", "consolidation_transcript_id"]
-        ]
-        # Format output data
-        for consol_transcript, transcript in (
-            key_gene.groupby("consolidation_transcript_id")["transcript_id"]
-            .first()
-            .items()
-        ):
-            for row in bed_gene_data[transcript]:
-                consol_gene = pd.concat(
-                    [
-                        consol_gene,
-                        pd.DataFrame(
-                            [
-                                [
-                                    row[0],
-                                    int(row[1]) + 1,
-                                    int(row[2]),
-                                    row[5],
-                                    gene_id,
-                                    consol_transcript,
-                                ]
-                            ],
-                            columns=consol_gene.columns,
-                        ),
-                    ],
-                    ignore_index=True,
-                )
-                consol_gene = consol_gene.sort_values(
-                    by=["transcript_id", "start"]
-                ).reset_index(drop=True)
-
     # Check if more than one transcript present and all are monoexon (no junctions present)
-    elif len(bed_gene_data["transcript_list"]) > 1 and len(pre_consol_jct_df) == 0:
+    if len(bed_gene_data["transcript_list"]) > 1 and len(pre_consol_jct_df) == 0:
         logger.debug(
             "Gene {} has all monoexon transcripts (more than 1 transcript present).",
             gene_id,
@@ -103,71 +78,46 @@ def consolidate_junctions(
         xcrpt_all["gene_id"] = gene_id
         xcrpt_all["chr"] = bed_gene_data[xcrpt_all["transcript_id"][0]][0][0]
         xcrpt_all["strand"] = bed_gene_data[xcrpt_all["transcript_id"][0]][0][5]
-        xcrpt_all["start"] = xcrpt_all["transcript_id"].map(
-            lambda xcrpt: min([int(x[1]) + 1 for x in bed_gene_data[xcrpt]])
+        xcrpt_all["start"] = np.array(
+            [min([int(x[1]) + 1 for x in bed_gene_data[xcrpt]]) for xcrpt in xcrpt_all["transcript_id"]]
         )
-        xcrpt_all["end"] = xcrpt_all["transcript_id"].map(
-            lambda xcrpt: max([int(x[2]) for x in bed_gene_data[xcrpt]])
+        xcrpt_all["end"] = np.array(
+            [max([int(x[2]) for x in bed_gene_data[xcrpt]]) for xcrpt in xcrpt_all["transcript_id"]]
         )
-        # Loop over coordinates to make bins of overlapping monoexon transcripts
+
+        # Make bins of overlapping monoexon transcripts and get min start and max end
         xcrpt_all = xcrpt_all.sort_values(by=["start", "end"]).reset_index(drop=True)
-        bin_num = 1
-        bin_start = xcrpt_all["start"][0]
-        bin_end = xcrpt_all["end"][0]
-        xcrpt_all["monoexon_group"] = 0
-        for index, row in xcrpt_all.iterrows():
-            if row["start"] >= bin_start and row["start"] <= bin_end:
-                xcrpt_all.loc[index, "monoexon_group"] = bin_num
-                if row["end"] >= bin_end:
-                    bin_end = row["end"]
-            else:
-                bin_num += 1
-                bin_start = row["start"]
-                bin_end = row["end"]
-                xcrpt_all.loc[index, "monoexon_group"] = bin_num
-        # Group by assigned bins to get min start and max end
-        xcrpt_all["min_group_start"] = xcrpt_all.groupby("monoexon_group")[
-            "start"
-        ].transform("min")
-        xcrpt_all["max_group_end"] = xcrpt_all.groupby("monoexon_group")[
-            "end"
-        ].transform("max")
-        xcrpt_all["consolidation_transcript_id"] = (
-            prefix
-            + "_"
-            + gene_id
-            + "_"
-            + xcrpt_all["monoexon_group"].astype(int).map(str)
+        xcrpt_all["monoexon_group"] = (
+            (xcrpt_all["start"] >= xcrpt_all["end"].shift()).cumsum() + 1
+        )
+        consol_xcrpt = (
+            xcrpt_all.groupby("monoexon_group", as_index=False)[
+                ["gene_id", "chr", "strand", "start", "end"]
+            ].agg(
+                {"gene_id": "first", "chr": "first", "strand": "first", "start": "min", "end": "max"}
+            )
         )
         key_gene = xcrpt_all[
-            ["gene_id", "transcript_id", "consolidation_transcript_id"]
-        ]
+            ["gene_id", "transcript_id", "monoexon_group"]
+        ].drop_duplicates()
+
         # Format output data
-        consol_xcrpt = (
-            xcrpt_all.groupby("monoexon_group")[
-                ["gene_id", "chr", "strand", "min_group_start", "max_group_end"]
-            ]
-            .first()
-            .reset_index()
-        )
         consol_xcrpt["consolidation_transcript_id"] = (
-            prefix
-            + "_"
-            + gene_id
-            + "_"
-            + consol_xcrpt["monoexon_group"].astype(int).map(str)
+            prefix + "_" + gene_id + "_" + consol_xcrpt["monoexon_group"].astype(str)
         )
-        consol_gene = consol_xcrpt[
-            [
-                "chr",
-                "min_group_start",
-                "max_group_end",
-                "strand",
-                "gene_id",
-                "consolidation_transcript_id",
-            ]
-        ]
+        key_gene["consolidation_transcript_id"] = (
+            prefix + "_" + gene_id + "_" + key_gene["monoexon_group"].astype(str)
+        )
+        key_gene = key_gene.drop(columns=["monoexon_group"])
+        consol_gene = pd.merge(
+            consol_xcrpt[["chr", "start", "end", "strand", "gene_id", "consolidation_transcript_id"]],
+            key_gene[["gene_id", "transcript_id", "consolidation_transcript_id"]],
+            on=["gene_id", "consolidation_transcript_id"],
+            how="inner"
+        )[["chr", "start", "end", "strand", "gene_id", "consolidation_transcript_id"]].drop_duplicates()
+        consol_gene = consol_gene.sort_values(by=["consolidation_transcript_id", "start"]).reset_index(drop=True)
         consol_gene.columns = consol_gene_cols
+
     # Gene contains at least one multiexon transcript and more than one transcript total
     else:
         logger.debug(
@@ -467,24 +417,28 @@ def consolidate_transcripts(data, consol_prefix, gene_list):
         # using gene_df =
         # pd.concat([gene_df,pd.DataFrame([["I",1779855,1781091,'-',"WBGene00022161","new_transcript_1"],["I",1781991,1782900,'-',"WBGene00022161","new_transcript_2"]],
         # columns=gene_df.columns)],ignore_index=True)
-        pre_consol_jct = []
-        gene_df = data[data["gene_id"] == gene]
-        try:
-            bed_gene_data = prep_bed_for_ea(gene_df)
-        except ValueError as e:
-            logger.error(e)
-            continue
-        transcripts = gene_df.groupby("transcript_id")
-        # Loop over transcripts to get junctions
-        for transcript in transcripts.groups:
-            pre_consol_jct.extend(
-                create_junction_catalog_str(gene, transcript, bed_gene_data[transcript])
+        gene_df = data[data["gene_id"] == gene].copy()
+        # Check if single transcript, if yes then it cannot be consolidated
+        if gene_df["transcript_id"].nunique() == 1:
+            consol_gene, key_gene = consolidate_single_xcrpt(gene_df, gene, prefix)
+        else:
+            pre_consol_jct = []
+            try:
+                bed_gene_data = prep_bed_for_ea(gene_df)
+            except ValueError as e:
+                logger.error(e)
+                continue
+            transcripts = gene_df.groupby("transcript_id")
+            # Loop over transcripts to get junctions
+            for transcript in transcripts.groups:
+                pre_consol_jct.extend(
+                    create_junction_catalog_str(gene, transcript, bed_gene_data[transcript])
+                )
+            pre_consol_jct_df = pd.DataFrame(pre_consol_jct, columns=jct_df_cols)
+            # Consolidate 5'/3' variation
+            consol_gene, key_gene = consolidate_junctions(
+                bed_gene_data, pre_consol_jct_df, consol_prefix
             )
-        pre_consol_jct_df = pd.DataFrame(pre_consol_jct, columns=jct_df_cols)
-        # Consolidate 5'/3' variation
-        consol_gene, key_gene = consolidate_junctions(
-            bed_gene_data, pre_consol_jct_df, consol_prefix
-        )
         consol_data = pd.concat([consol_data, consol_gene], ignore_index=True)
         key.append(key_gene)
 
