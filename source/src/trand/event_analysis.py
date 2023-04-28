@@ -1110,13 +1110,31 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                 # Create process pool
                 pool = Pool(cpu_cores)
                 for gene in list(genes.groups):
-                    pool.apply_async(process_consol, args=(
-                            data,
-                            consol_prefix,
-                            [gene],
-                            data_list,
-                            keys_list
-                        ))
+                    # Check if gene has a single transcript
+                    if data[data["gene_id"] == gene]["transcript_id"].nunique() == 1:
+                        consol_gene, key_gene = CONSOL.consolidate_single_xcrpt(
+                            data[data["gene_id"] == gene].copy(),
+                            gene,
+                            consol_prefix
+                        )
+                        # Add columns for number of transcript_id, number of consolidated_transcript_id
+                        #   and a flag for if the gene was consolidated
+                        key_gene["num_transcript_in_consol_transcript"] = 1
+                        key_gene["num_transcript_id_in_gene"] = 1
+                        key_gene["num_consol_transcript_id_in_gene"] = 1
+                        key_gene["flag_gene_consolidated"] = 0
+                        # Concatenate to output list
+                        data_list.append(consol_gene)
+                        keys_list.append(key_gene)
+                    # If more than one transcript then send to new cpu for processing
+                    else:
+                        pool.apply_async(process_consol, args=(
+                                data,
+                                consol_prefix,
+                                [gene],
+                                data_list,
+                                keys_list
+                            ))
                 pool.close()
                 pool.join()
                 # Concatenate parallel consolidation output
@@ -1542,8 +1560,7 @@ def process_consol(data, consol_prefix, gene, data_list, keys_list):
     NOTE: Currently gene must be a list with a single gene value in it since the
         consolidation function utilizes a loop over a list of genes
     """
-    subset_data = data[data["gene_id"] == gene[0]]
-    consol_data, consol_genes, keys = CONSOL.consolidate_transcripts(subset_data, consol_prefix, gene)
+    consol_data, consol_genes, keys = CONSOL.consolidate_transcripts(data, consol_prefix, gene)
     data_list.append(consol_data)
     keys_list.append(keys)
 
