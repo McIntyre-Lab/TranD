@@ -383,6 +383,13 @@ def endRtf(outFile):
     )
     outFile.write(r"}\n\x00")     
 
+# removesuffix, same as the function for str objects in Python 3.9+
+def removesuffix(input_string, suffix):
+        if suffix and input_string.endswith(suffix):
+                return input_string[:-len(suffix)]
+        return input_string
+
+
 #run the program
 def main():
     ignoreDictionary = buildIgnoreDct(args)
@@ -399,9 +406,7 @@ def main():
                  " up to 4 types of AS.")
             
     # input csv to dataframe        
-    inputDf = pd.read_csv(args.infile)
-
-    # trand.io.prepare_outdir(args.outdir, args.force)
+    inputDf = pd.read_csv(args.infile, low_memory=False)
 
         
     # retrieve name of input file
