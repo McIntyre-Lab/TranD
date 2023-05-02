@@ -252,6 +252,8 @@ def gleanInputDf(inDf, includeIR):
                 ]
         ].copy()
         
+        print ("Number of Transcripts: " + str(len(pd.concat([erInfoDf['transcript_1'], erInfoDf['transcript_2']]).unique())))
+        
         # Convert all number rows into string for ease of access.
         erInfoDf['num_ER_shared'] = erInfoDf['num_ER_shared'].astype(str)
         erInfoDf['num_ER_T1_only'] = erInfoDf['num_ER_T1_only'].astype(str)
@@ -274,6 +276,7 @@ def gleanInputDf(inDf, includeIR):
         
         # Create set of all unique transcripts (used for leftovers)
         unqXscriptSet = set(pd.concat([erInfoDf['transcript_1'], erInfoDf['transcript_2']]))
+        
         
         # Create empty output dictionary
         xscriptDct = {}
@@ -725,6 +728,10 @@ def createGeneOutDf(xscriptDct, ersGrpLst):
         maxERLst = []
         meanERLst = []
         medERLst = []
+        minSizeLst = []
+        maxSizeLst = []
+        meanSizeLst = []
+        medSizeLst = []
         
         # Loop through every gene in the dictionary and append necessary info to each column list.
         for geneStr, gene in geneDct.items():
@@ -732,16 +739,24 @@ def createGeneOutDf(xscriptDct, ersGrpLst):
                 geneIDLst.append(geneStr)
                 numSetLst.append(len(gene.ersGrpSet))
                 
-                # Add every num_er for every group belonging to a gene to a list
+                # Add every num_er and ers grp size for every group belonging to a gene to a list
                 numERLst = []
+                numSizeLst = []
                 for grp in gene.ersGrpSet:
                         numERLst.append(int(grp.num_er))
+                        numSizeLst.append(int(grp.size))
                 
-                # and do stats on it.
+                
+                # and do stats on them.
                 minERLst.append(min(numERLst))
                 maxERLst.append(max(numERLst))
                 meanERLst.append(stats.mean(numERLst))
                 medERLst.append(stats.median(numERLst))
+                
+                minSizeLst.append(min(numSizeLst))
+                maxSizeLst.append(max(numSizeLst))
+                meanSizeLst.append(stats.mean(numSizeLst))
+                medSizeLst.append(stats.median(numSizeLst))
         
         # Create output dataframe using the lists
         outDf = pd.DataFrame(
@@ -751,7 +766,11 @@ def createGeneOutDf(xscriptDct, ersGrpLst):
                         'min_ER':minERLst,
                         'max_ER':maxERLst,
                         'mean_ER':meanERLst,
-                        'median_ER':medERLst
+                        'median_ER':medERLst,
+                        'min_grp_size':minSizeLst,
+                        'max_grp_size':maxSizeLst,
+                        'mean_grp_size':meanSizeLst,
+                        'median_grp_size':medSizeLst
                 })
         
         return outDf                        
