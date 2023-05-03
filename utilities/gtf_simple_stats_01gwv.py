@@ -10,60 +10,102 @@ import pandas as pd
 import os
 
 #Import trand functions
+import trand
 from trand import io
+from trand import event_analysis
 from trand.event_analysis import nCr
 
 def getOptions():
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(
-        description=(
-                "Input either one GTF file or two GTF files to find the pairs between the genes of both or wihtin the genes of one"
-        )
-    )
-    
-    #input data
-    parser.add_argument( 
-        "-g1",
-        "--gtf1",
-        dest="gtf1",
-        required=True,
-        help="Input one GTF file to calculate the pairs of transcripts in the one," 
-             "otherwise it will be used to find the pairs between the first inputted" 
-             "GTF file and the second"
-    )
-    parser.add_argument( 
-        "-g2",
-        "--gtf2",
-        dest="gtf2",
-        help="Second GTF file to calculate pairs with the first"
-    )
-    
-    # Output arguments
-    parser.add_argument(
-        "-o", 
-        "--output", 
-        dest="outFile", 
-        default= (os.getcwd()+'/stats_info.csv'),
-        help="Output file name for subset GTF"
-    )
-    
-    args = parser.parse_args()
-    return args
+        """
+        
+        Function to store user input via argparse
 
-def validate_input(gtf):
-    #takes GTF file inputs and creates df's
-    gtf_df = io.read_exon_data_from_file(gtf)
-    return gtf_df
+        Returns
+        -------
+        args : ARGPARSE ARGUMENTS
+                User input via argparse.
+
+        """
+        
+        # Parse command line arguments
+        parser = argparse.ArgumentParser(
+            description=(
+                    "Input either one GTF file or two GTF files to find the pairs between the genes of both or wihtin the genes of one"
+            )
+        )
+        
+        #input data
+        parser.add_argument( 
+            "-g1",
+            "--gtf1",
+            dest="gtf1",
+            required=True,
+            help="Input one GTF file to calculate the pairs of transcripts in the one," 
+                 "otherwise it will be used to find the pairs between the first inputted" 
+                 "GTF file and the second"
+        )
+        parser.add_argument( 
+            "-g2",
+            "--gtf2",
+            dest="gtf2",
+            help="Second GTF file to calculate pairs with the first"
+        )
+        
+        # Output arguments
+        parser.add_argument(
+            "-o", 
+            "--output", 
+            dest="outFile", 
+            default= (os.getcwd()+'/stats_info.csv'),
+            help="Output file name for subset GTF"
+        )
+        
+        args = parser.parse_args()
+        return args
+
+def validateInput(gtf):
+        """
+        
+        Takes GTF file inputs and creates dataframes
+
+        Parameters
+        ----------
+        gtf : FILE
+                GTF file input.
+
+        Returns
+        -------
+        gtf_df : DATAFRAME
+                A dataframe that organizes the information in the GTF in a usable way.
+        """
+        #takes GTF file inputs and creates df's
+        gtf_df = io.read_exon_data_from_file(gtf)
+        return gtf_df
     
 
 
 def pairs1(gtf1_df):
-    #finds the number of pairs in the GTF dataframe
-    gtf1_df = gtf1_df.groupby("gene_id")["transcript_id"].nunique().reset_index()
-    gtf1_df = gtf1_df.drop(gtf1_df[gtf1_df['transcript_id'] < 2].index)
-    total_pairs = gtf1_df['transcript_id'].map(lambda x: nCr (x,2)).sum()
-    return (int(total_pairs))
- 
+        """
+        
+        Finds the number of pairs from the dataframe.
+
+        Parameters
+        ----------
+        gtf1_df : DATAFRAME
+                A dataframe creted from a GTF file.
+
+        Returns
+        -------
+        INT
+                Total number of pairs of transcripts in the GTF file.
+
+        """
+        #finds the number of pairs in the GTF dataframe
+        gtf1_df = gtf1_df.groupby("gene_id")["transcript_id"].nunique().reset_index()
+        gtf1_df = gtf1_df.drop(gtf1_df[gtf1_df['transcript_id'] < 2].index)
+        total_pairs = gtf1_df['transcript_id'].map(lambda x: nCr (x,2)).sum()
+        return (int(total_pairs))
+         
 def pairs2(gtf1_df, gtf2_df):
     #finds the number of pairs between two GTF dataframes
     gtf1_df = gtf1_df.groupby("gene_id")["transcript_id"].nunique().reset_index()
@@ -76,7 +118,7 @@ def pairs2(gtf1_df, gtf2_df):
 
 def main():
     #Convert gtf to df and stats calculated
-    gtf1_df = validate_input(args.gtf1)
+    gtf1_df = validateInput(gtf=args.gtf1)
     gtf1_genes = gtf1_df.loc[:, 'gene_id'].nunique()
     gtf1_transcripts = gtf1_df.loc[:, 'transcript_id'].nunique()
     gtf1_chromosomes = gtf1_df.loc[:, 'seqname'].nunique()
@@ -90,7 +132,7 @@ def main():
 
     if args.gtf2 is not None:
         #if a second gtf file is inputted then a different set of values is added to the output csv
-        gtf2_df = validate_input(args.gtf2)
+        gtf2_df = validateInput(gtf=args.gtf2)
         gtf2_genes = gtf2_df.loc[:, 'gene_id'].nunique()
         gtf2_transcripts = gtf2_df.loc[:, 'transcript_id'].nunique()
         gtf2_chromosomes = gtf2_df.loc[:, 'seqname'].nunique()
