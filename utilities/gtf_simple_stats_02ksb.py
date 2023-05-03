@@ -101,7 +101,7 @@ def validateInput(gtf):
     
 
 
-def calc1GTFPairs(gtf_df):
+def calc1GTFPair(gtf_df):
         """
         
         Finds the number of transcript pairs in the dataframe.
@@ -123,7 +123,7 @@ def calc1GTFPairs(gtf_df):
         total_pairs = gtf_df['transcript_id'].map(lambda x: nCr (x,2)).sum()
         return (int(total_pairs))
          
-def calc2GTFPairs(gtf1_df, gtf2_df):
+def calc2GTFPair(gtf1_df, gtf2_df):
         """
         
         Finds the number of transcript pairs between both dataframes.
@@ -151,6 +151,30 @@ def calc2GTFPairs(gtf1_df, gtf2_df):
         return (total_pairs_between)
 
 def sortGenesByCutoff(gtf1_df, gtf2_df, cutoff):
+        """
+        
+        Outputs two lists of genes that have above and below a certain number of
+        transcripts.
+        
+        Works for one or two GTFs.
+
+        Parameters
+        ----------
+        gtf1_df : DATAFRAME
+                A dataframe created from a GTF file.
+        gtf2_df : DATAFRAME
+                Another dataframe created from a GTF file.
+        cutoff : INT
+                The transcript threshold.
+
+        Returns
+        -------
+        aboveDf : DATAFRAME
+                A list of genes with a number of transcripts above the cutoff.
+        belowDf : DATAFRAME
+                A list of genes with a number of transcripts below the cutoff.
+
+        """
         if gtf2_df is not None:
                 tempDf1 = gtf1_df.drop_duplicates(subset='transcript_id')
                 tempDf2 = gtf2_df.drop_duplicates(subset='transcript_id')
@@ -177,12 +201,21 @@ def sortGenesByCutoff(gtf1_df, gtf2_df, cutoff):
         return aboveDf, belowDf
 
 def main():
+        """
+        
+        Run the program. (calls the above functions)
+
+        Returns
+        -------
+        Nothing.
+
+        """
         #Convert gtf to df and stats calculated
         gtf1_df = validateInput(gtf=args.gtf1)
         gtf1_genes = gtf1_df.loc[:, 'gene_id'].nunique()
         gtf1_transcripts = gtf1_df.loc[:, 'transcript_id'].nunique()
         gtf1_chromosomes = gtf1_df.loc[:, 'seqname'].nunique()
-        gtf1_pairs = calc1GTFPairs(gtf_df=gtf1_df)
+        gtf1_pairs = calc1GTFPair(gtf_df=gtf1_df)
         
         if args.gtf1 is not None and args.gtf2 is None:
             #Iff one gtf file is input, the stats are added to output csv
@@ -197,10 +230,10 @@ def main():
             gtf2_genes = gtf2_df.loc[:, 'gene_id'].nunique()
             gtf2_transcripts = gtf2_df.loc[:, 'transcript_id'].nunique()
             gtf2_chromosomes = gtf2_df.loc[:, 'seqname'].nunique()
-            gtf2_pairs = calc1GTFPairs(gtf_df=gtf2_df)
+            gtf2_pairs = calc1GTFPair(gtf_df=gtf2_df)
             
         if args.gtf1 and args.gtf2 is not None:
-            gtf_pairs_between = calc2GTFPairs(gtf1_df=gtf1_df, gtf2_df=gtf2_df)
+            gtf_pairs_between = calc2GTFPair(gtf1_df=gtf1_df, gtf2_df=gtf2_df)
             dual_info = [gtf1_genes, gtf2_genes, gtf1_transcripts, gtf2_transcripts, 
                          gtf1_chromosomes, gtf2_chromosomes, gtf1_pairs, gtf2_pairs, 
                          gtf_pairs_between]
