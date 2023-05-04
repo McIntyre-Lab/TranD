@@ -2,7 +2,17 @@
 """
 Created on Mon Feb 13 15:10:58 2022
 
-@author: gvanveckhoven
+@author: gvanveckhoven and KSB54
+"""
+
+"""
+
+GTF Simple Stats
+
+Counts informative metrics about GTF files and organizes genes by number of transcripts
+
+Version 2: Updates from GWV's version by KSB
+
 """
 
 import argparse
@@ -69,7 +79,7 @@ def getOptions():
             "--output", 
             dest="outFile", 
             default= (os.getcwd()+'/stats_info.csv'),
-            help="Enter an filename with apath for the output summary table."
+            help="Enter an filename with a path for the output summary table."
             "Defaults to the parent directory with the name stats_info.csv."
         )
         
