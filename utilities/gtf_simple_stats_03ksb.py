@@ -45,6 +45,7 @@ def getOptions():
                     "Also has the option to output 2 lists of genes based on the number of transcripts per gene "
                     "specified by the user (--cutoff). One file >= to cutoff and second file < cutoff."
                     "Includes the option to give an alias to the GTF files (--alias1 and --alias2). "
+                    "Defaults to \"GTF1 (--gtf1) or GTF2 (--gtf2)\" as the identifier of each file if no alias given. "
                     "If two files are input, two aliases must be input for aliases to be used."
             )
         )
@@ -88,6 +89,7 @@ def getOptions():
                 "-a1",
                 "--alias1",
                 dest="alias1",
+                default="GTF1",
                 help="Input an alias for the first GTF file for output purposes."
                 "Defaults \"GTF 1\" or \"1\" as the identifier."
         )
@@ -96,6 +98,7 @@ def getOptions():
                 "-a2",
                 "--alias2",
                 dest="alias2",
+                default="GTF2",
                 help="Input an alias for the second GTF file for output purposes."
                 "Defaults \"GTF 2\" or \"2\" as the identifier."
         )        
@@ -199,6 +202,7 @@ def splitGenesByCutoff(gtf_df, cutoff):
         """
         
         tempDf = gtf_df.drop_duplicates(subset='transcript_id')
+        
         geneDct = Counter(tempDf['gene_id'])
         
         aboveLst = []
@@ -226,6 +230,7 @@ def main():
         Nothing.
         
         """
+
         
         #Convert gtf to df and stats calculated
         gtf1_df = validateInput(gtf=args.gtf1)
@@ -240,10 +245,7 @@ def main():
                 single_info_df = pd.DataFrame(data = single_info, index = ['genes', 'transcripts', 'chromosomes', 'pairs'])
                 
                 try:
-                        if args.alias1 is not None:
-                                single_info_df.to_csv(args.outdir + "/" + args.alias1 + "_stats_info.csv", header=False)
-                        else:
-                                single_info_df.to_csv(args.outdir + "/1gtf_stats_info.csv", header=False)
+                        single_info_df.to_csv(args.outdir + "/" + args.alias1 + "_summary_info.csv", header=False)
                 except OSError:
                         raise OSError("If user specified, output directory must already exist.")
                 
@@ -266,52 +268,37 @@ def main():
                              gtf1_chromosomes, gtf2_chromosomes, gtf1_pairs, gtf2_pairs, 
                              gtf_pairs_across]
                 
-                dual_info_df = pd.DataFrame(data = dual_info, index = ['genes1', 'genes2', 'transcripts1', 'transcripts2',
-                                                        'chromsomes1', 'chromosomes2', 'pairs1', 'pairs2',
-                                                        'pairs_across'])
+
                 
-                if args.alias1 and args.alias2 is not None:
-                        dual_info_df = pd.DataFrame(data = dual_info, index = [args.alias1 + "_genes", args.alias2 + "_genes", 
-                                                                               args.alias1 + "_transcripts", args.alias2 + "_transcripts",
-                                                                args.alias1 + "_chromosomes", args.alias2 + "_chromosomes", 
-                                                                args.alias1 + "_pairs", args.alias2 + "_chromosomes",
-                                                                "pairs_across"])
-                else:
-                        dual_info_df = pd.DataFrame(data = dual_info, index = ['genes1', 'genes2', 'transcripts1', 'transcripts2',
-                                                                'chromsomes1', 'chromosomes2', 'pairs1', 'pairs2',
-                                                                'pairs_across'])   
+                dual_info_df = pd.DataFrame(data = dual_info, index = [args.alias1 + "_genes", args.alias2 + "_genes", 
+                                                                       args.alias1 + "_transcripts", args.alias2 + "_transcripts",
+                                                                       args.alias1 + "_chromosomes", args.alias2 + "_chromosomes", 
+                                                                       args.alias1 + "_pairs", args.alias2 + "_chromosomes",
+                                                                       "pairs_across"])  
                 
                 try:
-                        dual_info_df.to_csv(args.outdir + "/2gtf_stats_info.csv", header=False)
+                        dual_info_df.to_csv(args.outdir + "/" + args.alias1 + "_vs_" + args.alias2 + "_summary_info.csv", header=False)
                 except OSError:
                         raise OSError("If user specified, output directory must already exist.")
 
         
-        test1 = None
         if args.cutoff is not None:
                 
-                aboveDf, belowDf, test1 = splitGenesByCutoff(gtf_df=gtf1_df, cutoff=int(args.cutoff))
+                aboveDf, belowDf = splitGenesByCutoff(gtf_df=gtf1_df, cutoff=int(args.cutoff))
                 
                 try:
-                        if args.alias1 is not None:
-                                aboveDf.to_csv(args.outdir + "/" + args.alias1 + "_genes_above_" + str(args.cutoff) + ".csv", index=False, header=False)
-                                belowDf.to_csv(args.outdir + "/" + args.alias1 + "_genes_below_" + str(args.cutoff) + ".csv", index=False, header=False)
-                        else:
-                                aboveDf.to_csv(args.outdir + "/gtf1_genes_above_" + str(args.cutoff) + ".csv", index=False, header=False)
-                                belowDf.to_csv(args.outdir + "/gtf1_genes_below_" + str(args.cutoff) + ".csv", index=False, header=False)
+                        args.outdir + "/gene_ge" + str(args.cutoff) + "trPerGene_" + args.alias1
+                        aboveDf.to_csv(args.outdir + "/gene_ge_" + str(args.cutoff) + "_trPerGene_" + args.alias1 + ".csv", index=False, header=False)
+                        belowDf.to_csv(args.outdir + "/gene_lt_" + str(args.cutoff) + "_trPerGene_" + args.alias1 + ".csv", index=False, header=False)
                 except OSError:
                         raise OSError("If user specified, output directory must already exist.")
 
 
                 if args.gtf2:        
-                        aboveDf2, belowDf2, test2 = splitGenesByCutoff(gtf_df=gtf2_df, cutoff=int(args.cutoff))
+                        aboveDf2, belowDf2 = splitGenesByCutoff(gtf_df=gtf2_df, cutoff=int(args.cutoff))
                         try:
-                                if args.alias2 is not None:
-                                        aboveDf2.to_csv(args.outdir + "/" + args.alias2 + "_genes_above_" + str(args.cutoff) + ".csv", index=False, header=False)
-                                        belowDf2.to_csv(args.outdir + "/" + args.alias2 + "_genes_below_" + str(args.cutoff) + ".csv", index=False, header=False)
-                                else:
-                                        aboveDf2.to_csv(args.outdir + "/gtf2_genes_above_" + str(args.cutoff) + ".csv", index=False, header=False)
-                                        belowDf2.to_csv(args.outdir + "/gtf2_genes_below_" + str(args.cutoff) + ".csv", index=False, header=False)
+                                aboveDf2.to_csv(args.outdir + "/gene_ge_" + str(args.cutoff) + "_trPerGene_" + args.alias2 + ".csv", index=False, header=False)
+                                belowDf2.to_csv(args.outdir + "/gene_lt_" + str(args.cutoff) + "_trPerGene_" + args.alias2 + ".csv", index=False, header=False)
                         except OSError:
                                 raise OSError("If user specified, output directory must already exist.")
                                 
