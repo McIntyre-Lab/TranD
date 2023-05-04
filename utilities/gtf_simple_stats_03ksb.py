@@ -91,7 +91,7 @@ def getOptions():
                 dest="alias1",
                 default="GTF1",
                 help="Input an alias for the first GTF file for output purposes."
-                "Defaults \"GTF 1\" or \"1\" as the identifier."
+                "Defaults \"GTF 1\" as the identifier."
         )
         
         parser.add_argument(
@@ -100,7 +100,7 @@ def getOptions():
                 dest="alias2",
                 default="GTF2",
                 help="Input an alias for the second GTF file for output purposes."
-                "Defaults \"GTF 2\" or \"2\" as the identifier."
+                "Defaults \"GTF 2\" as the identifier."
         )        
         
         args = parser.parse_args()
@@ -287,7 +287,6 @@ def main():
                 aboveDf, belowDf = splitGenesByCutoff(gtf_df=gtf1_df, cutoff=int(args.cutoff))
                 
                 try:
-                        args.outdir + "/gene_ge" + str(args.cutoff) + "trPerGene_" + args.alias1
                         aboveDf.to_csv(args.outdir + "/gene_ge_" + str(args.cutoff) + "_trPerGene_" + args.alias1 + ".csv", index=False, header=False)
                         belowDf.to_csv(args.outdir + "/gene_lt_" + str(args.cutoff) + "_trPerGene_" + args.alias1 + ".csv", index=False, header=False)
                 except OSError:
