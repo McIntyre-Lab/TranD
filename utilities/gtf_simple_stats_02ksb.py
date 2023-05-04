@@ -31,13 +31,11 @@ def getOptions():
         # Parse command line arguments
         parser = argparse.ArgumentParser(
             description=(
-                    "Input either 1 GTF file (--gtf1) or add another optional 2nd gene-linked GTF file (--gtf2)."
-                    "Will output a summary table including: the number of genes, number of transcripts, "
-                    "number of chromosomes and number of possible pairs of transcripts either for one file"
-                    "or between both files. Also has the option to output 2 lists of genes, separated based"
-                    "on whether they have greater than or equal to/less than a certain number of transcripts"
-                    "(--cutoff) Outputs to the parent directory of the input unless another output file is"
-                    "indicated (--output)."
+                    "Input either 1 GTF file (--gtf1) or add another optional 2nd GTF file (--gtf2) with the same geneIDs."
+                    "Will output the following file: a table summarizing the number of genes, number of transcripts, "
+                    "number of chromosomes and number of transcript pairs (within 1 GTF for across 2 GTF files)."
+                    "Also has the option to output 2 lists of genes based on the number of transcripts per gene "
+                    "specified by the user (--cutoff). One file >= to cutoff and second file < cutoff."
             )
         )
         
@@ -47,24 +45,22 @@ def getOptions():
                 "--gtf1",
                 dest="gtf1",
                 required=True,
-                help="Input one GTF file to calculate the pairs of transcripts in the one." 
-                     "If a second file is input, it will calculate the pairs of transcripts"
-                     "between the two."
+                help="Input one GTF file to calculate the pairs of transcripts by gene."
         )
         
         parser.add_argument( 
                 "-g2",
                 "--gtf2",
                 dest="gtf2",
-                help="Input a second GTF file to calculate pairs with the first."
+                help="Input a second GTF file to calculate pairs of transcripts across the 2 GTF files."
         )
         
         parser.add_argument(
                 "-cut",
                 "--cutoff",
                 dest="cutoff",
-                help="Input a transcript threshold to separate genes." +
-                "Output 2 list csvs to the parent directory of the original output."
+                help="Input a cutoff value for the number of transcripts per gene. Used to generate 2 lists of genes for each GTF "
+                      "based on the number of transcripts per gene." 
         )
         
         # Output arguments
@@ -73,7 +69,7 @@ def getOptions():
             "--output", 
             dest="outFile", 
             default= (os.getcwd()+'/stats_info.csv'),
-            help="Enter an output file name with a path for the output table."
+            help="Enter an filename with apath for the output summary table."
             "Defaults to the parent directory with the name stats_info.csv."
         )
         
