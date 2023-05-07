@@ -49,10 +49,6 @@ two_gtfs_outfiles = {
     "gtf2_fh": "gtf2_only.gtf",
     "md_fh": "minimum_pairwise_transcript_distance.csv",
 }
-consol_outfiles = {
-    "key_fh": "transcript_id_2_consolidation_id.csv",
-    "consol_gtf_fh": "consolidated_transcriptome.gtf",
-}
 
 
 def parse_args(print_help=False):
@@ -105,29 +101,11 @@ def parse_args(print_help=False):
         help="Log file name for logging processing events to file.",
     )
     parser.add_argument(
-        "--consolidate",
-        dest="consolidate",
-        action="store_true",
-        help="""Used with 1 GTF input file. Consolidate transcripts remove 5'/3' transcript end
-        variation in redundantly spliced transcripts) with identical junctions prior to complexity
-        calculations, events and summary plotting. Default: No consolidation""",
-    )
-    parser.add_argument(
-        "--consolPrefix",
-        dest="consol_prefix",
-        type=str,
-        default="tr",
-        help="""Used with 1 GTF input file. Requires '--consolidate' flag. Specify the prefix to use
-        for consolidated transcript_id values. Prefix must be alphanumeric with no spaces.
-        Underscore (\"_\") is the only allowed special character. Default: 'tr'""",
-    )
-    parser.add_argument(
         "-c",
         "--complexityOnly",
         dest="complexity_only",
         action="store_true",
-        help="""Used with 1 or 2 GTF input file(s). Output only complexity measures. If used in
-        presence of the '--consolidate' flag, complexity is calculated on the consolidated GTF(s).
+        help="""Used with 1 or 2 GTF input file(s). Output only transcriptome complexity measures.
         Default: Perform all analyses and comparisons including complexity calculations""",
     )
     parser.add_argument(
@@ -235,14 +213,6 @@ def parse_args(print_help=False):
             )
     regex = re.compile(r"^\w+$", re.ASCII)
     # Validate prefixes
-    if not regex.match(args.consol_prefix):
-        logger.error(
-            "Invalid prefix format for consolidated transcript_id values: "
-            "Must be alphanumeric."
-            "Only '_' (underscore) special character is allowed"
-        )
-        parser.print_help()
-        sys.exit(2)
     if not regex.match(args.name1):
         logger.error(
             "Invalid name for dataset 1: Must be alphanumeric and can only "
@@ -325,9 +295,6 @@ def cli():
                 args.complexity_only,
                 args.skip_plots,
                 args.skip_interm,
-                args.consolidate,
-                args.consol_prefix,
-                consol_outfiles,
                 args.prefix,
             )
         finally:
