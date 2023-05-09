@@ -790,7 +790,7 @@ def main():
         """
         
         #Grab input DF from input CSV
-        inputDf = pd.read_csv (args.infile)
+        inputDf = pd.read_csv (args.infile, low_memory=False)
         
         # Get input File Name
         input_file_name = os.path.splitext(os.path.basename(args.infile))[0]
