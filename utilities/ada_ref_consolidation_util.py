@@ -6,8 +6,11 @@ import numpy as np
 import os
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 import time
 
+=======
+>>>>>>> 28b82b626dcd6edf25cafb251851e23639da3cbb
 =======
 >>>>>>> 28b82b626dcd6edf25cafb251851e23639da3cbb
 from trand.io import *
@@ -65,7 +68,10 @@ def create_junction_string(exon_data, verbose):
             start = group["start"].iloc[0]
             end = group["end"].iloc[0]
 <<<<<<< HEAD
+<<<<<<< HEAD
         
+=======
+>>>>>>> 28b82b626dcd6edf25cafb251851e23639da3cbb
 =======
 >>>>>>> 28b82b626dcd6edf25cafb251851e23639da3cbb
         strand = group["strand"].iloc[0]
@@ -74,6 +80,7 @@ def create_junction_string(exon_data, verbose):
         junction_chains[transcript_id] = [junction_chain, transcript_id, gene_id, seqname, start, end, strand]
     return junction_chains
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 # all good, takes <10s on mel2mel (3million exons)
 def check_strand_and_chromosome(exon_data):
@@ -93,6 +100,8 @@ def check_strand_and_chromosome(exon_data):
             exon_data = exon_data[~exon_data["gene_id"].isin(bad_chr)]
         return exon_data
 =======
+=======
+>>>>>>> 28b82b626dcd6edf25cafb251851e23639da3cbb
 def check_strand_and_chromosome(exon_data):
     gene_groups = exon_data.groupby("gene_id")
     strand_check = gene_groups["strand"].nunique()
@@ -108,6 +117,9 @@ def check_strand_and_chromosome(exon_data):
             print("!!! WARNING: gene {} contains transcripts/exons on difference chromosomes - removing from consolidation".format(gene))
         exon_data = exon_data[~exon_data["gene_id"].isin(bad_chr)]
     return exon_data
+<<<<<<< HEAD
+>>>>>>> 28b82b626dcd6edf25cafb251851e23639da3cbb
+=======
 >>>>>>> 28b82b626dcd6edf25cafb251851e23639da3cbb
 
 def split_junction_string(df):
@@ -198,7 +210,10 @@ def main():
 
     # Get monoexon transcript models
 <<<<<<< HEAD
+<<<<<<< HEAD
     # Create new dct from ujDct, copying all rows where the first value (junction string) is empty
+=======
+>>>>>>> 28b82b626dcd6edf25cafb251851e23639da3cbb
 =======
 >>>>>>> 28b82b626dcd6edf25cafb251851e23639da3cbb
     monoExon = {t:ujcDict[t] for t in ujcDict if ujcDict[t][0] == ""}
@@ -294,12 +309,17 @@ if __name__ == '__main__':
     # Parse command line arguments
     global args
 <<<<<<< HEAD
+<<<<<<< HEAD
     
     tic = time.perf_counter()
     args = getOptions()
     main()
     toc = time.perf_counter()
     print(f"Complete! Operation took {toc-tic:0.4f} seconds.")
+=======
+    args = getOptions()
+    main()
+>>>>>>> 28b82b626dcd6edf25cafb251851e23639da3cbb
 =======
     args = getOptions()
     main()
