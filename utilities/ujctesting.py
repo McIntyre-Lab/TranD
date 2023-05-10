@@ -13,6 +13,7 @@ import pandas as pd
 from operator import itemgetter
 import numpy as np
 from dataclasses import dataclass
+import copy
 
 import pickle
 import os
@@ -27,12 +28,12 @@ import os
 @dataclass()
 class JUNCTION:
         seqname: str
-        start: int
-        end: int
+        lastExonEnd: int
+        nextExonStart: int
         strand: str
         
         def __str__(self):
-                return (self.seqname + ":" + str(self.start) + ":" + str(self.end) + ":" + str(self.strand))
+                return (self.seqname + ":" + str(self.lastExonEnd) + ":" + str(self.nextExonStart) + ":" + str(self.strand))
         
 @dataclass()
 class J_CHAIN:
@@ -161,24 +162,28 @@ def extractJunction(exon_data):
                 
                 junctionLst = []
                 if len(group) > 1:
+                        sortedgroup = group.sort_values(by='start').reset_index(drop=True)
                         
-                        for row in group.to_dict('records'):
+                        # Shifts the entire column up one -> next exon start
+                        sortedgroup['start'] = sortedgroup['start'].shift(-1).fillna(0).astype(int).astype(str)
+                        
+                        #print (sortedgroup)                        
+                        for row in sortedgroup.to_dict('records')[:-1]:
                                 seqname = row['seqname']
                                 strand = row['strand']
-                                jcStart = row['start']
-                                jcEnd = row['end']
-                                
-                                junctionLst.append(JUNCTION(seqname, jcStart, jcEnd, strand))
+                                nextExonStart = row['start']
+                                lastExonEnd = str(row['end'])
+                        
+                                junctionLst.append(JUNCTION(seqname=seqname, lastExonEnd=lastExonEnd, 
+                                                            nextExonStart=nextExonStart, strand=strand))
                                 
                         start = group['start'].min()
                         end = group['end'].max()
-                
-                        junctionLst.sort(key=lambda x: x.start)
+                                                                
+                        junctionChain = J_CHAIN(junctionLst)
                         
-                        #junctionChain = J_CHAIN(junctionLst)
-                        #break;
                 else:
-                        junctionLst = None
+                        junctionChain = None
                         start = group["start"].iat[0]
                         end = group["end"].iat[0]
                 
@@ -186,17 +191,198 @@ def extractJunction(exon_data):
                 strand = group["strand"].iat[0]
                 gene_id = group["gene_id"].iat[0]
                 
-                ujcDct[transcript_id] = [junctionLst,
+                ujcDct[transcript_id] = [junctionChain,
                                          transcript_id, 
                                          gene_id, seqname, start, end, strand]
+                
+                
         return ujcDct
 
+# change name
+def createAllUJC(ujcDct):
         
+        monoExons = {t:ujcDct[t] for t in ujcDct if not ujcDct[t][0]}
+        # monoExons = {t:oldUjcDct[t] for t in oldUjcDct if oldUjcDct[t][0] == ""}
+        if len(monoExons) > 0:
+                monoexon_transcripts = pd.DataFrame(monoExons, 
+                                                    index=pd.Index(["junction_string", 
+                                                                    "transcript_id", 
+                                                                    "gene_id", 
+                                                                    "seqname", 
+                                                                    "start", "end", "strand"])
+                                                    ).T.sort_values(by=["start", "end"])
+                
+                # compares the start of one to the end of the other for overlap -> counts
+                # each junction chain is just a number
+                overlap = (monoexon_transcripts["start"].shift(-1) < monoexon_transcripts["end"]).cumsum()
+                monoexon_transcripts["junction_string"] = overlap + 1
+                
+                
+                monoUJC = monoexon_transcripts.groupby(["gene_id","junction_string"]).agg({
+                    "seqname": "first",
+                    "start": "min",
+                    "end": "max",
+                    "strand": "first",
+                    "transcript_id": lambda x: "|".join(x)}).reset_index()
+                
+                del (monoexon_transcripts)
+        else:
+                monoExons = None
+        
+        
+        multiExons = copy.deepcopy(ujcDct)
+        multiExons = {t:multiExons[t] for t in multiExons if multiExons[t][0]}
+        # oldmultiExons = {t:oldUjcDct[t] for t in oldUjcDct if oldUjcDct[t][0] != ""}
+
+        # del (ujcDct)
+        
+        for value in multiExons.values():
+                value[0] = value[0].chainToStr()
+        
+        if len(multiExons) > 0:
+                multiUJC = pd.DataFrame(multiExons, index=pd.Index(["junction_string", 
+                                                                    "transcript_id", 
+                                                                    "gene_id", 
+                                                                    "seqname", "start", "end", "strand"])
+                    ).T.groupby(["gene_id","junction_string"]).agg({
+                "seqname": "first",
+                "start": "min",
+                "end": "max",
+                "strand": "first",
+                "transcript_id": lambda x: "|".join(x)}).reset_index()
+        else:
+                multiExons = None
+                
+        
+        if monoExons and multiExons:
+                allUJC = pd.concat([monoUJC, multiUJC], ignore_index=True)
+        elif monoExons:
+                allUJC = monoUJC.copy()
+                del(monoUJC)
+        else:
+                allUJC = multiUJC.copy()
+                del(monoUJC)
+        
+        allUJC["ujc_length"] = allUJC["end"] - allUJC["start"]
+        
+        
+        sort_order = {"gene_id": "asc", "ujc_length": "asc", "start": "asc", "transcript_id": "asc"}
+        allUJC = allUJC.sort_values(by=list(sort_order.keys()), ascending=[True if val=="asc" else False for val in sort_order.values()])
+        
+        allUJC["transcript_rank_in_gene"] = (
+            allUJC.groupby("gene_id")["ujc_length"].rank(method="first")
+        )
+        
+        allUJC["ujc_id"] = (
+            "tr"
+            + "_"
+            + allUJC["gene_id"]
+            + "_"
+            + allUJC["transcript_rank_in_gene"].astype(int).map(str)
+        )
+        
+        return allUJC
+        
+
+# WORKS!!!!!!
+def createExonOutput(df, ujcDct):
+        
+        seqnameLst = []
+        startLst = []
+        endLst = []
+        strandLst = []
+        ujcIDLst = []
+        geneIDLst = []
+        
+        for row in df.to_dict('records'):
+                # only takes the first transcript id in the list if there are multiple
+                # this should be fine? if the transcript_id is listed under the same junction chain
+                # they have the same junctions -> same exons?
+                                
+                xscript = row['transcript_id'].split('|')[0]
+                seqname = row['seqname']
+                start = row['start']
+                end = row['end']
+                strand = row['strand']
+                ujcID = row['ujc_id']
+                geneID = row['gene_id']
+                
+
+                # if it is not monoexon (has a junctionLst)
+                if (ujcDct.get(xscript)[0]):
+                        junctions = ujcDct.get(xscript)[0].junctionLst
+                                                
+                        # donors = end of last exon 
+                        # accceptor = start of next exon
+                        startLst.append(start)
+                        endLst.append(junctions[0].lastExonEnd)
+                        seqnameLst.append(seqname)
+                        ujcIDLst.append(ujcID)
+                        geneIDLst.append(geneID)
+                        strandLst.append(strand)
+                        
+                        #all the ends are shifted down 1
+                        
+                        for idx in range(0,len(junctions)-1):
+                                endLst.append(junctions[idx+1].lastExonEnd)
+                                startLst.append(junctions[idx].nextExonStart)
+                                seqnameLst.append(seqname)
+                                ujcIDLst.append(ujcID)
+                                geneIDLst.append(geneID)
+                                strandLst.append(strand)
+                        
+                        startLst.append(junctions[-1].nextExonStart)
+                        endLst.append(end)
+                        seqnameLst.append(seqname)
+                        ujcIDLst.append(ujcID)
+                        geneIDLst.append(geneID)
+                        strandLst.append(strand)
+                
+                else:
+                        seqnameLst.append(seqname)
+                        startLst.append(start)
+                        endLst.append(end)
+                        strandLst.append(strand)
+                        ujcIDLst.append(ujcID)
+                        geneIDLst.append(geneID)        
+        
+        exonDf = pd.DataFrame(
+                {
+                        'seqname':seqnameLst,
+                        'start':startLst,
+                        'end':endLst,
+                        'strand':strandLst,
+                        'transcript_id':ujcIDLst,
+                        'gene_id':geneIDLst
+                })
+        
+        return exonDf
+
+def split_column_by_sep(df,col_name=None,sep=None,sort_list=None):
+        # Split variable by some character like '|' or ',' and keep all other values the same
+        if col_name == None:
+                col_name = 'transcript_id'
+        if sep == None:
+                sep = "|"
+                
+        
+        splitList = df[col_name].str.split(sep).apply(pd.Series, 1).stack()
+        splitList.index = splitList.index.droplevel(-1)
+        
+        tempDF = df.copy()
+        del(tempDF[col_name])
+        
+        splitDF = tempDF.join(splitList.rename(col_name))
+        if sort_list != None:
+                splitDF = splitDF.sort_values(by=sort_list)
+        del(tempDF, splitList)
+        
+        return splitDF
+
 
 if __name__ == '__main__':
         # Parse command line arguments
         global args
-        global ujcDct
         
         tic = time.perf_counter()
         args = getOptions()
@@ -226,48 +412,38 @@ if __name__ == '__main__':
                         pickle.dump(oldUjcDct, f)
                         
 
-        monoExons = {t:ujcDct[t] for t in ujcDct if not ujcDct[t][0]}
-        monoExons = {t:oldUjcDct[t] for t in oldUjcDct if oldUjcDct[t][0] == ""}
-        if len(monoExons) > 0:
-                oldmonoexon_transcripts = pd.DataFrame(monoExons, 
-                                                    index=pd.Index(["junction_string", 
-                                                                    "transcript_id", 
-                                                                    "gene_id", 
-                                                                    "seqname", 
-                                                                    "start", "end", "strand"])
-                                                    ).T.sort_values(by=["start", "end"])
-                
-                # compares the start of one to the end of the other for overlap -> counts
-                # each junction chain is just a number
-                overlap = (oldmonoexon_transcripts["start"].shift(-1) < oldmonoexon_transcripts["end"]).cumsum()
-                oldmonoexon_transcripts["junction_string"] = overlap + 1
-                
-        #         monoUJC = monoexon_transcripts.groupby(["gene_id","junction_string"]).agg({
-        #             "seqname": "first",
-        #             "start": "min",
-        #             "end": "max",
-        #             "strand": "first",
-        #             "transcript_id": lambda x: "|".join(x)}).reset_index()
-
-        #         del(monoexon_transcripts)
-                
-        # multiExons = {t:ujcDct[t] for t in ujcDct if ujcDct[t][0]}#!= ""}
-
-                
         
-        # if len(multiExons) > 0:
-        #         multiUJC = pd.DataFrame(multiExons, index=pd.Index(["junction_string", 
-        #                                                             "transcript_id", 
-        #                                                             "gene_id", 
-        #                                                             "seqname", "start", "end", "strand"])
-        #             ).T.groupby(["gene_id","junction_string"]).agg({
-        #         "seqname": "first",
-        #         "start": "min",
-        #         "end": "max",
-        #         "strand": "first",
-        #         "transcript_id": lambda x: "|".join(x)}).reset_index()
-
+        if (os.path.exists('allUJC.pickle') and os.path.getsize('allUJC.pickle') > 0):
+                with open('allUJC.pickle', 'rb') as f:
+                        allUJC = pickle.load(f)
+                        
+        else:
+                allUJC = createAllUJC(ujcDct)
+                with open('allUJC.pickle', 'wb') as f:
+                        pickle.dump(allUJC, f)
         
-                
+        exonDf = createExonOutput(df=allUJC, ujcDct=ujcDct)        
+        
+        keys = split_column_by_sep(allUJC[["gene_id", "transcript_id", "ujc_id"]], col_name="transcript_id", sep="|")
+        
+        
+        keys["num_transcript_in_consol_transcript"] = keys.groupby(
+                "ujc_id")["transcript_id"].transform('nunique')
+        
+        keys["num_transcript_id_in_gene"] = keys.groupby(
+                "gene_id")["transcript_id"].transform('nunique')
+        
+        keys["num_consol_transcript_id_in_gene"] = keys.groupby(
+                "gene_id")["ujc_id"].transform('nunique')
+        
+        keys["flag_gene_consolidated"] = np.where(
+            keys["num_transcript_id_in_gene"] > keys["num_consol_transcript_id_in_gene"],
+            1,
+            0
+        )
+        keys.to_csv("testkey.csv")
+        
+        trand.io.write_gtf(exonDf, {"gtf":"outputgtf.gtf"}, "gtf")
+        
         toc = time.perf_counter()
         print(f"Complete! Operation took {toc-tic:0.4f} seconds.")

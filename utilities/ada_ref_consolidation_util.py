@@ -112,7 +112,7 @@ def split_junction_string(df):
             donor_coords = np.array([val.split(':')[1] for val in junction_coords], dtype=int)
             acceptor_coords = np.array([val.split(':')[2] for val in junction_coords], dtype=int)
             
-            # Calculate exon starts and ends
+            # Calculate exon starts a+nd ends
             exon_starts = np.concatenate(([df.loc[df.index[i], "start"]], acceptor_coords))
             exon_ends = np.concatenate((donor_coords, [df.loc[df.index[i], "end"]]))
             
