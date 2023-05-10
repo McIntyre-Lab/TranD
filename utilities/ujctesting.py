@@ -31,9 +31,27 @@ class JUNCTION:
         end: int
         strand: str
         
-                
         def __str__(self):
                 return (self.seqname + ":" + str(self.start) + ":" + str(self.end) + ":" + str(self.strand))
+        
+@dataclass()
+class J_CHAIN:
+        # Enter a sorted junction list, the following are a bunch of transformation,
+        # comparison, and string representation functions
+        
+        junctionLst: list
+        
+        def chainToStr(self):
+                
+                chainStr = [];
+                
+                for junction in self.junctionLst:
+                        chainStr.append(str(junction))
+                
+                return '|'.join(chainStr)
+        
+        
+        
 
 def getOptions():
         # Parse command line arguments
@@ -130,9 +148,8 @@ def oldExtractJunction(exon_data):
        
         return junction_chains
 
-def extractJunction(exon_data):
-                
-        check_strand_and_chromosome(exon_data=exon_data)
+def extractJunction(exon_data): 
+        exon_data = check_strand_and_chromosome(exon_data=exon_data)
         
         transcript_groups = exon_data.groupby("transcript_id")
         
@@ -157,6 +174,8 @@ def extractJunction(exon_data):
                         end = group['end'].max()
                 
                         junctionLst.sort(key=lambda x: x.start)
+                        
+                        #junctionChain = J_CHAIN(junctionLst)
                         #break;
                 else:
                         junctionLst = None
@@ -172,20 +191,6 @@ def extractJunction(exon_data):
                                          gene_id, seqname, start, end, strand]
         return ujcDct
 
-# is there a better way to represent these junctions?
-def junctionLstToString(exonDct):
-        
-        junctionStrLst = []
-        for tr_id, ujc in exonDct.items():
-                junctionLst = ujc[0]
-                
-                junctionStr = []
-                
-                for junction in junctionLst:
-                        junctionStr.append((str(junction)))
-                        
-                junctionStrLst.append('|'.join(junctionStr))
-        return junctionStrLst
         
 
 if __name__ == '__main__':
@@ -211,22 +216,31 @@ if __name__ == '__main__':
                 with open('ujcDct.pickle', 'wb') as f:
                         pickle.dump(ujcDct, f)
         
-        #ujcDct = oldExtractJunction(exon_data=exon_data)
+        if (os.path.exists('oldUjcDct.pickle') and os.path.getsize('oldUjcDct.pickle') > 0):
+                with open('oldUjcDct.pickle', 'rb') as f:
+                        oldUjcDct = pickle.load(f)
+                        
+        else:
+                oldUjcDct = oldExtractJunction(exon_data=exon_data)
+                with open('oldUjcDct.pickle', 'wb') as f:
+                        pickle.dump(oldUjcDct, f)
+                        
 
-        
-        # monoExons = {t:ujcDct[t] for t in ujcDct if not ujcDct[t][0]}
-        # if len(monoExons) > 0:
-        #         monoexon_transcripts = pd.DataFrame(monoExons, 
-        #                                             index=pd.Index(["junction_string", 
-        #                                                             "transcript_id", 
-        #                                                             "gene_id", 
-        #                                                             "seqname", 
-        #                                                             "start", "end", "strand"])
-        #                                             ).T.sort_values(by=["start", "end"])
+        monoExons = {t:ujcDct[t] for t in ujcDct if not ujcDct[t][0]}
+        monoExons = {t:oldUjcDct[t] for t in oldUjcDct if oldUjcDct[t][0] == ""}
+        if len(monoExons) > 0:
+                oldmonoexon_transcripts = pd.DataFrame(monoExons, 
+                                                    index=pd.Index(["junction_string", 
+                                                                    "transcript_id", 
+                                                                    "gene_id", 
+                                                                    "seqname", 
+                                                                    "start", "end", "strand"])
+                                                    ).T.sort_values(by=["start", "end"])
                 
-        #         # compares the start of one to the end of the other for overlap -> counts
-        #         overlap = (monoexon_transcripts["start"].shift(-1) < monoexon_transcripts["end"]).cumsum()
-        #         monoexon_transcripts["junction_string"] = overlap + 1
+                # compares the start of one to the end of the other for overlap -> counts
+                # each junction chain is just a number
+                overlap = (oldmonoexon_transcripts["start"].shift(-1) < oldmonoexon_transcripts["end"]).cumsum()
+                oldmonoexon_transcripts["junction_string"] = overlap + 1
                 
         #         monoUJC = monoexon_transcripts.groupby(["gene_id","junction_string"]).agg({
         #             "seqname": "first",
@@ -237,10 +251,9 @@ if __name__ == '__main__':
 
         #         del(monoexon_transcripts)
                 
-        multiExons = {t:ujcDct[t] for t in ujcDct if ujcDct[t][0]}#!= ""}
-        
-        junctionLstToString(multiExons)
-        
+        # multiExons = {t:ujcDct[t] for t in ujcDct if ujcDct[t][0]}#!= ""}
+
+                
         
         # if len(multiExons) > 0:
         #         multiUJC = pd.DataFrame(multiExons, index=pd.Index(["junction_string", 
