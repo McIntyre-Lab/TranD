@@ -1,0 +1,2 @@
+ERS_grp_num,ERS_grp_size,gene_id,xscripts,contains_which_gtf,flag_nonolp_pair,flag_IR_in_set,num_IR_xscripts,prop_IR,num_ER,min_num_nt_diff,max_num_nt_diff,mean_num_nt_diff,median_num_nt_diff,min_prop_nt_diff,max_prop_nt_diff,mean_prop_nt_diff,median_prop_nt_diff
+1,11,FBgn0000422,T1_flair|T2_flair|T1_isoseq|T4_isoseq|T5_isoseq|T2_isoseq|T3_flair|T6_isoseq|T3_isoseq|T8_isoseq|T7_isoseq,3,1,1,9,0.8181818181818182,4,2.0,1051.0,482.7894736842105,554.0,0.000962927298989,0.376837576192184,0.1853040318684132,0.227680172104697

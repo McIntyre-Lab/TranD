@@ -1,0 +1,7 @@
+gene_id,xscript_model_id,ERS_grp_num,flag_nonolp_pair,nonolp_xscript_id,num_ER
+XLOC_015725,sim_isoseq3cluster_XLOC_015725_2_sim_isoseq3cluster,1,0,,1
+XLOC_015725,sim_flair_XLOC_015725_1_sim_FLAIR,1,0,,1
+FBgn0270064,sim_isoseq3cluster_FBgn0270064_1_sim_isoseq3cluster,2,0,,2
+FBgn0270064,sim_flair_FBgn0270064_1_sim_FLAIR,2,0,,2
+XLOC_015725,sim_isoseq3cluster_XLOC_015725_3_sim_isoseq3cluster,3,0,,2
+XLOC_015725,sim_isoseq3cluster_XLOC_015725_1_sim_isoseq3cluster,4,0,,1

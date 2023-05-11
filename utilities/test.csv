@@ -1,0 +1,7 @@
+,ERS_grp_num,ERS_grp_size,gene_id,contains_which_gtf,flag_nonolp_pair,flag_IR_in_set,num_IR_xscripts,prop_IR,num_ER,min_num_nt_diff,max_num_nt_diff,mean_num_nt_diff,median_num_nt_diff,min_prop_nt_diff,max_prop_nt_diff,mean_prop_nt_diff,median_prop_nt_diff,xscripts
+0,1,2,XLOC_015725,3,0,0,0,0.0,1,1490.0,1490.0,1490.0,1490.0,0.61954261954262,0.61954261954262,0.61954261954262,0.61954261954262,sim_flair_XLOC_015725_1_sim_FLAIR
+0,1,2,XLOC_015725,3,0,0,0,0.0,1,1490.0,1490.0,1490.0,1490.0,0.61954261954262,0.61954261954262,0.61954261954262,0.61954261954262,sim_isoseq3cluster_XLOC_015725_2_sim_isoseq3cluster
+1,2,2,FBgn0270064,3,0,0,0,0.0,2,2011.0,2011.0,2011.0,2011.0,0.622793434499845,0.622793434499845,0.622793434499845,0.622793434499845,sim_flair_FBgn0270064_1_sim_FLAIR
+1,2,2,FBgn0270064,3,0,0,0,0.0,2,2011.0,2011.0,2011.0,2011.0,0.622793434499845,0.622793434499845,0.622793434499845,0.622793434499845,sim_isoseq3cluster_FBgn0270064_1_sim_isoseq3cluster
+2,3,1,XLOC_015725,1,0,0,0,0.0,2,,,,,,,,,sim_isoseq3cluster_XLOC_015725_3_sim_isoseq3cluster
+3,4,1,XLOC_015725,1,0,0,0,0.0,1,,,,,,,,,sim_isoseq3cluster_XLOC_015725_1_sim_isoseq3cluster

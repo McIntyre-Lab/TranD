@@ -1,0 +1,3 @@
+gene_id,num_sets,min_ER,max_ER,mean_ER,median_ER,min_grp_size,max_grp_size,mean_grp_size,median_grp_size
+XLOC_015725,3,1,2,1.3333333333333333,1,1,2,1.3333333333333333,1
+FBgn0270064,1,2,2,2.0,2,2,2,2.0,2
