@@ -187,7 +187,9 @@ def getOptions():
                                          "IR inclusion option (--includeIR Y or N), and an output path (--outdir)."
                                          "Output directory must already exist. Also includes an option to"
                                          "use a prefix (--prefix) other than the original file name "
-                                         "for the output files."
+                                         "for the output files. "
+                                         "Warning for 2 GTF files: Only genes with at least one "
+                                         "transcript in both GTF files will be sorted into groups. "
                                          )
         
         # INPUT
@@ -266,7 +268,7 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
                 ]
         ].copy()
         
-        print (len(pd.concat([erInfoDf['transcript_1'], erInfoDf['transcript_2']]).unique()))
+        #print (len(pd.concat([erInfoDf['transcript_1'], erInfoDf['transcript_2']]).unique()))
 
         # Convert all number rows into string for ease of access.
         erInfoDf['num_ER_shared'] = erInfoDf['num_ER_shared'].astype(str)
@@ -274,12 +276,11 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
         erInfoDf['num_ER_T2_only'] = erInfoDf['num_ER_T2_only'].astype(str)
         erInfoDf['num_nt_diff'] = erInfoDf['num_nt_diff'].astype(str)
         erInfoDf['prop_nt_diff'] = erInfoDf['prop_nt_diff'].astype(str)
-
-        # Stick gene_id and number of exon region info onto transcript name (used for leftovers)
+        
         unqXscriptSet = set(pd.concat([erInfoDf['transcript_1'], erInfoDf['transcript_2']]))
-        print (unqXscriptSet)
-        print (len(unqXscriptSet))
-
+        print ("Number of transcripts: " + str(len(unqXscriptSet)))
+        
+        # Stick gene_id and number of exon region info onto transcript name (used for leftovers)
         if gtfOne and gtfTwo:
                 erInfoDf['transcript_1'] = (
                         erInfoDf['gene_id'] + "/" + 
@@ -309,9 +310,7 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
         
         # Create set of all unique transcripts (used for leftovers)
         unqXscriptSet = set(pd.concat([erInfoDf['transcript_1'], erInfoDf['transcript_2']]))
-        print(unqXscriptSet)
-        print (len(unqXscriptSet))
-        # Create empty output dictionary
+        
         xscriptDct = {}
         
         # Create empty set used to check that transcripts have not already been added
@@ -879,7 +878,8 @@ def createGeneOutDf(xscriptDct, ersGrpLst):
                         'median_grp_size':medSizeLst
                 })
         
-        return outDf                        
+        return outDf  
+                      
 def split_column_by_sep(df,col_name=None,sep=None,sort_list=None):
         # Split variable by some character like '|' or ',' and keep all other values the same
         if col_name == None:
