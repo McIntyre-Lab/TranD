@@ -17,7 +17,6 @@ import pandas as pd
 import numpy as np
 import os
 import time
-from dataclasses import dataclass
 import statistics as stats
 
 
@@ -350,7 +349,7 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
                         else:
                                 tmpXscript1 = XSCRIPT(xscript_id=xscriptStr1, gene_id=geneid, num_er=numER)
                                 tmpXscript1.addDiff(numNTDiff, propNTDiff)
-                                
+                        
                                 if gtfOne:
                                         tmpXscript1.gtfOne = True
                         
@@ -375,18 +374,11 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
                                 
                                 # Full overlap = add each xscript to each others ovlpSet
                                 tmpXscript1.addOlp(xscriptStr2)
-                                                                
-                                
                                 tmpXscript2.addOlp(xscriptStr1)
-                                
-                                
-                                tmpXscript1.ovlpSet.update(tmpXscript2.ovlpSet)
-                                tmpXscript2.ovlpSet.update(tmpXscript1.ovlpSet)
 
                                 # If there is IR as well, add each xscript to each others IR Set
                                 if (flagIR):
                                         tmpXscript1.addIR(xscriptStr2)
-                                                
                                         tmpXscript2.addIR(xscriptStr1)
                         
                         # If IR is excluded...
@@ -399,15 +391,9 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
                                         tmpXscript2.addIR(xscriptStr1)
                                 else:
                                         tmpXscript1.addOlp(xscriptStr2)
-                                        
-                                        if xscriptDct.get(xscriptStr2):
-                                                tmpXscript1.ovlpSet.update(xscriptDct.get(xscriptStr2.ovlpSet))
-                                                
                                         tmpXscript2.addOlp(xscriptStr1)
                                         
-                                        if xscriptDct.get(xscriptStr1):
-                                                tmpXscript2.ovlpSet.update(xscriptDct.get(xscriptStr1.ovlpSet))
-                        
+                                        
                         # Add new objects to dictionary and "addedXscripts"
                         if (xscriptStr1 not in addedXscriptSet):
                                 xscriptDct[xscriptStr1] = tmpXscript1
@@ -439,8 +425,7 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
                 if (xscriptStr not in addedXscriptSet):
                         # Number of exon regions = num_ER_shared + num_ER_T1_only
                         # or T2 only depending.
-                        # This calculation works I promise.
-                        
+                        # This calculation works I promise. I think.
                         numER = int(leftover.split('/')[2]) + int(leftover.split('/')[3])
                         
                         tmpXscript = XSCRIPT(xscript_id=xscriptStr, gene_id=geneid, num_er=numER)
@@ -460,7 +445,7 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
                         addedXscriptSet.add(xscriptStr)
 
         return xscriptDct, erInfoDf
-
+        
 # I know there's an S here but I really cannot think of a better name.
 def createERSGrps(xscriptDct):                
         """
@@ -481,78 +466,118 @@ def createERSGrps(xscriptDct):
         
         # Create empty output list
         ersGrpLst = []
-        
         #Create counter for ERS_group number
         groupCount = 0;
         
         # Loop through all XSCRIPT objects in the dictionary
-        for xscript in xscriptDct.values():
-                #print (xscript)
-                                        
-                # print (xscript.xscript_id)
-                # print (xscript.ers_grp_num)
-                
+        for xscript in xscriptDct.values():                                        
                 # If there are any existing groups
                 if ersGrpLst:
-                        
                         # Loop through each group
                         for ersGrp in ersGrpLst:
                                 # If the transcript is in the set, add the transcript and all the transcript it overlaps with
+                                # AND all the transcripts that overlap with what it overlaps with
                                 if xscript.xscript_id in ersGrp.xscriptSet:
                                         ersGrp.addXscript(xscript.xscript_id)
-                                        
-                                        # Set transcript's group number
-                                        xscript.ers_grp_num = ersGrp.num
-                                                
+                                        xscript.ers_grp_num = ersGrp.num                                                        
                                         ersGrp.xscriptSet.update(xscript.ovlpSet)
                                         
-                                        tmpSet = set()
-                                        for xscript in ersGrp.xscriptSet:
-                                                tmpSet.update(xscriptDct.get(xscript).ovlpSet)
-                                        
-                                        ersGrp.xscriptSet.update(tmpSet)
+                                        ersGrp = addToGrp(grp=ersGrp, initXscript=xscript, xscriptDct=xscriptDct)
                                         
                                         break
                                 
-                        # If you loop through every group without finding the transcript, create a new group
-                        # that contains that transcript and every transcript it overlaps with
                         else:
+                                # Otherwise just make a new group add the transcript (and all transcripts it overlaps with
+                                # AND all the transcripts that overlap with what it overlaps with),
+                                
                                 groupCount += 1
                                 tmpERS = ERS_GRP(num=groupCount, gene_id=xscript.gene_id, num_er=xscript.num_er)
                                 
                                 tmpERS.addXscript(xscript.xscript_id)
-                                
-                                # Set transcript's group number
                                 xscript.ers_grp_num = tmpERS.num
-
                                 tmpERS.xscriptSet.update(xscript.ovlpSet)
+
+                                tmpERS = addToGrp (grp=tmpERS, initXscript=xscript, xscriptDct=xscriptDct)
+                                ersGrpLst.append(tmpERS) 
                                 
-                                tmpSet = set()
-                                for xscript in tmpERS.xscriptSet:
-                                        tmpSet.update(xscriptDct.get(xscript).ovlpSet)
-                                
-                                tmpERS.xscriptSet.update(tmpSet)
-                                ersGrpLst.append(tmpERS)
-                                
-                                
-                
-                # If there are no groups yet, create group 1 and add the transcript (and all transcripts it overlaps with),
+                # If there are no groups yet, create group 1 and add the transcript (and all transcripts it overlaps with
+                #AND all the transcripts that overlap with what it overlaps with),
                 # add group to group list.
-                
                 else:
                         groupCount += 1
-                        
                         tmpERS = ERS_GRP(num=groupCount, gene_id=xscript.gene_id, num_er=xscript.num_er)
                         
                         tmpERS.addXscript(xscript.xscript_id)
-                        
                         xscript.ers_grp_num = tmpERS.num
-
                         tmpERS.xscriptSet.update(xscript.ovlpSet)
-
+                        
+                        tmpERS = addToGrp (grp=tmpERS, initXscript=xscript, xscriptDct=xscriptDct)
+                        
                         ersGrpLst.append(tmpERS)                   
                         
         return ersGrpLst
+
+
+# Adds all transcripts that overlap with what the transcripts overlaps with
+def addToGrp(grp, initXscript, xscriptDct):
+        """
+        
+
+        Parameters
+        ----------
+        grp : ERS_GRP
+                Group to add an xscript to.
+        initXscript : XSCRIPT
+                Initial xscript to add to group
+        xscriptDct : DICT (STR:XSCRIPT)
+                The dictionary of all transcripts and xscript objects
+
+        Returns
+        -------
+        grp : ERS_GRP
+                Group with proper transcripts added.
+
+        """
+        
+        grp.addXscript(initXscript.xscript_id)
+        initXscript.ers_grp_num = grp.num
+        grp.xscriptSet.update(initXscript.ovlpSet)
+        
+        
+        # at this stage there may or may not be missing xscripts due to
+        # the INITIAL xscript not overlapping with some other xscripts
+        
+        # here's the situation: 
+                # transcript A overlaps with B, C, D
+                # transcript B overlaps with A, D, E
+                # initially, the group will contain A, B, C, D
+                # and the group does not know about E, because A does not overlap with it
+                # (but B does)
+        
+        # This is the solution to that (working on making it faster):
+        smthAdded = True
+        while smthAdded:
+                
+                smthAdded = False
+                
+                tmpSet = grp.xscriptSet
+                
+                for transcript in grp.xscriptSet:
+                        tmpSize = len(tmpSet)
+                        
+                        tmpSet.update(xscriptDct.get(transcript).ovlpSet)
+                        xscriptDct.get(transcript).ers_grp_num = grp.num
+                        
+                        if len(tmpSet) > tmpSize:
+                                smthAdded = True
+                                break
+                
+                grp.xscriptSet.update(tmpSet)
+                grp.size = len(grp.xscriptSet)
+
+        return grp
+        
+        
         
         
 def createXscriptOutDf(xscriptDct, ersGrpLst):
@@ -589,6 +614,7 @@ def createXscriptOutDf(xscriptDct, ersGrpLst):
         # Loop through every XSCRIPT object in the dictionary and append the necessary info to each list
         for xscript in xscriptDct.values():
                 
+
                 #Grab the ERS_GRP that the XSCRIPT belongs to for that information
                 ersGrp = ersGrpLst[xscript.ers_grp_num - 1]
                 
@@ -910,16 +936,28 @@ def main():
                 Raises an error if the output directory does not already exist.
 
         """
+                
         
-        #Grab input DF from input CSV
-        inputDf = pd.read_csv (args.infile, low_memory=False)        
-        # Get input File Name
-        
+        # Get input File Name/Prefix
         if args.prefix:
                 prefix = args.prefix
         else: 
                 prefix = os.path.splitext(os.path.basename(args.infile))[0]
+        
+        # Used for testing, made it faster to run multiple times on the same file
+        # if (os.path.exists(prefix + ".pickle") and os.path.getsize(prefix + ".pickle") > 0):
+        #         with open (prefix + ".pickle", 'rb') as f:
+        #                 inputDf = pickle.load(f)
+        # else:
+        #         inputDf = pd.read_csv (args.infile, low_memory=False)
+        #         with open (prefix + ".pickle", 'wb') as f:
+        #                 pickle.dump(inputDf, f)
 
+        #Grab input DF from input CSV
+        print("Reading input file.... ")
+        inputDf = pd.read_csv (args.infile, low_memory=False)
+
+        print ("Read complete! GTF Info: ")
         # Start timer to track how long the looping process takes
         tic = time.perf_counter()
         
@@ -992,15 +1030,23 @@ def main():
         toc = time.perf_counter()       
         print(f"complete, operation took {toc-tic:0.4f} seconds")
         
+        
+        print("Generating split dataframe...")
+        # Used in testing to see that each transcript is only assigned to one group.
         splitDf = split_column_by_sep(ersDf, col_name="xscripts", sep="|")
-        splitDf.to_csv('test.csv')
+        dup = splitDf.duplicated("xscripts", keep=False)
+        dupes = splitDf[dup]
+
+        # splitDf.to_csv('test.csv')
+        
+        print ("Actually complete!")
         
         # Only returns these things for quick checking during development
-        return mstrXscriptDct, mstrERSGrpLst, xscriptDf, ersDf, geneDf, erInfoDf, splitDf
+        return mstrXscriptDct, mstrERSGrpLst, xscriptDf, ersDf, geneDf, erInfoDf, splitDf, dupes
 
 if __name__ == '__main__':
         global args
         args = getOptions()
-        mstrXscriptDct, mstrERSGrpLst, xscriptDf, ersDf, geneDf, erInfoDf, splitDf = main()
+        mstrXscriptDct, mstrERSGrpLst, xscriptDf, ersDf, geneDf, erInfoDf, splitDf, dupes = main()
 
         
