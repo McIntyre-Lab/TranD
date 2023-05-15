@@ -396,7 +396,6 @@ if __name__ == '__main__':
         if (os.path.exists('ujcDct.pickle') and os.path.getsize('ujcDct.pickle') > 0):
                 with open('ujcDct.pickle', 'rb') as f:
                         ujcDct = pickle.load(f)
-                        
         else:
                 ujcDct = extractJunction(exon_data=exon_data)
                 with open('ujcDct.pickle', 'wb') as f:
