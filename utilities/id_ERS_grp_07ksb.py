@@ -36,7 +36,8 @@ class ERS_GRP:
         size (int): Number of transcripts in the group.
                 
         xscriptSet (set of strings): A set of all the transcripts in the group (in string form).
-                
+        
+        exonChain (list of exons): Ordered list of exons
         """
         
         def __init__(self, num, gene_id, num_er):
@@ -48,8 +49,6 @@ class ERS_GRP:
                 
                 self.xscriptSet = set()
                 
-                #NEW
-                # ORDERED exon list
                 self.exonChain = []
                 
                 
@@ -58,6 +57,8 @@ class ERS_GRP:
                 self.xscriptSet.add(xscript)
                 self.size+=1
         
+        def addExon(self, exon):
+                self.exonChain.append(exon)
         
         def __str__(self):
                 return "ERS GROUP NUMBER: " + str(self.num) + ", XSCRIPT LIST: " + str(self.xscriptSet)
@@ -67,11 +68,6 @@ class ERS_GRP:
         
         def __next__(self):
                 return self
-        
-        def addExon(self, exon):
-                self.exonChain.append(exon)
-        
-        
         
         # Group numbers used to compare two groups.
         def __eq__(self, other):
@@ -106,7 +102,10 @@ class XSCRIPT:
         gtfOne (boolean): If the transcript from the first GTF (2 GTF input)
         
         gtfTwo (boolean): If the transcript from the second GTF (2 GTF input)
-                
+        
+        exonLst (list of EXONs): List of exons related* to the transcript
+        
+        *check documentation
         """
         
         def __init__(self, xscript_id, gene_id, num_er):
@@ -127,16 +126,7 @@ class XSCRIPT:
                 self.gtfOne = False
                 self.gtfTwo = False
                 
-                # NEW
                 self.exonLst = []
-                # Not really necessary, i just wanna test smth...
-                
-                # need new name, not really the number of exons, 
-                # situation: T3 has an exon shorter than the exon in the same region in
-                # T1. This leads to two exons being added to T1 (for the shorter exon paired with T3
-                # and the longer exon paired with something else)
-                # works for groups. just means exonLst is not accurate to the transcript.
-                self.numExons = 0
                 
         # Add a transcript to the overlap set
         def addOlp(self, olp):
@@ -155,6 +145,10 @@ class XSCRIPT:
         def addDiff(self, num, prop):
                 self.num_nuc_diff.append(num)
                 self.prop_nuc_diff.append(prop)
+        
+        def addExon(self, exon):
+                if exon not in self.exonLst: 
+                        self.exonLst.append(exon)
                 
         def __eq__(self, other):
                 return self.xscript_id == other.xscript_id
@@ -162,12 +156,6 @@ class XSCRIPT:
         def __str__(self):
                 return "XSCRIPT: " + self.xscript_id + ", OVLPSET: " + str(self.ovlpSet) + ", NUM EXON REGIONS: " + str(self.num_er)
         
-        #NEW
-        def addExon(self, exon):
-                if exon not in self.exonLst: 
-                        self.exonLst.append(exon)
-                        self.numExons+=1
-
         
 class GENE:
         """
@@ -194,9 +182,7 @@ class GENE:
                 self.ersGrpSet.add(grp)
                 self.numGrp += 1
                 
-#NEW
 class EXON:
-        
         def __init__(self, seqname, start, end, strand):
                 self.seqname = seqname
                 self.start = start
@@ -500,19 +486,15 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
                 if gtfOne and gtfTwo:
                         whichGTF = leftover.split('/')[6]
                 
-
-                
                 if (xscriptStr not in addedXscriptSet):
                         # Number of exon regions = num_ER_shared + num_ER_T1_only
                         # or T2 only depending.
                         # This calculation works I promise. I think.
-                                
-                                
+                        
                         numER = int(leftover.split('/')[2]) + int(leftover.split('/')[3])
                         
                         tmpXscript = XSCRIPT(xscript_id=xscriptStr, gene_id=geneid, num_er=numER)
                         
-                        # NEW!
                         for exon in exonChain:                                
                                 if exon != '':
                                         seqname = exon.split(':')[0]
@@ -1095,7 +1077,6 @@ def split_column_by_sep(df,col_name=None,sep=None,sort_list=None):
 
 
 def main():
-# if __name__ == '__main__':
         """
         
         Runs the program.
