@@ -13,9 +13,7 @@ transcripts into UJCs.
 
 Created from a previous utility in TranD named consolidation
 
-Version 2: Testing various methods of iterating over dataframes
-
-Finish!
+Version 3: TPlaying with generators!
 
 """
 
@@ -167,8 +165,72 @@ def checkStrandAndChromosome(exonData):
             
         return exonData
 
+def generateObject(df):
+        
+        for row in df.values.tolist()[:-1]:
+                junction = JUNCTION(seqname=row[0], lastExonEnd=str(row[2]), 
+                                    nextExonStart=row[1], strand=row[3])
+                
+                yield junction
+        
+        
+        
 
 # this seems to be the fastest way. list > .values > tuples > todict
+def extractJunctiona(exonData):
+        exonData = checkStrandAndChromosome(exonData=exonData)
+        xscriptGrps = exonData.groupby("transcript_id")
+        
+        ujcDct = {}
+        
+        for xscriptID, group in xscriptGrps:
+                
+                junctionLst = []
+                
+                if len(group) > 1:
+                        sortedGrp = group.sort_values(by="start").reset_index(drop=True)
+                        
+                        sortedGrp['start'] = sortedGrp['start'].shift(-1).fillna(0).astype(int).astype(str)
+                        
+                        junctionLst = generateObject(sortedGrp)
+                        
+                        # rows = sortedGrp.values.tolist()
+                                                
+                        # for row in rows[:-1]:
+                        #         seqname = row[0]
+                        #         strand = row[3]
+                        #         nextExonStart = row[1]
+                        #         lastExonEnd = str(row[2])
+                                
+                        #         junction = JUNCTION(seqname=seqname, lastExonEnd=lastExonEnd, 
+                        #                             nextExonStart=nextExonStart, strand=strand)
+                                
+                        #         junctionLst.append(junction)
+
+                        start = group['start'].min()
+                        end = group['end'].max()
+                        
+                        junctionChain = J_CHAIN(junctionLst)
+                else:
+                        junctionChain = None
+                        start = group['start'].iat[0]
+                        end = group['end'].iat[0]
+                
+                                        
+                seqname = group['seqname'].iat[0]
+                strand = group['strand'].iat[0]
+                geneID = group['gene_id'].iat[0]
+                
+                ujcDct[xscriptID] = [junctionChain,
+                                     xscriptID,
+                                     geneID,
+                                     seqname,
+                                     start,
+                                     end,
+                                     strand]
+                
+        return ujcDct
+
 def extractJunction(exonData):
         exonData = checkStrandAndChromosome(exonData=exonData)
         xscriptGrps = exonData.groupby("transcript_id")
