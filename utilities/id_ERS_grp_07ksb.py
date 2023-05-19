@@ -20,8 +20,6 @@ import time
 import statistics as stats
 import trand.io
 
-# TODO:
-        # update docstrings
 
 class ERS_GRP:
         """
@@ -183,6 +181,18 @@ class GENE:
                 self.numGrp += 1
                 
 class EXON:
+        """
+        Class representation of an exon
+        
+        seqname (string): seqname
+        
+        start (int): start position of the exon 
+        
+        end (int): end position of the exon
+        
+        strand (int): strand
+        """
+        
         def __init__(self, seqname, start, end, strand):
                 self.seqname = seqname
                 self.start = start
@@ -219,7 +229,9 @@ def getOptions():
                                          "IR inclusion option (--includeIR Y or N), and an output path (--outdir)."
                                          "Output directory must already exist. Also includes an option to"
                                          "use a prefix (--prefix) other than the original file name "
-                                         "for the output files. "
+                                         "for the output files."
+                                         "Allows the option to output a GTF file with representative"
+                                         "exons for each group (--gtf)"
                                          "Warning for 2 GTF files: Only genes with at least one "
                                          "transcript in both GTF files will be sorted into groups. "
                                          )
@@ -252,6 +264,16 @@ def getOptions():
                 help="Location of output directory, must already exist.")
         
         parser.add_argument(
+                "-g",
+                "--gtf",
+                dest="outputGTF",
+                action="store_true",
+                help="Output a GTF file with a representative transcript for each group."
+                "Each exon region is represented by an exon in the GTF. Each exon is built"
+                "using the earliest start and the latest end within the group."
+                )
+        
+        parser.add_argument(
                 "-p",
                 "--prefix",
                 dest="prefix",
@@ -273,6 +295,15 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
                 
         includeIR : BOOLEAN
                 Whether or not transcripts with intron retention are included or excluded from ERS groups.
+                
+        gtfOne: STRING
+                Name of the first GTF (if 2GTF)
+                =None if there is 1 GTF
+                
+        gtfTwo: BOOLEAN
+                Name of the second GTF
+                =None if there is 1 GTF
+
 
         Returns
         -------
@@ -620,7 +651,6 @@ def addToGrp(grp, initXscript, xscriptDct):
         initXscript.ers_grp_num = grp.num
         grp.xscriptSet.update(initXscript.ovlpSet)
         
-        
         # at this stage there may or may not be missing xscripts due to
         # the INITIAL xscript not overlapping with some other xscripts
         
@@ -641,6 +671,7 @@ def addToGrp(grp, initXscript, xscriptDct):
                 
                 for transcript in grp.xscriptSet:
                         tmpSize = len(tmpSet)
+                        
                         
                         tmpSet.update(xscriptDct.get(transcript).ovlpSet)
                         xscriptDct.get(transcript).ers_grp_num = grp.num
@@ -789,8 +820,8 @@ def createERSOutDf(ersGrpLst, xscriptDct, includeIR, gtfOne, gtfTwo):
                 propNTLst = []
                 containsGTFOne = False
                 containsGTFTwo = False
-                for xscriptStr in ersGrp.xscriptSet:        
-                        
+                for xscriptStr in ersGrp.xscriptSet:
+                                       
                         if (gtfOne and gtfTwo):
                                 if xscriptDct.get(xscriptStr).gtfOne:
                                         containsGTFOne = True
@@ -840,6 +871,7 @@ def createERSOutDf(ersGrpLst, xscriptDct, includeIR, gtfOne, gtfTwo):
                         irNumCnt = 0;
                         
                         for xscript in ersGrp.xscriptSet:
+                                        
                                 if xscriptDct.get(xscript).flagIR():
                                         irNumCnt += 1
                                         
@@ -882,7 +914,6 @@ def createERSOutDf(ersGrpLst, xscriptDct, includeIR, gtfOne, gtfTwo):
 
 def createGeneOutDf(xscriptDct, ersGrpLst):
         """
-        
         Creates a dictionary of GENE objects based on the information gleaned and stored
         in the XSCRIPT dictionary and ERS_GRP list. Then creates a gene focused 
         output dataframe.
@@ -980,13 +1011,27 @@ def createGeneOutDf(xscriptDct, ersGrpLst):
         return outDf
 
 def buildGrpExonChain(ersGrpLst, xscriptDct):
+        """
+        Builds the chain of exons for the representative "transcript" of each group.
+        
+        Parameters
+        ----------
+        ersGrpLst : LIST (OF ERS_GRPs)
+                List of all ERS_GRPs.
+                
+        xscriptDct : DICTIONARY (KEY = STR, VALUE = XSCRIPT)
+                Dictionary of transcripts, with the key being the string and the value being the 
+                actual XSCRIPT object.
+            
+        Returns
+        -------
+        Nothing.
+
+        """
         
         for ersGrp in ersGrpLst:
                 
                 tmpExonLst = []
-                
-                #print (ersGrp.size)
-                
                 
                 for xscriptStr in ersGrp.xscriptSet:
                         xscript = xscriptDct.get(xscriptStr)
@@ -1015,7 +1060,27 @@ def buildGrpExonChain(ersGrpLst, xscriptDct):
                                         else:
                                                 continue  
                                 
-def createERSGTFDf(ersGrpLst,xscriptDct):
+def createGTFDf(ersGrpLst,xscriptDct):
+        """
+        Creates a dataframe for the exons within the representative transcript
+        of each ERS_GRP. Compatible with trand.io.write_gtf.
+        output dataframe.
+
+        Parameters
+        ----------
+        xscriptDct : DICTIONARY (KEY = STR, VALUE = XSCRIPT)
+                Dictionary of transcripts, with the key being the string and the value being the 
+                actual XSCRIPT object.
+                
+        ersGrpLst : LIST (OF ERS_GRPs)
+                List of all ERS_GRPs.
+
+        Returns
+        -------
+        exonDf : DATAFRAME
+                Output dataframe to be converted to a GTF file ia trand.io.write_gtf()
+
+        """
         
         buildGrpExonChain(ersGrpLst=ersGrpLst, xscriptDct=xscriptDct)
         
@@ -1025,7 +1090,6 @@ def createERSGTFDf(ersGrpLst,xscriptDct):
         strandLst = []
         ersIDLst = []
         geneIDLst = []
-        
 
         for ersGrp in ersGrpLst:
                 seqname = ersGrp.exonChain[0].seqname
@@ -1156,8 +1220,6 @@ def main():
                 ersDf = createERSOutDf(ersGrpLst=mstrERSGrpLst, xscriptDct=mstrXscriptDct, includeIR=True, gtfOne=gtfOne, gtfTwo=gtfTwo)
                 geneDf = createGeneOutDf(xscriptDct=mstrXscriptDct,ersGrpLst=mstrERSGrpLst)
                 
-                gtfDf = createERSGTFDf(ersGrpLst=mstrERSGrpLst, xscriptDct=mstrXscriptDct)
-
                 # Configure descriptive file name
                 xscript_output_file = "{}/{}_xscript_output.csv".format(args.outdir, prefix)
                 ers_output_file = "{}/{}_ers_output.csv".format(args.outdir, prefix)
@@ -1167,9 +1229,6 @@ def main():
                                 
                 toc = time.perf_counter()       
                 print(f"Df building complete,  took {toc-tic:0.4f} seconds")
-                
-
-
                 
         elif (args.includeIR.upper() == 'N'):  
                 # Create XSCRIPT dictionary and ERS_GRP list
@@ -1192,30 +1251,33 @@ def main():
                 ersDf = createERSOutDf(ersGrpLst=mstrERSGrpLst, xscriptDct=mstrXscriptDct, includeIR=False, gtfOne=gtfOne, gtfTwo=gtfTwo)
                 geneDf = createGeneOutDf(xscriptDct=mstrXscriptDct,ersGrpLst=mstrERSGrpLst)
                 
-                gtfDf = createERSGTFDf(ersGrpLst=mstrERSGrpLst, xscriptDct=mstrXscriptDct)
 
                 # Configure descriptive file name
-                xscript_output_file = "{}/{}_xscript_output.csv".format(args.outdir, prefix)
-                ers_output_file = "{}/{}_ers_output.csv".format(args.outdir, prefix)
-                gene_output_file = "{}/{}_gene_output.csv".format(args.outdir, prefix)
+                xscript_output_file = "{}/{}_xscript_output_noIR.csv".format(args.outdir, prefix)
+                ers_output_file = "{}/{}_ers_output_noIR.csv".format(args.outdir, prefix)
+                gene_output_file = "{}/{}_gene_output_noIR.csv".format(args.outdir, prefix)
                 
-                gtf_output_file = "{}/{}_ers_gtf.gtf".format(args.outdir, prefix)
+                gtf_output_file = "{}/{}_ers_noIR_gtf.gtf".format(args.outdir, prefix)
                                 
                 toc = time.perf_counter()       
                 print(f"Df building complete,  took {toc-tic:0.4f} seconds")
                 
 
+        if args.outputGTF:
+                gtfDf = createGTFDf(ersGrpLst=mstrERSGrpLst, xscriptDct=mstrXscriptDct)
         
+
         # Output Df to CSV, will raise an error if output directory does not already exist
         try:
                 xscriptDf.to_csv(xscript_output_file,index=False)
                 ersDf.to_csv(ers_output_file,index=False)
                 geneDf.to_csv(gene_output_file,index=False)
                 
-                if os.path.isfile(gtf_output_file):
-                        os.remove(gtf_output_file)
-                
-                trand.io.write_gtf(data=gtfDf, out_fhs={"gtf":gtf_output_file}, fh_name="gtf")
+                if args.outputGTF:
+                        if os.path.isfile(gtf_output_file):
+                                os.remove(gtf_output_file)
+                        
+                        trand.io.write_gtf(data=gtfDf, out_fhs={"gtf":gtf_output_file}, fh_name="gtf")
                 
         except OSError:
                 raise OSError("Output directory must already exist.")
@@ -1224,16 +1286,16 @@ def main():
         toc = time.perf_counter()       
         print(f"complete, operation took {toc-omegatic:0.4f} seconds")
         
-        
-        # print("Generating split dataframe...")
-        # # Used in testing to see that each transcript is only assigned to one group.
-        # splitDf = split_column_by_sep(ersDf, col_name="xscripts", sep="|")
-        # dup = splitDf.duplicated("xscripts", keep=False)
-        # dupes = splitDf[dup]
+        # Used to assure each transcript is put into a group only once.
+        print("Generating split dataframe...")
+        # Used in testing to see that each transcript is only assigned to one group.
+        splitDf = split_column_by_sep(ersDf, col_name="xscripts", sep="|")
+        dup = splitDf.duplicated("xscripts", keep=False)
+        dupes = splitDf[dup]
 
-        # splitDf.to_csv('test.csv')
+        #splitDf.to_csv('test.csv')
         
-        # print ("Actually complete!")
+        print ("Actually complete!")
         
         # Only returns these things for quick checking during development
         return mstrXscriptDct, mstrERSGrpLst, xscriptDf, ersDf, geneDf, erInfoDf, splitDf, dupes
