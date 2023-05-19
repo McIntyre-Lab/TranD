@@ -505,6 +505,13 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
         leftovers = unqXscriptSet - olpXscriptSet
         
         # Convert leftovers to XSCRIPT object and add to dictionary
+                # 0 = geneID
+                # 1 = xscript
+                # 2 = num_ER_shared
+                # 3 = num_ER_only
+                # 4 = ER_shared (junction string)
+                # 5 = ER_T2_only (junction string)
+                # 6 = which GTF
         for leftover in leftovers:
                 geneid = leftover.split('/')[0]
                 xscriptStr = leftover.split('/')[1]
@@ -981,6 +988,8 @@ def createGeneOutDf(xscriptDct, ersGrpLst):
                         numERLst.append(int(grp.num_er))
                         numSizeLst.append(int(grp.size))
                 
+                if geneStr == "FBgn0039883":
+                        print (numERLst)
                 
                 # and do stats on them.
                 minERLst.append(min(numERLst))

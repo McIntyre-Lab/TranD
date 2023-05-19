@@ -332,7 +332,7 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
                 flagFullOvlp = row['prop_ER_similar'] == 1
                 flagIR = row['flag_IR'] == 1
                 
-                numER = row['num_ER_shared']
+                numER = int(row['num_ER_shared'])
                 
                 numNTDiff = row['num_nt_diff']
                 propNTDiff = row['prop_nt_diff']
@@ -877,6 +877,8 @@ def createGeneOutDf(xscriptDct, ersGrpLst):
                         numERLst.append(int(grp.num_er))
                         numSizeLst.append(int(grp.size))
                 
+                if geneStr == "FBgn0039883":
+                        print (numERLst)
                 
                 # and do stats on them.
                 minERLst.append(min(numERLst))
