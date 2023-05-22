@@ -234,7 +234,8 @@ def createUJCDf(ujcDct, trPrefix, ignoreGene):
                 else:
                         newInfo = [info[0], info[1], info[2], info[3], info[4], info[5], info[6]]
                         monoExons.update({xscript: newInfo})
-                        
+                
+                
                 
         if len(monoExons) > 0:
                 monoXscripts = pd.DataFrame(monoExons,
@@ -268,6 +269,10 @@ def createUJCDf(ujcDct, trPrefix, ignoreGene):
                         
                         if len(overlap) > 2:
                                 print (gene)
+                                print (grp)
+                                print (grp['start'].shift(-1))
+                                print (grp['end'])
+                                print (overlap)
                                 return overlap, monoXscripts
                                 
                 
