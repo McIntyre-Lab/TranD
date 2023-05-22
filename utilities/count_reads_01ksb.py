@@ -7,7 +7,7 @@ Created on Fri May 19 13:34:55 2023
 """
 
 """
-
+(combined)
 Identify the unique junction chains (UJC) of a GTF file and combine
 transcripts into UJCs.
 
@@ -45,6 +45,11 @@ class J_CHAIN:
                                         + ":" + self.strand)
                         
                 return "|".join(chainStr)
+        
+        
+        
+        # def __str__(self):
+        #         return self.seqname + ":" + str(self.lastExonEnd) + ":" + str(self.nextExonStart) + ":" + self.strand
 
         
 
@@ -53,13 +58,13 @@ def getOptions():
         parser = argparse.ArgumentParser(description="Identifies unique junction chains (UJCs) found within a "
                                          "GTF file and combines transcripts based on these UJCs. Outputs a summary file "
                                          "containing info on these combined transcripts and their \"ujc_id\". Input a GTF "
-                                         "file (--infile), optional prefix for the ujc_ids (--tr-prefix), "
+                                         "file (--infile), optional prefix for the new transcript names (--tr-prefix), "
                                          "an output path (--outdir) and a prefix for the output files (--prefix). "
                                          "Allows the option to output a new GTF file with the UJCs as the transcripts "
                                          "(--outGTF). Also allows the option ignore which gene a transcript came from"
                                          "when creating new transcript names (--ignore-gene)."
-                                         "Note: \"ujc_ids\" are ranked by length. So the longest UJC under one"
-                                         "gene will prefix_gene_1, the next will be prefix_gene_2, etc. EXCEPT"
+                                         "Note: \"ujc_ids\" are ranked by length. So the longest transcript under one"
+                                         "UJC will prefix_gene_1, the next will be prefix_gene_2, etc. EXCEPT"
                                          "monoexons will always be number one.")
         
         ## INPUT
@@ -77,7 +82,7 @@ def getOptions():
                 dest="trPrefix",
                 required=False,
                 default="tr",
-                help="Input a prefix for the ujc_id. Defaults to"
+                help="Input a prefix for the combined transcripts. Defaults to"
                 "\'tr\'. (ex: tr_FBgn000000_1)"
         )
         
@@ -88,9 +93,10 @@ def getOptions():
                 required=False,
                 action="store_true",
                 help="Add this argument to ignore genes when combining transcripts into UJCs."
-                        "Example: \"tr_FBgn000000_1\" becomes \" tr_seqname_start_end_1.\""
+                        "Example: \"tr_FBgn000000_1\" becomes \" tr_1.\" The gene_id in the "
+                        "output GTF file will be the same as the transcript."
         )
-        
+                
         parser.add_argument(
                 "-g",
                 "--outGTF",
@@ -99,6 +105,15 @@ def getOptions():
                 help="Use this argument to remove the output of a GTF with the UJCs as transcripts. "
                         "Defaults to outputting the GTF."
         )
+        
+        # What does this do?
+        # parser.add_argument(
+        #         "-v",
+        #         "--verbose",
+        #         dest="verbose",
+        #         action="store_true",
+        #         help="dunno."
+        # )
         
         ## OUTPUT
         parser.add_argument(
@@ -114,7 +129,7 @@ def getOptions():
                 "--prefix",
                 dest="prefix",
                 required=True,
-                help="Prefix for the output file(s). Example: prefix_UJC_ID.csv"
+                help="Prefix for the output file(s). Example: prefix_UJC_key.csv"
         )
         
         args = parser.parse_args()
@@ -232,7 +247,7 @@ def createUJCDf(ujcDct, trPrefix, ignoreGene):
                         newInfo = [junctionChain.chainToStr(), info[1], info[2], info[3], info[4], info[5], info[6]]
                         multiExons.update({xscript: newInfo})
                 else:
-                        newInfo = [info[0], info[1], info[2], info[3], info[4], info[5], info[6]]
+                        newInfo = ['', info[1], info[2], info[3], info[4], info[5], info[6]]
                         monoExons.update({xscript: newInfo})
                         
                 
@@ -244,61 +259,14 @@ def createUJCDf(ujcDct, trPrefix, ignoreGene):
                                                                   "seqname",
                                                                   "start", "end", "strand"])
                                                 ).T.sort_values(by=["start", "end"])
-                                
+        
+                overlap = (monoXscripts['start'].shift(-1) < monoXscripts['end']).cumsum()
                 
                 jStringLst = []
-                xscriptLst = []
-                exonDct = []
-                seqnameLst = []
-                strandLst = []
-                storeSeqname = None
-                storeStrand = None
-                
-                # each row = an exon.
-                
-                geneGrps = monoXscripts.groupby('gene_id')
-                
-                for gene, grp in geneGrps:
-                        # print (gene)
-                        overlap = (grp["start"].shift(-1) < grp["end"])
-                        
-                        # print (overlap)
-                        # print()
-                        
-                        
-                        if len(overlap) > 2:
-                                print (gene)
-                                return overlap, monoXscripts
-                                
-                
-                # for row in monoXscripts.to_dict('records'):
-                #         seqname = row['seqname']
-                #         strand = row['strand']
-                        
-                #         xscript = row['transcript_id']
-                        
-                #         start = row['start']
-                #         end = row['end']
-                        
-                #         if seqname != storeSeqname or strand != storeStrand:
-                #                 # seperate ujc
-                #                 exonDct.update({xscript})
-                #                 xscriptLst.append([xscript])
-                                
-                #                 seqnameLst.append(seqname)
-                #                 strandLst.append(strand)
-                                
-                #                 storeSeqname = seqname
-                #                 storeStrand = strand
-                #         else:
-                #                 lastExon = exonLst
-                                
-                                
-                                
-                # if the end of this one > start of the last one:
-                        
-                
-                return monoXscripts
+                for row in monoXscripts.to_dict('records'):
+                        jStringLst.append("monoexon_" 
+                                          + str(row['start']) + "_" 
+                                          + str(row['end']))
                         
                 monoXscripts['junction_string'] = jStringLst
                 
@@ -448,6 +416,7 @@ def createExonOutput(ujcDf, ujcDct):
 def createOutput(ujcDf, ujcDct):
         xscriptLst = []
         ujcIDLst = []
+        junctionStrLst = []
         
         for row in ujcDf.to_dict('records'):
                 xscripts = row['transcript_id'].split('|')
@@ -455,24 +424,29 @@ def createOutput(ujcDf, ujcDct):
                 
                 if len(xscripts) > 1:                        
                         ujcID = row['ujc_id']
+                        junctionStr = row['junction_string']
                         
                         for xscript in xscripts:
                                 xscriptLst.append(xscript)
                                 ujcIDLst.append(ujcID)
+                                junctionStrLst.append(junctionStr)     
                         
                 else:
                         xscript = xscripts[0]
                         ujcID = row['ujc_id']
+                        junctionStr = row['junction_string']
                         
                         xscriptLst.append(xscript)
                         ujcIDLst.append(ujcID)
+                        junctionStrLst.append(junctionStr)
                         
                 
         
         outDf = pd.DataFrame(
                 {
                         'transcript_id':xscriptLst,
-                        'ujc_id':ujcIDLst
+                        'ujc_id':ujcIDLst,
+                        'junctionStr':junctionStrLst
                 })
         
         return outDf
@@ -485,15 +459,15 @@ if __name__ == '__main__':
         prefix= args.prefix
         
         #main
-        if (os.path.exists(prefix + '.pickle') and os.path.getsize(prefix + '.pickle') > 0):
-                with open(prefix + '.pickle', 'rb') as f:
-                        exonData = pickle.load(f)
-        else:
-                exonData = trand.io.read_exon_data_from_file(infile=args.inGTF)
-                with open(prefix + '.pickle', 'wb') as f:
-                        pickle.dump(exonData, f)
+        # if (os.path.exists(prefix + '.pickle') and os.path.getsize(prefix + '.pickle') > 0):
+        #         with open(prefix + '.pickle', 'rb') as f:
+        #                 exonData = pickle.load(f)
+        # else:
+        #         exonData = trand.io.read_exon_data_from_file(infile=args.inGTF)
+        #         with open(prefix + '.pickle', 'wb') as f:
+        #                 pickle.dump(exonData, f)
         
-        # exonData = trand.io.read_exon_data_from_file(infile=args.inGTF)
+        exonData = trand.io.read_exon_data_from_file(infile=args.inGTF)
 
         toc = time.perf_counter()
         print(f"GTF Read complete! Took {toc-omegatic:0.4f} seconds. Extracting junctions...")
@@ -507,7 +481,7 @@ if __name__ == '__main__':
         
         tic = time.perf_counter()
         
-        ujcDf, a = createUJCDf(ujcDct=ujcDct, trPrefix=args.trPrefix, ignoreGene=args.noGene)
+        ujcDf = createUJCDf(ujcDct=ujcDct, trPrefix=args.trPrefix, ignoreGene=args.noGene)
         
         # if (os.path.exists(prefix + '_allUJC.pickle') and os.path.getsize(prefix + '_allUJC.pickle') > 0):
         #         with open(prefix + '_allUJC.pickle', 'rb') as f:
