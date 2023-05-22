@@ -19,6 +19,7 @@ import os
 import time
 import statistics as stats
 import trand.io
+import pickle
 
 
 class ERS_GRP:
@@ -346,6 +347,8 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
         
         unqXscriptSet = set(pd.concat([erInfoDf['transcript_1'], erInfoDf['transcript_2']]))
         print ("Number of transcripts: " + str(len(unqXscriptSet)))
+        print ("Number of genes: " + str(len(erInfoDf['gene_id'].unique())))
+        
         
         # Stick gene_id and number of exon region info onto transcript name (used for leftovers)
         #NEW (add the junction string to each transcript)
@@ -1167,7 +1170,7 @@ def main():
         else: 
                 prefix = os.path.splitext(os.path.basename(args.infile))[0]
         
-        # Used for testing, made it faster to run multiple times on the same file
+        # #Used for testing, made it faster to run multiple times on the same file
         # if (os.path.exists(prefix + ".pickle") and os.path.getsize(prefix + ".pickle") > 0):
         #         with open (prefix + ".pickle", 'rb') as f:
         #                 inputDf = pickle.load(f)
@@ -1218,6 +1221,8 @@ def main():
                 
                 tic = time.perf_counter()
                 mstrERSGrpLst = createERSGrps(xscriptDct=mstrXscriptDct)
+                
+                
                 
                 toc = time.perf_counter()       
                 print(f"Grouping complete,  took {toc-tic:0.4f} seconds")
