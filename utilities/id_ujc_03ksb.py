@@ -287,7 +287,6 @@ def createUJCDf(ujcDct, trPrefix, ignoreGene):
         sort_order = {"gene_id": "asc", "ujc_length": "asc", "start": "asc", "transcript_id": "asc"}
         allUJC = allUJC.sort_values(by=list(sort_order.keys()), ascending=[True if val=="asc" else False for val in sort_order.values()])
         
-        
         if not ignoreGene: 
                 allUJC["transcript_rank_in_gene"] = (
                     allUJC.groupby("gene_id")["ujc_length"].rank(method="first")

@@ -25,6 +25,18 @@ class J_CHAIN:
                 # (lastExonEnd, nextExonStart)
                 # just a list of pairs of values like this
         
+        
+        def chainToStr(self):
+                chainStr = []
+                
+                for junctionPair in self.junctionLst:
+                        chainStr.append(self.seqname + ":" + junctionPair[1] + ":" + junctionPair[2]
+                                        + ":" + self.strand)
+                        
+                return "|".join(chainStr)
+        
+        
+        
         # def __str__(self):
         #         return self.seqname + ":" + str(self.lastExonEnd) + ":" + str(self.nextExonStart) + ":" + self.strand
 
@@ -133,19 +145,22 @@ def checkStrandAndChromosome(exonData):
             
         return exonData
 
+
+
 if __name__ == '__main__':
         global args
         print ("Loading...")
         omegatic = time.perf_counter()
         args = getOptions()
+        prefix= args.prefix
         
-        # main
-        if (os.path.exists('exonData.pickle') and os.path.getsize('exonData.pickle') > 0):
-                with open('exonData.pickle', 'rb') as f:
+        #main
+        if (os.path.exists(prefix + '.pickle') and os.path.getsize(prefix + '.pickle') > 0):
+                with open(prefix + '.pickle', 'rb') as f:
                         exonData = pickle.load(f)
         else:
                 exonData = trand.io.read_exon_data_from_file(infile=args.inGTF)
-                with open('exonData.pickle', 'wb') as f:
+                with open(prefix + '.pickle', 'wb') as f:
                         pickle.dump(exonData, f)
         
         
@@ -158,20 +173,20 @@ if __name__ == '__main__':
         df = checkStrandAndChromosome(exonData=exonData)
         
         print ("Number of transripts: ", end="")
+        numXscripts = len(df['transcript_id'].unique())
         print (len(df['transcript_id'].unique()))
         
-        # First, insted of grouping, then sorting
+        # First, instead of grouping, then sorting
         # Sort by transcript -> sort by start. the whole dataframe
         # instead of wasting time repeatedly sorting every group in the loop.
-        # Which makes it now take a second. lol.
-        sortedDf = exonData.sort_values(by=['transcript_id', 'start']).reset_index(drop=True)
+        # Which makes it now take a second. 
+        sortedDf = df.sort_values(by=['transcript_id', 'start']).reset_index(drop=True)
+                        
+        ujcDct = {}        
         
-        xscriptGrps = exonData.groupby("transcript_id")
-        
-        ujcDct = {}
-        
-        addedXscripts = set()
-        
+        # This takes less than 5 seconds for the small file.
+        # Takes (drum roll please...) a minute!! :)
+        # Dear LORD this is fast!!!!
         for row in sortedDf.to_dict('records'):                
                 xscript = row['transcript_id']
                 
@@ -182,23 +197,78 @@ if __name__ == '__main__':
                 start = row['start']
                 end = row['end']
                 
-                if xscript in ujcDct:
+                
+                if xscript in ujcDct.keys():
                         exonLst = ujcDct[xscript][0]
                         
-                        junctionLst.append((end,start))
+                        exonLst.append((start,end))
                 else:
-                        junctionLst = [(end,start)]
-                        ujcDct[xscript] = [junctionLst,
-                                           xscript,
-                                           geneID,
-                                           seqname,
-                                           start,
-                                           end,
-                                           strand]
+                        exonLst = [(start,end)]
+                        ujcDct[xscript] = [exonLst,
+                                            xscript,
+                                            geneID,
+                                            seqname,
+                                            start,
+                                            end,
+                                            strand]        
+        
+        for info in ujcDct.values():
+                startValues, endValues = zip(*sorted(info[0]))
+                junctions = list(zip(endValues[:-1], startValues[1:]))
+                
+                if junctions == []:
+                        junctionChain = None
+                else:    
+                        junctionChain = J_CHAIN(seqname=info[3], junctionLst=junctions, strand=info[6])
+                info.append(junctionChain)
+        
+        
+        monoExons = dict()
+        multiExons = dict()        
+        
+        for xscript, info in ujcDct.items():
+                junctionChain = info[7]
+                
+                if junctionChain:
+                        newInfo = [junctionChain.chainToStr, info[1], info[2], info[3], info[4], info[5], info[6]]
+                        multiExons.update({xscript: newInfo})
+                else:
+                        newInfo = ['', info[1], info[2], info[3], info[4], info[5], info[6]]
+                        monoExons.update({xscript: newInfo})
+                
+        if len(monoExons) > 0:
+                monoXscripts = pd.DataFrame(monoExons,
+                                                index = pd.Index(["junction_string",
+                                                                  "transcript_id",
+                                                                  "gene_id",
+                                                                  "seqname",
+                                                                  "start", "end", "strand"])
+                                                ).T.sort_values(by=["start", "end"])
+                jStringLst = []
+                for row in monoXscripts.to_dict('records'):
+                        jStringLst.append("monoexon_" 
+                                          + str(row['start']) + "_" 
+                                          + str(row['end']))
+                        
+                monoXscripts['junction_string'] = jStringLst
                 
                 
-        # for xscriptID, group in xscriptGrps:
-        #         group = group
+        else:
+                monoUJC = None
+                
+                        
+
+                
+        
+        # for info in ujcDct.values():
+        #         if junctionChain
+        #                 print ('')
+        
+        
+        
+        
+                
+        
         
         # for xscriptID, group in xscriptGrps:
                 
@@ -240,15 +310,6 @@ if __name__ == '__main__':
         #                               end,
         #                               strand]
                 
-
-                
-        
-                
-                
-                
-                
-        
-        
         toc = time.perf_counter()
         print (f"Complete! Operation took {toc-tic:0.4f} seconds.")
         
