@@ -218,6 +218,9 @@ def extractJunction(exonData):
                 
                 # if (x == 'FBtr0077452' or x == 'FBtr0335136' or x == 'FBtr0345285'):
                 #         print (info[0])
+                
+                # if (info[2] == 'FBgn0003751'):
+                #         print (info[0])
         
         return ujcDct
 
@@ -235,85 +238,60 @@ def createUJCDf(ujcDct, trPrefix, ignoreGene):
                         newInfo = [info[0], info[1], info[2], info[3], info[4], info[5], info[6]]
                         monoExons.update({xscript: newInfo})
                 
-                
-                
-        if len(monoExons) > 0:
+        
+        if len (monoExons) > 0:
                 monoXscripts = pd.DataFrame(monoExons,
                                                 index = pd.Index(["junction_string",
                                                                   "transcript_id",
                                                                   "gene_id",
                                                                   "seqname",
                                                                   "start", "end", "strand"])
-                                                ).T.sort_values(by=["start", "end"])
-                                
+                                                ).T.sort_values(by=["gene_id", "start", "end"])
+                                                
+                monoXscripts['tmpStart'] = monoXscripts['start']
+                monoXscripts['tmpEnd'] = monoXscripts['end']
                 
-                jStringLst = []
-                xscriptLst = []
-                exonDct = []
-                seqnameLst = []
-                strandLst = []
-                storeSeqname = None
-                storeStrand = None
-                
-                # each row = an exon.
-                
-                geneGrps = monoXscripts.groupby('gene_id')
-                
-                for gene, grp in geneGrps:
-                        # print (gene)
-                        overlap = (grp["start"].shift(-1) < grp["end"])
-                        
-                        # print (overlap)
-                        # print()
-                        
-                        
-                        if len(overlap) > 2:
-                                print (gene)
-                                print (grp)
-                                print (grp['start'].shift(-1))
-                                print (grp['end'])
-                                print (overlap)
-                                return overlap, monoXscripts
+                combinedRows = []
+                # it works :)
+                for row in monoXscripts.to_dict('records'):
+                                if combinedRows:
+                                        lastRow = combinedRows[-1]
+                                                
+                                        if lastRow['gene_id'] == row['gene_id']:
+                                                if lastRow['tmpEnd'] > row['tmpStart']:
+                                                        
+                                                        row['tmpStart'] = lastRow['tmpStart']
+                                                        
+                                                        if (lastRow['tmpEnd'] < row['tmpEnd']):
+                                                                for loopRow in combinedRows:
+                                                                        if loopRow['gene_id'] == row['gene_id']:
+                                                                                loopRow['tmpEnd'] = row['tmpEnd']
+                                                        else:
+                                                                row['tmpEnd'] = lastRow['tmpEnd']
+                                                                
+                                                        combinedRows.append(row)
+                                        else:
+                                                combinedRows.append(row)
+                                else:
+                                        combinedRows.append(row)
                                 
+                for row in combinedRows:
+                        jString = ("monoexon_"
+                           + str(row['tmpStart']) + "_"
+                           + str(row['tmpEnd']))
+                        
+                        row['junction_string'] = jString
                 
-                # for row in monoXscripts.to_dict('records'):
-                #         seqname = row['seqname']
-                #         strand = row['strand']
-                        
-                #         xscript = row['transcript_id']
-                        
-                #         start = row['start']
-                #         end = row['end']
-                        
-                #         if seqname != storeSeqname or strand != storeStrand:
-                #                 # seperate ujc
-                #                 exonDct.update({xscript})
-                #                 xscriptLst.append([xscript])
-                                
-                #                 seqnameLst.append(seqname)
-                #                 strandLst.append(strand)
-                                
-                #                 storeSeqname = seqname
-                #                 storeStrand = strand
-                #         else:
-                #                 lastExon = exonLst
-                                
-                                
-                                
-                # if the end of this one > start of the last one:
-                        
+                comboDf = pd.DataFrame(combinedRows)
                 
-                return monoXscripts
-                        
-                monoXscripts['junction_string'] = jStringLst
-                
-                monoUJC = monoXscripts.groupby(["gene_id", "junction_string"]).agg({
+                monoUJC = comboDf.sort_values(by=['start', 'end'])
+                monoUJC.drop(columns=['tmpStart','tmpEnd'])
+                monoUJC = monoUJC.groupby(["gene_id", "junction_string"]).agg({
                         "seqname":"first",
                         "start":"min",
                         "end":"max",
                         "strand":"first",
-                        "transcript_id": lambda x: '|'.join(x)}).reset_index()
-                
+                        "transcript_id": lambda x: '|'.join(x)}).reset_index()                
         else:
                 monoExons = None
         
@@ -512,8 +490,8 @@ if __name__ == '__main__':
         
         tic = time.perf_counter()
         
-        ujcDf, a = createUJCDf(ujcDct=ujcDct, trPrefix=args.trPrefix, ignoreGene=args.noGene)
-        
+        ujcDf = createUJCDf(ujcDct=ujcDct, trPrefix=args.trPrefix, ignoreGene=args.noGene)
+
         # if (os.path.exists(prefix + '_allUJC.pickle') and os.path.getsize(prefix + '_allUJC.pickle') > 0):
         #         with open(prefix + '_allUJC.pickle', 'rb') as f:
         #                 ujcDf = pickle.load(f)
@@ -524,8 +502,8 @@ if __name__ == '__main__':
                 
         toc = time.perf_counter()
         print (f"Complete! Operation took {toc-tic:0.4f} seconds.")
-
         if args.outGTF:
+                
                 print ("Creating GTF file...")
                 tic = time.perf_counter()
                 
@@ -552,16 +530,14 @@ if __name__ == '__main__':
                 
                 outDf.to_csv(outputPath, index=False)
                 
-        else:
-                toc = time.perf_counter()
-                print(f"Complete! Took {toc-tic:0.4f} seconds. Writing files...")
-                
+        else:   
+                print ("Writing files...")
                 outDf = createOutput(ujcDf=ujcDf, ujcDct=ujcDct)
                 
                 if not args.noGene:
                         outputPath = args.outdir + "/" + args.prefix + "_UJC_ID.csv"
                 else:
-                        keyOutPath = args.outdir + "/" + args.prefix + "_ignoregene_UJC_ID.csv"
+                        outputPath = args.outdir + "/" + args.prefix + "_ignoregene_UJC_ID.csv"
                         
 
                 outDf.to_csv(outputPath, index=False)
