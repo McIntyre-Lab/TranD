@@ -512,7 +512,7 @@ def createExonOutput(ujcDf, ujcDct):
                 
         return exonDf
 
-def createIDOutput(ujcDf, ujcDct):
+def createIDOutput(ujcDf, ujcDct, ignoreGene):
         """
 
         Parameters
@@ -532,6 +532,7 @@ def createIDOutput(ujcDf, ujcDct):
         """
         xscriptLst = []
         ujcIDLst = []
+        geneLst = []
         
         for row in ujcDf.to_dict('records'):
                 xscripts = row['transcript_id'].split('|')
@@ -539,33 +540,88 @@ def createIDOutput(ujcDf, ujcDct):
                 
                 if len(xscripts) > 1:                        
                         ujcID = row['ujc_id']
+                        geneID = row['gene_id']
                         
                         for xscript in xscripts:
                                 xscriptLst.append(xscript)
                                 ujcIDLst.append(ujcID)
+                                geneLst.append(geneID)
                         
                 else:
                         xscript = xscripts[0]
                         ujcID = row['ujc_id']
+                        geneID = row['gene_id']
+
                         
                         xscriptLst.append(xscript)
                         ujcIDLst.append(ujcID)
-                        
-                
-        
-        outDf = pd.DataFrame(
-                {
-                        'transcript_id':xscriptLst,
-                        'ujc_id':ujcIDLst
-                })
+                        geneLst.append(geneID)
+
+        if ignoreGene:
+                outDf = pd.DataFrame(
+                        {
+                                'transcript_id':xscriptLst,
+                                'ujc_id':ujcIDLst
+                        })
+        else:
+                outDf = pd.DataFrame(
+                        {
+                                'gene_id':geneLst,
+                                'transcript_id':xscriptLst,
+                                'ujc_id':ujcIDLst
+                        })
         
         return outDf
 
-def createCountOutput(ujcDct, ujcDf):
+def createCountOutput(ujcDf, ignoreGene):
+        
+        # change name
+        tmpUJCDf = ujcDf.groupby('junction_string').agg({
+                'gene_id':lambda x: "|".join(x)})
+        
+       
+        ujcIDLst = []
+        numXscriptLst = []
+        numGeneLst = []
+        jStringLst = []
         
         
         
-        return None
+        for row in ujcDf.to_dict('records'):
+                ujcID = row['ujc_id']
+                xscriptStr = row['transcript_id']
+                jString = row['junction_string']
+                
+                numXscripts = len(xscriptStr.split('|'))
+                
+                ujcIDLst.append(ujcID)
+                numXscriptLst.append(numXscripts)
+                jStringLst.append(jString)
+                
+        
+        
+        
+        
+        
+        if not ignoreGene:
+                
+                outDf = pd.DataFrame(
+                        {
+                                'ujc_id':ujcIDLst,
+                                'num_xscripts':numXscriptLst,
+                                'num_genes':numGeneLst,
+                                'junction_string':jStringLst
+                        })
+        
+        else:
+                outDf = pd.DataFrame(
+                        {
+                                'ujc_id':ujcIDLst,
+                                'num_xscripts':numXscriptLst,
+                                'junction_string':jStringLst
+                        })
+        
+        return outDf
 
 
 if __name__ == '__main__':
@@ -636,9 +692,54 @@ if __name__ == '__main__':
 
 
         
-        idOutDf = createIDOutput(ujcDf=ujcDf, ujcDct=ujcDct)
+        #idOutDf = createIDOutput(ujcDf=ujcDf, ujcDct=ujcDct)
         #countOutDf = createCountOutput(ujcDf=ujcDf, ujcDct=ujcDct)
          
+        # change name
+        geneIDGrouped = ujcDf.groupby('junction_string').agg({
+                'gene_id':lambda x: "|".join(x)})
+        
+        geneIDCol = geneIDGrouped['gene_id'].reset_index()
+        
+        # grrr
+               
+        ujcIDLst = []
+        numXscriptLst = []
+        numGeneLst = []
+        jStringLst = []
+        geneIDLst = []
+        
+        for row in ujcDf.to_dict('records'):
+                ujcID = row['ujc_id']
+                xscriptStr = row['transcript_id']
+                jString = row['junction_string']
+                geneStr = row['gene_id']
+                
+                numXscripts = len(xscriptStr.split('|'))
+                numGenes = len(geneStr.split('|'))
+                
+                ujcIDLst.append(ujcID)
+                numXscriptLst.append(numXscripts)
+                jStringLst.append(jString)
+                geneIDLst.append(numGenes)
+        
+        if not args.noGene:
+                
+                outDf = pd.DataFrame(
+                        {
+                                'ujc_id':ujcIDLst,
+                                'num_xscripts':numXscriptLst,
+                                'num_genes':numGeneLst,
+                                'junction_string':jStringLst
+                        })
+        
+        else:
+                outDf = pd.DataFrame(
+                        {
+                                'ujc_id':ujcIDLst,
+                                'num_xscripts':numXscriptLst,
+                                'junction_string':jStringLst
+                        })
         
         
         if not args.noGene:
@@ -649,7 +750,7 @@ if __name__ == '__main__':
                 idOutputPath = args.outdir + "/" + args.prefix + "_ignoregene_UJC_ID.csv"
                 countOutputPath = args.outdir + "/" + args.prefix + "_ignoregene_UJC_count.csv"
                         
-        idOutDf.to_csv(idOutputPath, index=False)
+        #idOutDf.to_csv(idOutputPath, index=False)
         #countOutDf.to_csv(countOutputPath, index=False)
                 
                 
