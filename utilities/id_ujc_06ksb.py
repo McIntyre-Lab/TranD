@@ -13,13 +13,12 @@ transcripts into UJCs.
 
 Created from a previous utility in TranD named consolidation
 
-Version 4: Found the fastest method, separating ID and COUNT
+Version 6: Includes bugfix for overlapping monoexons
 
 """
 
 import argparse
 import time
-import numpy as np
 import pandas as pd
 import os
 import pickle
@@ -28,6 +27,16 @@ from dataclasses import dataclass
 
 @dataclass()
 class J_CHAIN:
+        """
+        Object representation of a junction string.
+        Makes it easier to extract junctions and provides ability output them
+        as a string, just like before (chainToStr).        
+        
+        seqname: seqname
+        junctionLst: a list of tuples (lastExonEnd, nextExonStart) for each junction
+        strand: strand
+        """
+        
         seqname: str
         junctionLst: list
         strand: str
@@ -49,6 +58,16 @@ class J_CHAIN:
         
 
 def getOptions():
+        """
+        
+        Function to store user input via argparse
+
+        Returns
+        -------
+        args : ARGPARSE ARGUMENTS
+                User input via argparse.
+
+        """
         # Parse command line arguments
         parser = argparse.ArgumentParser(description="Identifies unique junction chains (UJCs) found within a "
                                          "GTF file and combines transcripts based on these UJCs. Outputs a summary file "
@@ -121,6 +140,23 @@ def getOptions():
         return args
 
 def checkStrandAndChromosome(exonData):
+        """
+        
+        Checks each strand and chromosome to see if there are genes with transcripts/
+        exons on both strands/different chromosomes and removes them.
+
+        Parameters
+        ----------
+        exonData : DATAFRAME
+                A GTF converted to a DataFrame with exon data.
+
+        Returns
+        -------
+        exonData : DATAFRAME
+                The same input with genes removed if necessary.
+
+        """
+        
         geneGrps = exonData.groupby("gene_id")
         strandCheck = geneGrps["strand"].nunique()
         
@@ -146,15 +182,32 @@ def checkStrandAndChromosome(exonData):
 
 
 def extractJunction(exonData):
+        """
+        
+        Takes the exon data and extracts the locations of the junctions for each
+        transcript. Outputs information on each transcript to a dictionary with
+        the transcript as a key and a list of information in the following format:
+                [[exonLst], transcript_id, gene_id, seqname, start, end, strand]
+                
+
+        Parameters
+        ----------
+        exonData : DATAFRAME
+                A GTF converted to a DataFrame with exon data.
+
+        Returns
+        -------
+        ujcDct : DICTIONARY {Transcript_id: [info]}
+                A dictionary of transcripts keyed to their info.
+
+        """
         exonDf = checkStrandAndChromosome(exonData=exonData)
         
         print ("Number of transcripts: ", end="")
         print (len(exonDf['transcript_id'].unique()))
         
         # First, instead of grouping, then sorting
-        # Sort by transcript -> sort by start. the whole dataframe
-        # instead of wasting time repeatedly sorting every group in the loop.
-        # Which makes it now take a second. 
+        # Sort by transcript -> sort by start. the whole dataframe 
         sortedDf = exonDf.sort_values(by=['transcript_id', 'start']).reset_index(drop=True)
                         
         ujcDct = {}
@@ -167,9 +220,7 @@ def extractJunction(exonData):
                 # 5 = end
                 # 6 = strand
         
-        # This takes less than 5 seconds for the small file.
-        # Takes (drum roll please...) a minute!! :)
-        # Dear LORD this is fast!!!!
+        # This takes less than 5 seconds for the small file. 
         for row in sortedDf.to_dict('records'):                
                 xscript = row['transcript_id']
                 
@@ -215,32 +266,46 @@ def extractJunction(exonData):
                 else:    
                         junctionChain = J_CHAIN(seqname=info[3], junctionLst=junctions, strand=info[6])
                 info.append(junctionChain)
-                
-                # if (x == 'FBtr0077452' or x == 'FBtr0335136' or x == 'FBtr0345285'):
-                #         print (info[0])
-                
-                # if (info[2] == 'FBgn0003751'):
-                #         print (info[0])
         
         return ujcDct
 
 def createUJCDf(ujcDct, trPrefix, ignoreGene):
-        monoExons = dict()
-        multiExons = dict()        
+        """
+        Takes extracted junction information and creates a dataframe that is 
+        UJC focused (all transcripts under one UJC grouped into the transcript_id column).
+
+        Parameters
+        ----------
+        ujcDct : DICTIONARY {Transcript_id: [info]}
+                A dictionary of transcripts keyed to their info.
+        trPrefix : STRING
+                The (user-input) prefix for the UJC ids..
+        ignoreGene : BOOLEAN
+                Whether the gene is ignored when consolidating/ranking UJCs.
+
+        Returns
+        -------
+        allUJC : DATAFRAME
+                Dataframe with information on the UJCs, with their ids, transcripts, etc.
+        """
+        
+        
+        monoExonDct = dict()
+        multiExonDct = dict()        
         
         for xscript, info in ujcDct.items():
                 junctionChain = info[7]
                 
                 if junctionChain:
                         newInfo = [junctionChain.chainToStr(), info[1], info[2], info[3], info[4], info[5], info[6]]
-                        multiExons.update({xscript: newInfo})
+                        multiExonDct.update({xscript: newInfo})
                 else:
                         newInfo = [info[0], info[1], info[2], info[3], info[4], info[5], info[6]]
-                        monoExons.update({xscript: newInfo})
+                        monoExonDct.update({xscript: newInfo})
                 
         
-        if len (monoExons) > 0:
-                monoXscripts = pd.DataFrame(monoExons,
+        if len (monoExonDct) > 0:
+                monoXscriptDf = pd.DataFrame(monoExonDct,
                                                 index = pd.Index(["junction_string",
                                                                   "transcript_id",
                                                                   "gene_id",
@@ -248,43 +313,43 @@ def createUJCDf(ujcDct, trPrefix, ignoreGene):
                                                                   "start", "end", "strand"])
                                                 ).T.sort_values(by=["gene_id", "start", "end"])
                                                 
-                monoXscripts['tmpStart'] = monoXscripts['start']
-                monoXscripts['tmpEnd'] = monoXscripts['end']
+                monoXscriptDf['tmpStart'] = monoXscriptDf['start']
+                monoXscriptDf['tmpEnd'] = monoXscriptDf['end']
                 
-                combinedRows = []
+                appendedRowLst = []
                 # it works :)
-                for row in monoXscripts.to_dict('records'):
-                                if combinedRows:
-                                        lastRow = combinedRows[-1]
+                for row in monoXscriptDf.to_dict('records'):
+                        if appendedRowLst:
+                                lastRow = appendedRowLst[-1]
+                                        
+                                if lastRow['gene_id'] == row['gene_id']:
+                                        if lastRow['tmpEnd'] > row['tmpStart']:
                                                 
-                                        if lastRow['gene_id'] == row['gene_id']:
-                                                if lastRow['tmpEnd'] > row['tmpStart']:
+                                                row['tmpStart'] = lastRow['tmpStart']
+                                                
+                                                if (lastRow['tmpEnd'] < row['tmpEnd']):
+                                                        for loopRow in appendedRowLst:
+                                                                if loopRow['gene_id'] == row['gene_id']:
+                                                                        loopRow['tmpEnd'] = row['tmpEnd']
+                                                else:
+                                                        row['tmpEnd'] = lastRow['tmpEnd']
                                                         
-                                                        row['tmpStart'] = lastRow['tmpStart']
-                                                        
-                                                        if (lastRow['tmpEnd'] < row['tmpEnd']):
-                                                                for loopRow in combinedRows:
-                                                                        if loopRow['gene_id'] == row['gene_id']:
-                                                                                loopRow['tmpEnd'] = row['tmpEnd']
-                                                        else:
-                                                                row['tmpEnd'] = lastRow['tmpEnd']
-                                                                
-                                                        combinedRows.append(row)
-                                        else:
-                                                combinedRows.append(row)
+                                                appendedRowLst.append(row)
                                 else:
-                                        combinedRows.append(row)
+                                        appendedRowLst.append(row)
+                        else:
+                                appendedRowLst.append(row)
                                 
-                for row in combinedRows:
+                for row in appendedRowLst:
                         jString = ("monoexon_"
                            + str(row['tmpStart']) + "_"
                            + str(row['tmpEnd']))
                         
                         row['junction_string'] = jString
                 
-                comboDf = pd.DataFrame(combinedRows)
+                newMonoDf = pd.DataFrame(appendedRowLst)
                 
-                monoUJC = comboDf.sort_values(by=['start', 'end'])
+                monoUJC = newMonoDf.sort_values(by=['start', 'end'])
                 monoUJC.drop(columns=['tmpStart','tmpEnd'])
                 monoUJC = monoUJC.groupby(["gene_id", "junction_string"]).agg({
                         "seqname":"first",
@@ -293,10 +358,10 @@ def createUJCDf(ujcDct, trPrefix, ignoreGene):
                         "strand":"first",
                         "transcript_id": lambda x: '|'.join(x)}).reset_index()                
         else:
-                monoExons = None
+                monoExonDct = None
         
-        if len(multiExons) > 0:
-                multiUJC = pd.DataFrame(multiExons, index=pd.Index(["junction_string", 
+        if len(multiExonDct) > 0:
+                multiUJC = pd.DataFrame(multiExonDct, index=pd.Index(["junction_string", 
                                                                     "transcript_id", 
                                                                     "gene_id", 
                                                                     "seqname", 
@@ -309,11 +374,11 @@ def createUJCDf(ujcDct, trPrefix, ignoreGene):
                         "transcript_id": lambda x: "|".join(x)}).reset_index()
                                 
         else:
-                multiExons = None
+                multiExonDct = None
                 
-        if monoExons and multiExons:
+        if monoExonDct and multiExonDct:
                 allUJC = pd.concat([monoUJC, multiUJC], ignore_index=True)
-        elif monoExons:
+        elif monoExonDct:
                 allUJC = monoUJC.copy()
                 del(monoUJC)
         else:
@@ -359,6 +424,24 @@ def createUJCDf(ujcDct, trPrefix, ignoreGene):
         return allUJC
 
 def createExonOutput(ujcDf, ujcDct):
+        """
+        Creates the dataframe with exon information to be output as a GTF file
+        using the UJCs as transcripts.
+
+        Parameters
+        ----------
+        ujcDf : DATAFRAME
+                Dataframe with information on the UJCs, with their ids, transcripts, etc.
+                
+        ujcDct : DICTIONARY {Transcript_id: [info]}
+                A dictionary of transcripts keyed to their info.
+
+        Returns
+        -------
+        exonDf : DATAFRAME
+                A dataframe in the proper format to be written as a GTF file.
+
+        """
         seqnameLst = []
         startLst = []
         endLst = []
@@ -429,6 +512,23 @@ def createExonOutput(ujcDf, ujcDct):
         return exonDf
 
 def createOutput(ujcDf, ujcDct):
+        """
+
+        Parameters
+        ----------
+        ujcDf : DATAFRAME
+                Dataframe with information on the UJCs, with their ids, transcripts, etc.
+                
+        ujcDct : DICTIONARY {Transcript_id: [info]}
+                A dictionary of transcripts keyed to their info.
+
+        Returns
+        -------
+        outDf : DATAFRAME
+                A dataframe that is the list of transcripts and which UJCs those transcripts
+                belong to.
+        
+        """
         xscriptLst = []
         ujcIDLst = []
         
@@ -460,38 +560,41 @@ def createOutput(ujcDf, ujcDct):
         
         return outDf
 
-if __name__ == '__main__':
-        global args
+def main():
+        
+        """
+        Run the program.
+
+        Returns
+        -------
+        None.
+
+        """
         print ("Loading...")
         omegatic = time.perf_counter()
-        args = getOptions()
-        prefix= args.prefix
         
-        #main
-        if (os.path.exists(prefix + '.pickle') and os.path.getsize(prefix + '.pickle') > 0):
-                with open(prefix + '.pickle', 'rb') as f:
-                        exonData = pickle.load(f)
-        else:
-                exonData = trand.io.read_exon_data_from_file(infile=args.inGTF)
-                with open(prefix + '.pickle', 'wb') as f:
-                        pickle.dump(exonData, f)
+        # if (os.path.exists(prefix + '.pickle') and os.path.getsize(prefix + '.pickle') > 0):
+        #         with open(prefix + '.pickle', 'rb') as f:
+        #                 exonData = pickle.load(f)
+        # else:
+        #         exonData = trand.io.read_exon_data_from_file(infile=args.inGTF)
+        #         with open(prefix + '.pickle', 'wb') as f:
+        #                 pickle.dump(exonData, f)
         
-        # exonData = trand.io.read_exon_data_from_file(infile=args.inGTF)
-
+        exonData = trand.io.read_exon_data_from_file(infile=args.inGTF)
+        
         toc = time.perf_counter()
         print(f"GTF Read complete! Took {toc-omegatic:0.4f} seconds. Extracting junctions...")
-        
         tic = time.perf_counter()
         
         ujcDct = extractJunction(exonData)
                 
         toc = time.perf_counter()
         print (f"Complete! Operation took {toc-tic:0.4f} seconds. Creating UJC DataFrame...")
-        
         tic = time.perf_counter()
         
         ujcDf = createUJCDf(ujcDct=ujcDct, trPrefix=args.trPrefix, ignoreGene=args.noGene)
-
+        
         # if (os.path.exists(prefix + '_allUJC.pickle') and os.path.getsize(prefix + '_allUJC.pickle') > 0):
         #         with open(prefix + '_allUJC.pickle', 'rb') as f:
         #                 ujcDf = pickle.load(f)
@@ -539,10 +642,18 @@ if __name__ == '__main__':
                 else:
                         outputPath = args.outdir + "/" + args.prefix + "_ignoregene_UJC_ID.csv"
                         
-
+        
                 outDf.to_csv(outputPath, index=False)
                 
                 
         toc = time.perf_counter()
         print(f"Complete! Operation took {toc-omegatic:0.4f} total seconds.")
+
+if __name__ == '__main__':
+        global args
+        args = getOptions()
+        prefix= args.prefix
+        
+        main()
+        
         
