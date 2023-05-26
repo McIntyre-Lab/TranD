@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -79,7 +80,7 @@ def getOptions():
                                          "when creating new transcript names (--ignore-gene)."
                                          "Note: \"ujc_ids\" are ranked by length. So the longest UJC under one"
                                          "gene will prefix_gene_1, the next will be prefix_gene_2, etc. EXCEPT"
-                                         "monoexons will always be number one.")
+                                         "monoexons will always be listed first.")
         
         ## INPUT
         parser.add_argument(
@@ -407,14 +408,15 @@ def createUJCDf(ujcDct, trPrefix, ignoreGene):
                 allUJC["transcript_rank_in_gene"] = (
                     allUJC["ujc_length"].rank(method="first")
                 )
-                
+                                
                 allUJC["ujc_id"] = (
                     trPrefix
+                    + "_"
                     + allUJC['seqname']
                     + "_" 
-                    + allUJC['start']
+                    + allUJC['start'].astype(str)
                     + "_"
-                    + allUJC['end']
+                    + allUJC['end'].astype(str)
                     + "_"
                     + allUJC["transcript_rank_in_gene"].astype(int).map(str)
                 )
@@ -511,7 +513,7 @@ def createExonOutput(ujcDf, ujcDct):
                 
         return exonDf
 
-def createOutput(ujcDf, ujcDct):
+def createOutput(ujcDf, ujcDct, ignoreGene):
         """
 
         Parameters
@@ -531,6 +533,7 @@ def createOutput(ujcDf, ujcDct):
         """
         xscriptLst = []
         ujcIDLst = []
+        geneLst = []
         
         for row in ujcDf.to_dict('records'):
                 xscripts = row['transcript_id'].split('|')
@@ -538,28 +541,43 @@ def createOutput(ujcDf, ujcDct):
                 
                 if len(xscripts) > 1:                        
                         ujcID = row['ujc_id']
+                        geneID = row['gene_id']
                         
                         for xscript in xscripts:
                                 xscriptLst.append(xscript)
                                 ujcIDLst.append(ujcID)
+                                geneLst.append(geneID)
                         
                 else:
                         xscript = xscripts[0]
                         ujcID = row['ujc_id']
+                        geneID = row['gene_id']
+
                         
                         xscriptLst.append(xscript)
                         ujcIDLst.append(ujcID)
-                        
-                
-        
-        outDf = pd.DataFrame(
-                {
-                        'transcript_id':xscriptLst,
-                        'ujc_id':ujcIDLst
-                })
+                        geneLst.append(geneID)
+
+        if ignoreGene:
+                outDf = pd.DataFrame(
+                        {
+                                'transcript_id':xscriptLst,
+                                'ujc_id':ujcIDLst
+                        })
+        else:
+                outDf = pd.DataFrame(
+                        {
+                                'gene_id':geneLst,
+                                'transcript_id':xscriptLst,
+                                'ujc_id':ujcIDLst
+                        })
         
         return outDf
 
+# if __name__ == '__main__':
+#         global args
+#         args = getOptions()
+#         prefix= args.prefix
 def main():
         
         """
@@ -604,48 +622,38 @@ def main():
         #                 pickle.dump(ujcDf, f)
                 
         toc = time.perf_counter()
-        print (f"Complete! Operation took {toc-tic:0.4f} seconds.")
+        print (f"Complete! Operation took {toc-tic:0.4f} seconds. Writing files...")
+        tic = time.perf_counter()
+        
+        
         if args.outGTF:
-                
-                print ("Creating GTF file...")
-                tic = time.perf_counter()
                 
                 gtfDf = createExonOutput(ujcDf=ujcDf, ujcDct=ujcDct)
                 
-                toc = time.perf_counter()
-                print(f"Complete! Took {toc-tic:0.4f} seconds. Writing files...")
-                
-                outDf = createOutput(ujcDf=ujcDf, ujcDct=ujcDct)
                 
                 if not args.noGene:
                         gtfOutPath = args.outdir + "/" + args.prefix + "_UJC.gtf"
-                        outputPath = args.outdir + "/" + args.prefix + "_UJC_ID.csv"
                 else:
                         gtfOutPath = args.outdir + "/" + args.prefix + "_UJC_ignoregene.gtf"
-                        outputPath = args.outdir + "/" + args.prefix + "_ignoregene_UJC_ID.csv"
                 
                 
                 if os.path.isfile(gtfOutPath):
                         os.remove(gtfOutPath)
                         
-                        
                 trand.io.write_gtf(data=gtfDf, out_fhs={"gtf":gtfOutPath}, fh_name="gtf")
                 
-                outDf.to_csv(outputPath, index=False)
-                
-        else:   
-                print ("Writing files...")
-                outDf = createOutput(ujcDf=ujcDf, ujcDct=ujcDct)
-                
-                if not args.noGene:
-                        outputPath = args.outdir + "/" + args.prefix + "_UJC_ID.csv"
-                else:
-                        outputPath = args.outdir + "/" + args.prefix + "_ignoregene_UJC_ID.csv"
-                        
         
-                outDf.to_csv(outputPath, index=False)
+        outDf = createOutput(ujcDf=ujcDf, ujcDct=ujcDct, ignoreGene=args.noGene)
+        
+        if not args.noGene:
+                outputPath = args.outdir + "/" + args.prefix + "_UJC_ID.csv"
+        else:
+                outputPath = args.outdir + "/" + args.prefix + "_ignoregene_UJC_ID.csv"
                 
-                
+
+        outDf.to_csv(outputPath, index=False)
+        
+        
         toc = time.perf_counter()
         print(f"Complete! Operation took {toc-omegatic:0.4f} total seconds.")
 
