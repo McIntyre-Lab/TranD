@@ -123,17 +123,17 @@ def main():
 
     # Change column names
     firstConsolDf1 = firstConsolDf1.rename(columns={
-        "colName": name1 + "_uniq_jxn_id",
+        colName: name1 + "_uniq_jxn_id",
         "transcript_id": name1 + "_transcript_id",
         "gene_id": name1 + "_gene_id"
     })
     firstConsolDf2 = firstConsolDf2.rename(columns={
-        "colName": name2 + "_uniq_jxn_id",
+        colName: name2 + "_uniq_jxn_id",
         "transcript_id": name2 + "_transcript_id",
         "gene_id": name2 + "_gene_id"
     })
     secondConsolDf = secondConsolDf.rename(columns={
-        "colName": "union_uniq_jxn_id",
+        colName: "union_uniq_jxn_id",
         "transcript_id": "individual_uniq_jxn_id"
 
     })
