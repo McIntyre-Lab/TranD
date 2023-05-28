@@ -78,23 +78,23 @@ def main():
 
     # Check columns - include compatability with previous TranD output/utilities
     if "ujc_id" in firstConsolDf1.columns:
-        colName = "ujc_id"
+        colName1 = "ujc_id"
     elif "consolidation_transcript_id" in firstConsolDf1.columns:
-        colName = "consolidation_transcript_id"
+        colName1 = "consolidation_transcript_id"
     else:
         print("!!! ERROR: UJC key file of dataset1 not properly formatted.")
         exit()
     if "ujc_id" in firstConsolDf2.columns:
-        colName = "ujc_id"
+        colName2 = "ujc_id"
     elif "consolidation_transcript_id" in firstConsolDf2.columns:
-        colName = "consolidation_transcript_id"
+        colName2 = "consolidation_transcript_id"
     else:
         print("!!! ERROR: UJC key file of dataset2 not properly formatted.")
         exit()
     if "ujc_id" in secondConsolDf.columns:
-        colName = "ujc_id"
+        colNameU = "ujc_id"
     elif "consolidation_transcript_id" in secondConsolDf.columns:
-        colName = "consolidation_transcript_id"
+        colNameU = "consolidation_transcript_id"
     else:
         print("!!! ERROR: UJC key file of union not properly formatted.")
         exit()
@@ -118,22 +118,22 @@ def main():
 
     if prefix1 is not None and prefix2 is not None:
         # Add prefixes to first consolidation transcript_ids
-        firstConsolDf1[colName] = prefix1 + "_" + firstConsolDf1[colName]
-        firstConsolDf2[colName] = prefix2 + "_" + firstConsolDf2[colName]
+        firstConsolDf1[colName1] = prefix1 + "_" + firstConsolDf1[colName1]
+        firstConsolDf2[colName2] = prefix2 + "_" + firstConsolDf2[colName2]
 
     # Change column names
     firstConsolDf1 = firstConsolDf1.rename(columns={
-        colName: name1 + "_uniq_jxn_id",
+        colName1: name1 + "_uniq_jxn_id",
         "transcript_id": name1 + "_transcript_id",
         "gene_id": name1 + "_gene_id"
     })
     firstConsolDf2 = firstConsolDf2.rename(columns={
-        colName: name2 + "_uniq_jxn_id",
+        colName2: name2 + "_uniq_jxn_id",
         "transcript_id": name2 + "_transcript_id",
         "gene_id": name2 + "_gene_id"
     })
     secondConsolDf = secondConsolDf.rename(columns={
-        colName: "union_uniq_jxn_id",
+        colNameU: "union_uniq_jxn_id",
         "transcript_id": "individual_uniq_jxn_id"
 
     })
