@@ -107,6 +107,23 @@ def getOptions():
         return args
 
 def checkStrandAndChromosome(exonData):
+        """
+        
+        Checks each strand and chromosome to see if there are genes with transcripts/
+        exons on both strands/different chromosomes and removes them.
+
+        Parameters
+        ----------
+        exonData : DATAFRAME
+                A GTF converted to a DataFrame with exon data.
+
+        Returns
+        -------
+        exonData : DATAFRAME
+                The same input with genes removed if necessary.
+
+        """
+        
         geneGrps = exonData.groupby("gene_id")
         strandCheck = geneGrps["strand"].nunique()
         
