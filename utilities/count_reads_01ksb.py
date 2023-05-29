@@ -523,6 +523,9 @@ def createIDOutput(ujcDf, ujcDct, ignoreGene):
                 
         ujcDct : DICTIONARY {Transcript_id: [info]}
                 A dictionary of transcripts keyed to their info.
+                
+        ignoreGene: BOOLEAN
+                User option on ignoring genes.
 
         Returns
         -------
@@ -575,7 +578,23 @@ def createIDOutput(ujcDf, ujcDct, ignoreGene):
         return outDf
 
 def createCountOutput(ujcDf, ignoreGene):
-                       
+        """
+
+        Parameters
+        ----------
+        ujcDf : DATAFRAME
+                Dataframe with information on the UJCs, with their ids, transcripts, etc.
+        
+        ignoreGene: BOOLEAN
+                User option on ignoring genes.
+        
+        Returns
+        -------
+        outDf : DATAFRAME
+                A dataframe that is the list of UJCs and the number of transcripts
+                within that UJC.
+
+        """
         ujcIDLst = []
         numXscriptLst = []
         geneIDLst = []
@@ -594,7 +613,7 @@ def createCountOutput(ujcDf, ignoreGene):
                 jStringLst.append(jString)
                 geneIDLst.append(geneID)
         
-        if not args.noGene:
+        if not ignoreGene:
                 outDf = pd.DataFrame(
                         {
                                 'gene_id':geneIDLst,
