@@ -71,10 +71,11 @@ def getOptions():
         # Parse command line arguments
         parser = argparse.ArgumentParser(description="Identifies unique junction chains (UJCs) found within a "
                                          "GTF file and combines transcripts based on these UJCs. Outputs a summary file "
-                                         "containing info on these combined transcripts and their \"ujc_id\". Input a GTF "
-                                         "file (--infile), optional prefix for the ujc_ids (--tr-prefix), "
-                                         "an output path (--outdir) and a prefix for the output files (--prefix). "
-                                         "Allows the option to output a new GTF file with the UJCs as the transcripts "
+                                         "containing info on these combined transcripts and their \"ujc_id\" and a "
+                                         "GTF file with representative transcript models for each UJC. Input a GTF "
+                                         "file (--gtf), optional prefix for the ujc_ids (--transcript-prefix), "
+                                         "an output directory (--outdir) and a prefix for the output files (--prefix). "
+                                         "Allows the option to skip the output of the GTF file with representative transcript models."
                                          "(--outGTF). Also allows the option ignore which gene a transcript came from"
                                          "when creating new transcript names (--ignore-gene)."
                                          "Note: \"ujc_ids\" are ranked by length. So the longest UJC under one"
@@ -83,16 +84,16 @@ def getOptions():
         
         ## INPUT
         parser.add_argument(
-                "-i",
-                "--infile",
+                "-g",
+                "--gtf",
                 dest="inGTF",
                 required=True,
                 help="Input a GTF file."
         )
         
         parser.add_argument(
-                "-t",
-                "--tr-prefix",
+                "-x",
+                "--transcript-prefix",
                 dest="trPrefix",
                 required=False,
                 default="tr",
@@ -101,7 +102,7 @@ def getOptions():
         )
         
         parser.add_argument(
-                "-ig",
+                "-i",
                 "--ignore-gene",
                 dest="noGene",
                 required=False,
@@ -111,11 +112,12 @@ def getOptions():
         )
         
         parser.add_argument(
-                "-g",
-                "--outGTF",
+                "-s",
+                "--skip-gtf",
                 dest="outGTF",
                 action="store_false",
-                help="Use this argument to remove the output of a GTF with the UJCs as transcripts. "
+                help="Use this argument to remove the output of a GTF with "
+                "representative transcript models for each UJC."
                         "Defaults to outputting the GTF."
         )
         

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Fri May 19 13:34:55 2023
+Updated on Fri May 29 13:34:55 2023
 
 @author: k.bankole
 """
@@ -13,7 +13,7 @@ transcripts into UJCs.
 
 Created from a previous utility in TranD named consolidation
 
-Version 6: Includes bugfix for overlapping monoexons
+Version 8: A couple changes to the argparse/description.
 
 """
 
@@ -71,10 +71,11 @@ def getOptions():
         # Parse command line arguments
         parser = argparse.ArgumentParser(description="Identifies unique junction chains (UJCs) found within a "
                                          "GTF file and combines transcripts based on these UJCs. Outputs a summary file "
-                                         "containing info on these combined transcripts and their \"ujc_id\". Input a GTF "
-                                         "file (--infile), optional prefix for the ujc_ids (--tr-prefix), "
-                                         "an output path (--outdir) and a prefix for the output files (--prefix). "
-                                         "Allows the option to output a new GTF file with the UJCs as the transcripts "
+                                         "containing info on these combined transcripts and their \"ujc_id\" and a "
+                                         "GTF file with representative transcript models for each UJC. Input a GTF "
+                                         "file (--gtf), optional prefix for the ujc_ids (--transcript-prefix), "
+                                         "an output directory (--outdir) and a prefix for the output files (--prefix). "
+                                         "Allows the option to skip the output of the GTF file with representative transcript models."
                                          "(--outGTF). Also allows the option ignore which gene a transcript came from"
                                          "when creating new transcript names (--ignore-gene)."
                                          "Note: \"ujc_ids\" are ranked by length. So the longest UJC under one"
@@ -83,16 +84,16 @@ def getOptions():
         
         ## INPUT
         parser.add_argument(
-                "-i",
-                "--infile",
+                "-g",
+                "--gtf",
                 dest="inGTF",
                 required=True,
                 help="Input a GTF file."
         )
         
         parser.add_argument(
-                "-t",
-                "--tr-prefix",
+                "-x",
+                "--transcript-prefix",
                 dest="trPrefix",
                 required=False,
                 default="tr",
@@ -101,7 +102,7 @@ def getOptions():
         )
         
         parser.add_argument(
-                "-ig",
+                "-i",
                 "--ignore-gene",
                 dest="noGene",
                 required=False,
@@ -111,11 +112,12 @@ def getOptions():
         )
         
         parser.add_argument(
-                "-g",
-                "--outGTF",
+                "-s",
+                "--skip-gtf",
                 dest="outGTF",
                 action="store_false",
-                help="Use this argument to remove the output of a GTF with the UJCs as transcripts. "
+                help="Use this argument to remove the output of a GTF with "
+                "representative transcript models for each UJC."
                         "Defaults to outputting the GTF."
         )
         
@@ -533,6 +535,7 @@ def createOutput(ujcDf, ujcDct, ignoreGene):
         xscriptLst = []
         ujcIDLst = []
         geneLst = []
+        junctionLst = []
         
         for row in ujcDf.to_dict('records'):
                 xscripts = row['transcript_id'].split('|')
@@ -541,34 +544,39 @@ def createOutput(ujcDf, ujcDct, ignoreGene):
                 if len(xscripts) > 1:                        
                         ujcID = row['ujc_id']
                         geneID = row['gene_id']
-                        
+                        junctionStr = row['junction_string']
+
                         for xscript in xscripts:
                                 xscriptLst.append(xscript)
                                 ujcIDLst.append(ujcID)
                                 geneLst.append(geneID)
-                        
+                                junctionLst.append(junctionStr)
                 else:
                         xscript = xscripts[0]
                         ujcID = row['ujc_id']
                         geneID = row['gene_id']
+                        junctionStr = row['junction_string']
 
                         
                         xscriptLst.append(xscript)
                         ujcIDLst.append(ujcID)
                         geneLst.append(geneID)
+                        junctionLst.append(junctionStr)
 
         if ignoreGene:
                 outDf = pd.DataFrame(
                         {
                                 'transcript_id':xscriptLst,
-                                'ujc_id':ujcIDLst
+                                'ujc_id':ujcIDLst,
+                                'junction_string':junctionLst
                         })
         else:
                 outDf = pd.DataFrame(
                         {
                                 'gene_id':geneLst,
                                 'transcript_id':xscriptLst,
-                                'ujc_id':ujcIDLst
+                                'ujc_id':ujcIDLst,
+                                'junction_string':junctionLst
                         })
         
         return outDf
