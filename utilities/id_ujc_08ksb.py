@@ -76,7 +76,7 @@ def getOptions():
                                          "file (--gtf), optional prefix for the ujc_ids (--transcript-prefix), "
                                          "an output directory (--outdir) and a prefix for the output files (--prefix). "
                                          "Allows the option to skip the output of the GTF file with representative transcript models."
-                                         "(--outGTF). Also allows the option ignore which gene a transcript came from"
+                                         "(--skip-gtf). Also allows the option ignore which gene a transcript came from"
                                          "when creating new transcript names (--ignore-gene)."
                                          "Note: \"ujc_ids\" are ranked by length. So the longest UJC under one"
                                          "gene will prefix_gene_1, the next will be prefix_gene_2, etc. EXCEPT"

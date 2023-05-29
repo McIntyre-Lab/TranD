@@ -14,7 +14,7 @@ transcripts into UJCs.
 
 Created from a previous utility in TranD named consolidation
 
-Version 6: Includes bugfix for overlapping monoexons
+Version 1
 
 """
 
@@ -71,29 +71,29 @@ def getOptions():
         """
         # Parse command line arguments
         parser = argparse.ArgumentParser(description="Identifies unique junction chains (UJCs) found within a "
-                                         "GTF file and combines transcripts based on these UJCs. Outputs a summary file "
-                                         "containing info on these combined transcripts and their \"ujc_id\". Input a GTF "
-                                         "file (--infile), optional prefix for the ujc_ids (--tr-prefix), "
-                                         "an output path (--outdir) and a prefix for the output files (--prefix). "
-                                         "Allows the option to output a new GTF file with the UJCs as the transcripts "
-                                         "(--outGTF). Also allows the option ignore which gene a transcript came from"
-                                         "when creating new transcript names (--ignore-gene)."
-                                         "Note: \"ujc_ids\" are ranked by length. So the longest UJC under one"
-                                         "gene will prefix_gene_1, the next will be prefix_gene_2, etc. EXCEPT"
-                                         "monoexons will always be listed first.")
+                                         "GTF file and combines transcripts based on these UJCs. Then counts the "
+                                         "number of transcripts per UJC. Outputs a summary file "
+                                         "containing info on the combined transcripts and their \"ujc_id,\" another summary "
+                                         "file containing information on the counts per UJC, and a "
+                                         "GTF file with representative transcript models for each UJC. Input a GTF "
+                                         "file (--gtf), optional prefix for the ujc_ids (--transcript-prefix), "
+                                         "an output directory (--outdir) and a prefix for the output files (--prefix). "
+                                         "Allows the option to skip the output of the GTF file with representative transcript models."
+                                         "(--skip-gtf). Also allows the option ignore which gene a transcript came from"
+                                         "when creating new transcript names (--ignore-gene).")
         
         ## INPUT
         parser.add_argument(
-                "-i",
-                "--infile",
+                "-g",
+                "--gtf",
                 dest="inGTF",
                 required=True,
                 help="Input a GTF file."
         )
         
         parser.add_argument(
-                "-t",
-                "--tr-prefix",
+                "-x",
+                "--transcript-prefix",
                 dest="trPrefix",
                 required=False,
                 default="tr",
@@ -102,7 +102,7 @@ def getOptions():
         )
         
         parser.add_argument(
-                "-ig",
+                "-i",
                 "--ignore-gene",
                 dest="noGene",
                 required=False,
@@ -112,11 +112,12 @@ def getOptions():
         )
         
         parser.add_argument(
-                "-g",
-                "--outGTF",
+                "-s",
+                "--skip-gtf",
                 dest="outGTF",
                 action="store_false",
-                help="Use this argument to remove the output of a GTF with the UJCs as transcripts. "
+                help="Use this argument to remove the output of a GTF with "
+                "representative transcript models for each UJC."
                         "Defaults to outputting the GTF."
         )
         
@@ -413,9 +414,9 @@ def createUJCDf(ujcDct, trPrefix, ignoreGene):
                     trPrefix
                     + allUJC['seqname']
                     + "_" 
-                    + allUJC['start']
+                    + allUJC['start'].astype(str)
                     + "_"
-                    + allUJC['end']
+                    + allUJC['end'].astype(str)
                     + "_"
                     + allUJC["transcript_rank_in_gene"].astype(int).map(str)
                 )
@@ -574,42 +575,31 @@ def createIDOutput(ujcDf, ujcDct, ignoreGene):
         return outDf
 
 def createCountOutput(ujcDf, ignoreGene):
-        
-        # change name
-        tmpUJCDf = ujcDf.groupby('junction_string').agg({
-                'gene_id':lambda x: "|".join(x)})
-        
-       
+                       
         ujcIDLst = []
         numXscriptLst = []
-        numGeneLst = []
+        geneIDLst = []
         jStringLst = []
-        
-        
         
         for row in ujcDf.to_dict('records'):
                 ujcID = row['ujc_id']
                 xscriptStr = row['transcript_id']
                 jString = row['junction_string']
+                geneID = row['gene_id']
                 
                 numXscripts = len(xscriptStr.split('|'))
                 
                 ujcIDLst.append(ujcID)
                 numXscriptLst.append(numXscripts)
                 jStringLst.append(jString)
-                
+                geneIDLst.append(geneID)
         
-        
-        
-        
-        
-        if not ignoreGene:
-                
+        if not args.noGene:
                 outDf = pd.DataFrame(
                         {
+                                'gene_id':geneIDLst,
                                 'ujc_id':ujcIDLst,
                                 'num_xscripts':numXscriptLst,
-                                'num_genes':numGeneLst,
                                 'junction_string':jStringLst
                         })
         
@@ -624,12 +614,12 @@ def createCountOutput(ujcDf, ignoreGene):
         return outDf
 
 
-if __name__ == '__main__':
-        global args
-        args = getOptions()
-        prefix= args.prefix
+# if __name__ == '__main__':
+#         global args
+#         args = getOptions()
+#         prefix= args.prefix
         
-# def main():
+def main():
         
         """
         Run the program.
@@ -642,15 +632,15 @@ if __name__ == '__main__':
         print ("Loading...")
         omegatic = time.perf_counter()
         
-        if (os.path.exists(prefix + '.pickle') and os.path.getsize(prefix + '.pickle') > 0):
-                with open(prefix + '.pickle', 'rb') as f:
-                        exonData = pickle.load(f)
-        else:
-                exonData = trand.io.read_exon_data_from_file(infile=args.inGTF)
-                with open(prefix + '.pickle', 'wb') as f:
-                        pickle.dump(exonData, f)
+        # if (os.path.exists(prefix + '.pickle') and os.path.getsize(prefix + '.pickle') > 0):
+        #         with open(prefix + '.pickle', 'rb') as f:
+        #                 exonData = pickle.load(f)
+        # else:
+        #         exonData = trand.io.read_exon_data_from_file(infile=args.inGTF)
+        #         with open(prefix + '.pickle', 'wb') as f:
+        #                 pickle.dump(exonData, f)
         
-        #exonData = trand.io.read_exon_data_from_file(infile=args.inGTF)
+        exonData = trand.io.read_exon_data_from_file(infile=args.inGTF)
         
         toc = time.perf_counter()
         print(f"GTF Read complete! Took {toc-omegatic:0.4f} seconds. Extracting junctions...")
@@ -662,15 +652,15 @@ if __name__ == '__main__':
         print (f"Complete! Operation took {toc-tic:0.4f} seconds. Creating UJC DataFrame...")
         tic = time.perf_counter()
         
-        #ujcDf = createUJCDf(ujcDct=ujcDct, trPrefix=args.trPrefix, ignoreGene=args.noGene)
+        ujcDf = createUJCDf(ujcDct=ujcDct, trPrefix=args.trPrefix, ignoreGene=args.noGene)
         
-        if (os.path.exists(prefix + '_allUJC.pickle') and os.path.getsize(prefix + '_allUJC.pickle') > 0):
-                with open(prefix + '_allUJC.pickle', 'rb') as f:
-                        ujcDf = pickle.load(f)
-        else:
-                ujcDf = createUJCDf(ujcDct=ujcDct, trPrefix=args.trPrefix, ignoreGene=args.noGene)
-                with open(prefix + '_allUJC.pickle', 'wb') as f:
-                        pickle.dump(ujcDf, f)
+        # if (os.path.exists(prefix + '_allUJC.pickle') and os.path.getsize(prefix + '_allUJC.pickle') > 0):
+        #         with open(prefix + '_allUJC.pickle', 'rb') as f:
+        #                 ujcDf = pickle.load(f)
+        # else:
+        #         ujcDf = createUJCDf(ujcDct=ujcDct, trPrefix=args.trPrefix, ignoreGene=args.noGene)
+        #         with open(prefix + '_allUJC.pickle', 'wb') as f:
+        #                 pickle.dump(ujcDf, f)
                 
         toc = time.perf_counter()
         print (f"Complete! Operation took {toc-tic:0.4f} seconds. Writing files...")
@@ -690,57 +680,8 @@ if __name__ == '__main__':
                 
                 trand.io.write_gtf(data=gtfDf, out_fhs={"gtf":gtfOutPath}, fh_name="gtf")
 
-
-        
-        #idOutDf = createIDOutput(ujcDf=ujcDf, ujcDct=ujcDct)
-        #countOutDf = createCountOutput(ujcDf=ujcDf, ujcDct=ujcDct)
-         
-        # change name
-        geneIDGrouped = ujcDf.groupby('junction_string').agg({
-                'gene_id':lambda x: "|".join(x)})
-        
-        geneIDCol = geneIDGrouped['gene_id'].reset_index()
-        
-        # grrr
-               
-        ujcIDLst = []
-        numXscriptLst = []
-        numGeneLst = []
-        jStringLst = []
-        geneIDLst = []
-        
-        for row in ujcDf.to_dict('records'):
-                ujcID = row['ujc_id']
-                xscriptStr = row['transcript_id']
-                jString = row['junction_string']
-                geneStr = row['gene_id']
-                
-                numXscripts = len(xscriptStr.split('|'))
-                numGenes = len(geneStr.split('|'))
-                
-                ujcIDLst.append(ujcID)
-                numXscriptLst.append(numXscripts)
-                jStringLst.append(jString)
-                geneIDLst.append(numGenes)
-        
-        if not args.noGene:
-                
-                outDf = pd.DataFrame(
-                        {
-                                'ujc_id':ujcIDLst,
-                                'num_xscripts':numXscriptLst,
-                                'num_genes':numGeneLst,
-                                'junction_string':jStringLst
-                        })
-        
-        else:
-                outDf = pd.DataFrame(
-                        {
-                                'ujc_id':ujcIDLst,
-                                'num_xscripts':numXscriptLst,
-                                'junction_string':jStringLst
-                        })
-        
+        idOutDf = createIDOutput(ujcDf=ujcDf, ujcDct=ujcDct, ignoreGene=args.noGene)
+        countOutDf = createCountOutput(ujcDf=ujcDf, ignoreGene=args.noGene)
         
         if not args.noGene:
                 idOutputPath = args.outdir + "/" + args.prefix + "_UJC_ID.csv"
@@ -750,18 +691,17 @@ if __name__ == '__main__':
                 idOutputPath = args.outdir + "/" + args.prefix + "_ignoregene_UJC_ID.csv"
                 countOutputPath = args.outdir + "/" + args.prefix + "_ignoregene_UJC_count.csv"
                         
-        #idOutDf.to_csv(idOutputPath, index=False)
-        #countOutDf.to_csv(countOutputPath, index=False)
-                
+        idOutDf.to_csv(idOutputPath, index=False)
+        countOutDf.to_csv(countOutputPath, index=False)
                 
         toc = time.perf_counter()
         print(f"Complete! Operation took {toc-omegatic:0.4f} total seconds.")
 
-# if __name__ == '__main__':
-#         global args
-#         args = getOptions()
-#         prefix= args.prefix
+if __name__ == '__main__':
+        global args
+        args = getOptions()
+        prefix= args.prefix
         
-#         main()
+        main()
         
         
