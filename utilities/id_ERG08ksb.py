@@ -7,9 +7,11 @@ Created on Thu Feb 23 14:43:44 2023
 """
 
 """
-Identify possible exon region shared (ERS) groups using TRAND ouptput of a 1 or 2 GTF pairwise file 
+Identify possible exon region groups (ERGs) using TRAND ouptput of a 1 or 2 GTF pairwise file 
 
-Version 7: Possibly adding an output GTF file with info on each exon region for each group
+Version 7/8: Possibly adding an output GTF file with info on each exon region for each group
+
+Updated name from id_ERS_grp to id_ERG
 """
 
 import argparse
@@ -22,9 +24,9 @@ import trand.io
 import pickle
 
 
-class ERS_GRP:
+class ERG:
         """
-        Class representation of an ERS Group.
+        Class representation of an ERG.
         
         num (int): The group number (main group identifier).
                 
@@ -60,7 +62,7 @@ class ERS_GRP:
                 self.exonChain.append(exon)
         
         def __str__(self):
-                return "ERS GROUP NUMBER: " + str(self.num) + ", XSCRIPT LIST: " + str(self.xscriptSet)
+                return "ERG NUMBER: " + str(self.num) + ", XSCRIPT LIST: " + str(self.xscriptSet)
         
         def __iter__(self):
                 return self
@@ -90,7 +92,7 @@ class XSCRIPT:
                 
         ovlpCnt (int): Number of transcripts that this transcript has full overlap with.
                 
-        ers_grp_num (int): ERS group that the transcript belongs to.
+        erg_num (int): ERG that the transcript belongs to.
                 
         irSet (set of strings): Set of all the transcripts that overlap with this transcript and have intron retention activity.
                 
@@ -115,7 +117,7 @@ class XSCRIPT:
                 self.ovlpSet = set()
                 self.ovlpCnt = 0
                 
-                self.ers_grp_num = None
+                self.erg_num = None
                 
                 self.irSet = set()
                 
@@ -162,23 +164,23 @@ class GENE:
         
         gene_id (string): The name of the gene (main identifier).
                 
-        ersGrpSet (set of ERS_GRP objects): A set of all ERS groups belonging to this gene.
+        ergSet (set of ERG objects): A set of all ERGs belonging to this gene.
                 
-        numSet (int): The size of ersGrpSet.
+        numSet (int): The size of ergSet.
                 
         """
         
         def __init__(self, gene_id):
                 self.gene_id = gene_id
                 
-                self.ersGrpSet = set()
+                self.ergSet = set()
                 self.numGrp = 0
         
         def __str__(self):
                 return self.gene_id
         
         def addGrp(self, grp):
-                self.ersGrpSet.add(grp)
+                self.ergSet.add(grp)
                 self.numGrp += 1
                 
 class EXON:
@@ -221,12 +223,13 @@ def getOptions():
 
         """
         
-        parser = argparse.ArgumentParser(description="Output 3 csvs containing information on "
-                                         "the exon region shared groups (one transcript focused, one gene focused, and one ERS group focused)"
-                                         "for a list of transcripts using TRAND output "
+        parser = argparse.ArgumentParser(description="Identifies groups of transcripts with full exon region overlap."
+                                         "Output 3 csvs containing information on "
+                                         "these exon region groups (ERGs) (one transcript focused, one gene focused, and one ERG focused)"
+                                         "for a list of transcripts using pairwise transcript distance TRAND output "
                                          "data. Contains the option to include or exclude "
                                          "transcripts with intron retention events (--includeIR). "
-                                         "Input a TRAND output file (csv) (--infile), "
+                                         "Input a pairwise transcript distance TRAND output file (csv) (--infile), "
                                          "IR inclusion option (--includeIR Y or N), and an output path (--outdir)."
                                          "Output directory must already exist. Also includes an option to"
                                          "use a prefix (--prefix) other than the original file name "
@@ -243,7 +246,7 @@ def getOptions():
                 "--infile",
                 dest="infile",
                 required=True,
-                help="Location of TRAND output file")
+                help="Location of pairwise transcript distance TRAND output file")
         
         parser.add_argument(
                 "-ir",
@@ -254,7 +257,7 @@ def getOptions():
                 const='Y',
                 nargs='?',
                 choices=['Y','y','n','N'],
-                help="Choose N to exclude transcript models with intron retention events from ERS groups.")
+                help="Choose N to exclude transcript models with intron retention events from ERGs.")
         
         # OUTPUT
         parser.add_argument(
@@ -295,7 +298,7 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
                 Input dataframe from user input. CSV file that is converted to a dataframe.
                 
         includeIR : BOOLEAN
-                Whether or not transcripts with intron retention are included or excluded from ERS groups.
+                Whether or not transcripts with intron retention are included or excluded from ERGs.
                 
         gtfOne: STRING
                 Name of the first GTF (if 2GTF)
@@ -564,10 +567,10 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
         return xscriptDct, erInfoDf
         
 # I know there's an S here but I really cannot think of a better name.
-def createERSGrps(xscriptDct):                
+def createERGs(xscriptDct):                
         """
         
-        Creates a list of ERS_GRP objects based on the XSCRIPT object dictionary.
+        Creates a list of ERG objects based on the XSCRIPT object dictionary.
 
         Parameters
         ----------
@@ -576,31 +579,31 @@ def createERSGrps(xscriptDct):
 
         Returns
         -------
-        ersGrpLst : LIST (OF ERS_GRPs)
-                List of all ERS_GRPs.
+        ergLst : LIST (OF ERGs)
+                List of all ERGs.
 
         """
         
         # Create empty output list
-        ersGrpLst = []
-        #Create counter for ERS_group number
+        ergLst = []
+        #Create counter for ERG number
         groupCount = 0;
         
         # Loop through all XSCRIPT objects in the dictionary
         for xscript in xscriptDct.values():
                 
                 # If there are any existing groups
-                if ersGrpLst:
+                if ergLst:
                         # Loop through each group
-                        for ersGrp in ersGrpLst:
+                        for erg in ergLst:
                                 # If the transcript is in the set, add the transcript and all the transcript it overlaps with
                                 # AND all the transcripts that overlap with what it overlaps with
-                                if xscript.xscript_id in ersGrp.xscriptSet:
-                                        ersGrp.addXscript(xscript.xscript_id)
-                                        xscript.ers_grp_num = ersGrp.num                                                        
-                                        ersGrp.xscriptSet.update(xscript.ovlpSet)
+                                if xscript.xscript_id in erg.xscriptSet:
+                                        erg.addXscript(xscript.xscript_id)
+                                        xscript.erg_num = erg.num                                                        
+                                        erg.xscriptSet.update(xscript.ovlpSet)
                                         
-                                        ersGrp = addToGrp(grp=ersGrp, initXscript=xscript, xscriptDct=xscriptDct)
+                                        erg = addToGrp(grp=erg, initXscript=xscript, xscriptDct=xscriptDct)
                                         
                                         break
                                 
@@ -609,31 +612,31 @@ def createERSGrps(xscriptDct):
                                 # AND all the transcripts that overlap with what it overlaps with),
                                 
                                 groupCount += 1
-                                tmpERS = ERS_GRP(num=groupCount, gene_id=xscript.gene_id, num_er=xscript.num_er)
+                                tmpERG = ERG(num=groupCount, gene_id=xscript.gene_id, num_er=xscript.num_er)
                                 
-                                tmpERS.addXscript(xscript.xscript_id)
-                                xscript.ers_grp_num = tmpERS.num
-                                tmpERS.xscriptSet.update(xscript.ovlpSet)
+                                tmpERG.addXscript(xscript.xscript_id)
+                                xscript.erg_num = tmpERG.num
+                                tmpERG.xscriptSet.update(xscript.ovlpSet)
 
-                                tmpERS = addToGrp (grp=tmpERS, initXscript=xscript, xscriptDct=xscriptDct)
-                                ersGrpLst.append(tmpERS) 
+                                tmpERG = addToGrp (grp=tmpERG, initXscript=xscript, xscriptDct=xscriptDct)
+                                ergLst.append(tmpERG) 
                                 
                 # If there are no groups yet, create group 1 and add the transcript (and all transcripts it overlaps with
                 #AND all the transcripts that overlap with what it overlaps with),
                 # add group to group list.
                 else:
                         groupCount += 1
-                        tmpERS = ERS_GRP(num=groupCount, gene_id=xscript.gene_id, num_er=xscript.num_er)
+                        tmpERG = ERG(num=groupCount, gene_id=xscript.gene_id, num_er=xscript.num_er)
                         
-                        tmpERS.addXscript(xscript.xscript_id)
-                        xscript.ers_grp_num = tmpERS.num
-                        tmpERS.xscriptSet.update(xscript.ovlpSet)
+                        tmpERG.addXscript(xscript.xscript_id)
+                        xscript.erg_num = tmpERG.num
+                        tmpERG.xscriptSet.update(xscript.ovlpSet)
                         
-                        tmpERS = addToGrp (grp=tmpERS, initXscript=xscript, xscriptDct=xscriptDct)
+                        tmpERG = addToGrp (grp=tmpERG, initXscript=xscript, xscriptDct=xscriptDct)
                         
-                        ersGrpLst.append(tmpERS)                   
+                        ergLst.append(tmpERG)                   
                         
-        return ersGrpLst
+        return ergLst
 
 
 # Adds all transcripts that overlap with what the transcripts overlaps with
@@ -643,7 +646,7 @@ def addToGrp(grp, initXscript, xscriptDct):
 
         Parameters
         ----------
-        grp : ERS_GRP
+        grp : ERG
                 Group to add an xscript to.
         initXscript : XSCRIPT
                 Initial xscript to add to group
@@ -652,13 +655,13 @@ def addToGrp(grp, initXscript, xscriptDct):
 
         Returns
         -------
-        grp : ERS_GRP
+        grp : ERG
                 Group with proper transcripts added.
 
         """
         
         grp.addXscript(initXscript.xscript_id)
-        initXscript.ers_grp_num = grp.num
+        initXscript.ERG_num = grp.num
         grp.xscriptSet.update(initXscript.ovlpSet)
         
         # at this stage there may or may not be missing xscripts due to
@@ -684,7 +687,7 @@ def addToGrp(grp, initXscript, xscriptDct):
                         
                         
                         tmpSet.update(xscriptDct.get(transcript).ovlpSet)
-                        xscriptDct.get(transcript).ers_grp_num = grp.num
+                        xscriptDct.get(transcript).erg_num = grp.num
                         
                         if len(tmpSet) > tmpSize:
                                 smthAdded = True
@@ -695,19 +698,19 @@ def addToGrp(grp, initXscript, xscriptDct):
 
         return grp   
         
-def createXscriptOutDf(xscriptDct, ersGrpLst):
+def createXscriptOutDf(xscriptDct, ergLst):
         """
         
         Creates an output dataframe based on the information gleaned and stored
-        in the XSCRIPT dictionary and ERS_GRP list. Transcript focused.
+        in the XSCRIPT dictionary and ERG list. Transcript focused.
 
         Parameters
         ----------
         xscriptDct : DICTIONARY (KEY = STR, VALUE = XSCRIPT)
                 Dictionary of transcripts, with the key being the string and the value being the actual XSCRIPT object.
                 
-        ersGrpLst : LIST (OF ERS_GRPs)
-                List of all ERS_GRPs.
+        ergLst : LIST (OF ERGs)
+                List of all ERGs.
 
         Returns
         -------
@@ -729,10 +732,10 @@ def createXscriptOutDf(xscriptDct, ersGrpLst):
         # Loop through every XSCRIPT object in the dictionary and append the necessary info to each list
         for xscript in xscriptDct.values():
                 
-                #Grab the ERS_GRP that the XSCRIPT belongs to for that information
-                ersGrp = ersGrpLst[xscript.ers_grp_num - 1]
+                #Grab the ERG that the XSCRIPT belongs to for that information
+                erg = ergLst[xscript.erg_num - 1]
                 
-                grpSize = ersGrp.size
+                grpSize = erg.size
                 
                 # Determines whether there is a transcript that does not overlap with at least
                 # one other transcript in the group
@@ -741,7 +744,7 @@ def createXscriptOutDf(xscriptDct, ersGrpLst):
                 
                 geneIDLst.append(xscript.gene_id)
                 xscriptStrLst.append(xscript.xscript_id)
-                grpNumLst.append(xscript.ers_grp_num)
+                grpNumLst.append(xscript.ERG_num)
                 numERLst.append(xscript.num_er)
                 
                 nonOlpFlagLst.append('1' if flagNonOlp else '0')
@@ -749,7 +752,7 @@ def createXscriptOutDf(xscriptDct, ersGrpLst):
                 # If there is nonOlp. Create a piped list of all transcripts that the xscript does not overlap with
                 if flagNonOlp:
                         grpXscriptSet = set()
-                        grpXscriptSet.update(ersGrp.xscriptSet)
+                        grpXscriptSet.update(erg.xscriptSet)
                         grpXscriptSet.remove(xscript.xscript_id)
                         
                         nonOlpXscript = "|".join(grpXscriptSet - xscript.ovlpSet)
@@ -762,7 +765,7 @@ def createXscriptOutDf(xscriptDct, ersGrpLst):
                 {
                 'gene_id':geneIDLst,
                 'xscript_model_id':xscriptStrLst, 
-                'ERS_grp_num':grpNumLst, 
+                'ERG_num':grpNumLst, 
                 'flag_nonolp_pair':nonOlpFlagLst,
                 'nonolp_xscript_id':nonOlpXscriptLst,
                 'num_ER':numERLst
@@ -770,21 +773,21 @@ def createXscriptOutDf(xscriptDct, ersGrpLst):
                 
         return outDf
 
-def createERSOutDf(ersGrpLst, xscriptDct, includeIR, gtfOne, gtfTwo):
+def createERGOutDf(ergLst, xscriptDct, includeIR, gtfOne, gtfTwo):
         """
         Creates an output dataframe based on the information gleaned and stored
-        in the XSCRIPT dictionary and ERS_GRP list. ERS_GRP focused.
+        in the XSCRIPT dictionary and ERG list. ERG focused.
 
         Parameters
         ----------
-        ersGrpLst : LIST (OF ERS_GRPs)
-                List of all ERS_GRPs.
+        ergLst : LIST (OF ERGs)
+                List of all ERGs.
                 
         xscriptDct : DICTIONARY (KEY = STR, VALUE = XSCRIPT)
                 Dictionary of transcripts, with the key being the string and the value being the actual XSCRIPT object.
                 
         includeIR : BOOLEAN
-                Whether or not transcripts with intron retention are included or excluded from ERS groups.
+                Whether or not transcripts with intron retention are included or excluded from ERGs.
 
         Returns
         -------
@@ -815,22 +818,22 @@ def createERSOutDf(ersGrpLst, xscriptDct, includeIR, gtfOne, gtfTwo):
         medPropNTLst = []
         sourceLst = []
         
-        # Loop through every ERS_GRP in the list and append necessary info to each column list
-        for ersGrp in ersGrpLst:
-                numLst.append(ersGrp.num)
-                sizeLst.append(ersGrp.size)
-                geneIDLst.append(ersGrp.gene_id)
-                numERLst.append(ersGrp.num_er)
+        # Loop through every ERG in the list and append necessary info to each column list
+        for erg in ergLst:
+                numLst.append(erg.num)
+                sizeLst.append(erg.size)
+                geneIDLst.append(erg.gene_id)
+                numERLst.append(erg.num_er)
                 
                 # Creat piped list of all the xscripts in the list
-                xscriptStrLst.append("|".join(ersGrp.xscriptSet))
+                xscriptStrLst.append("|".join(erg.xscriptSet))
                 
                 # Create a list of all the num/prop NT diff of every transcript in the group
                 numNTLst = []
                 propNTLst = []
                 containsGTFOne = False
                 containsGTFTwo = False
-                for xscriptStr in ersGrp.xscriptSet:
+                for xscriptStr in erg.xscriptSet:
                                        
                         if (gtfOne and gtfTwo):
                                 if xscriptDct.get(xscriptStr).gtfOne:
@@ -869,8 +872,8 @@ def createERSOutDf(ersGrpLst, xscriptDct, includeIR, gtfOne, gtfTwo):
                 medPropNTLst.append(stats.median(propNTLst))
                 
                 # Find if there is at least one transcript with nonOlp
-                for xscriptStr in ersGrp.xscriptSet:
-                        if xscriptDct.get(xscriptStr).ovlpCnt < ersGrp.size - 1:
+                for xscriptStr in erg.xscriptSet:
+                        if xscriptDct.get(xscriptStr).ovlpCnt < erg.size - 1:
                                         nonOlpFlagLst.append('1')
                                         break
                 else:
@@ -880,7 +883,7 @@ def createERSOutDf(ersGrpLst, xscriptDct, includeIR, gtfOne, gtfTwo):
                 if (includeIR):
                         irNumCnt = 0;
                         
-                        for xscript in ersGrp.xscriptSet:
+                        for xscript in erg.xscriptSet:
                                         
                                 if xscriptDct.get(xscript).flagIR():
                                         irNumCnt += 1
@@ -891,17 +894,17 @@ def createERSOutDf(ersGrpLst, xscriptDct, includeIR, gtfOne, gtfTwo):
                                 irFlagLst.append('0')
                                 
                         numIRLst.append(irNumCnt)
-                        propIRLst.append(irNumCnt/ersGrp.size)
+                        propIRLst.append(irNumCnt/erg.size)
                 else:
                         irFlagLst.append('0')
                         numIRLst.append(0)
-                        propIRLst.append(0/ersGrp.size)
+                        propIRLst.append(0/erg.size)
         
         # Create output dataframe using the lists
         outDf = pd.DataFrame(
                 {
-                'ERS_grp_num':numLst, 
-                'ERS_grp_size':sizeLst,
+                'ERG_num':numLst, 
+                'ERG_size':sizeLst,
                 'gene_id':geneIDLst,
                 'xscripts':xscriptStrLst,
                 'contains_which_gtf':sourceLst,
@@ -922,10 +925,10 @@ def createERSOutDf(ersGrpLst, xscriptDct, includeIR, gtfOne, gtfTwo):
         
         return outDf
 
-def createGeneOutDf(xscriptDct, ersGrpLst):
+def createGeneOutDf(xscriptDct, ergLst):
         """
         Creates a dictionary of GENE objects based on the information gleaned and stored
-        in the XSCRIPT dictionary and ERS_GRP list. Then creates a gene focused 
+        in the XSCRIPT dictionary and ERG list. Then creates a gene focused 
         output dataframe.
 
         Parameters
@@ -933,8 +936,8 @@ def createGeneOutDf(xscriptDct, ersGrpLst):
         xscriptDct : DICTIONARY (KEY = STR, VALUE = XSCRIPT)
                 Dictionary of transcripts, with the key being the string and the value being the actual XSCRIPT object.
                 
-        ersGrpLst : LIST (OF ERS_GRPs)
-                List of all ERS_GRPs.
+        ergLst : LIST (OF ERGs)
+                List of all ERGs.
 
         Returns
         -------
@@ -947,15 +950,15 @@ def createGeneOutDf(xscriptDct, ersGrpLst):
         geneDct = {}
         
         # Loop through every group in the list.
-        for grp in ersGrpLst:
+        for grp in ergLst:
                 
                 # If the gene_id that the group belongs to is already added,
-                # Grab the already existing GENE object and add that group to its ersGrpSet
+                # Grab the already existing GENE object and add that group to its ergSet
                 if grp.gene_id in geneDct:
                         tmpGene = geneDct.get(grp.gene_id)
                         tmpGene.addGrp(grp)
                 
-                # Otherwise create a new GENE and add the group to its ersGrpSet, and add the 
+                # Otherwise create a new GENE and add the group to its ergSet, and add the 
                 # new GENE to the dictionary
                 else:
                         tmpGene = GENE(gene_id=grp.gene_id)
@@ -982,12 +985,12 @@ def createGeneOutDf(xscriptDct, ersGrpLst):
         for geneStr, gene in geneDct.items():
                 
                 geneIDLst.append(geneStr)
-                numSetLst.append(len(gene.ersGrpSet))
+                numSetLst.append(len(gene.ergSet))
                 
-                # Add every num_er and ers grp size for every group belonging to a gene to a list
+                # Add every num_er and erg grp size for every group belonging to a gene to a list
                 numERLst = []
                 numSizeLst = []
-                for grp in gene.ersGrpSet:
+                for grp in gene.ergSet:
                         numERLst.append(int(grp.num_er))
                         numSizeLst.append(int(grp.size))
                 
@@ -1009,7 +1012,7 @@ def createGeneOutDf(xscriptDct, ersGrpLst):
         outDf = pd.DataFrame(
                 {
                         'gene_id':geneIDLst,
-                        'num_sets':numSetLst,
+                        'num_grps':numSetLst,
                         'min_ER':minERLst,
                         'max_ER':maxERLst,
                         'mean_ER':meanERLst,
@@ -1022,14 +1025,14 @@ def createGeneOutDf(xscriptDct, ersGrpLst):
         
         return outDf
 
-def buildGrpExonChain(ersGrpLst, xscriptDct):
+def buildGrpExonChain(ergLst, xscriptDct):
         """
         Builds the chain of exons for the representative "transcript" of each group.
         
         Parameters
         ----------
-        ersGrpLst : LIST (OF ERS_GRPs)
-                List of all ERS_GRPs.
+        ergLst : LIST (OF ERGs)
+                List of all ERGs.
                 
         xscriptDct : DICTIONARY (KEY = STR, VALUE = XSCRIPT)
                 Dictionary of transcripts, with the key being the string and the value being the 
@@ -1041,11 +1044,11 @@ def buildGrpExonChain(ersGrpLst, xscriptDct):
 
         """
         
-        for ersGrp in ersGrpLst:
+        for erg in ergLst:
                 
                 tmpExonLst = []
                 
-                for xscriptStr in ersGrp.xscriptSet:
+                for xscriptStr in erg.xscriptSet:
                         xscript = xscriptDct.get(xscriptStr)
                         
                         for exon in xscript.exonLst:
@@ -1060,22 +1063,22 @@ def buildGrpExonChain(ersGrpLst, xscriptDct):
                         if firstExon:
                                 firstExon = False
                                 
-                                ersGrp.addExon(thisExon)
+                                erg.addExon(thisExon)
                         else:
-                                lastExon = ersGrp.exonChain[-1]
+                                lastExon = erg.exonChain[-1]
 
                                 if thisExon.start > lastExon.end:
-                                        ersGrp.addExon(thisExon)
+                                        erg.addExon(thisExon)
                                 else:
                                         if thisExon.end > lastExon.end:
                                                 lastExon.end = thisExon.end
                                         else:
                                                 continue  
                                 
-def createGTFDf(ersGrpLst,xscriptDct):
+def createGTFDf(ergLst,xscriptDct):
         """
         Creates a dataframe for the exons within the representative transcript
-        of each ERS_GRP. Compatible with trand.io.write_gtf.
+        of each ERG. Compatible with trand.io.write_gtf.
         output dataframe.
 
         Parameters
@@ -1084,8 +1087,8 @@ def createGTFDf(ersGrpLst,xscriptDct):
                 Dictionary of transcripts, with the key being the string and the value being the 
                 actual XSCRIPT object.
                 
-        ersGrpLst : LIST (OF ERS_GRPs)
-                List of all ERS_GRPs.
+        ergLst : LIST (OF ERGs)
+                List of all ERGs.
 
         Returns
         -------
@@ -1094,26 +1097,26 @@ def createGTFDf(ersGrpLst,xscriptDct):
 
         """
         
-        buildGrpExonChain(ersGrpLst=ersGrpLst, xscriptDct=xscriptDct)
+        buildGrpExonChain(ergLst=ergLst, xscriptDct=xscriptDct)
         
         seqnameLst = []
         startLst = []
         endLst = []
         strandLst = []
-        ersIDLst = []
+        ergIDLst = []
         geneIDLst = []
 
-        for ersGrp in ersGrpLst:
-                seqname = ersGrp.exonChain[0].seqname
-                strand = ersGrp.exonChain[0].strand
-                ersID = "ers_grp_" + str(ersGrp.num) + "_tr"
-                geneID = ersGrp.gene_id
+        for erg in ergLst:
+                seqname = erg.exonChain[0].seqname
+                strand = erg.exonChain[0].strand
+                ergID = "erg_" + str(erg.num) + "_tr"
+                geneID = erg.gene_id
                 
                 
-                for exon in ersGrp.exonChain:
+                for exon in erg.exonChain:
                         seqnameLst.append(seqname)
                         strandLst.append(strand)
-                        ersIDLst.append(ersID)
+                        ergIDLst.append(ergID)
                         geneIDLst.append(geneID)
                         
                         startLst.append(exon.start)
@@ -1126,7 +1129,7 @@ def createGTFDf(ersGrpLst,xscriptDct):
                         'start':startLst,
                         'end':endLst,
                         'strand':strandLst,
-                        'transcript_id':ersIDLst,
+                        'transcript_id':ergIDLst,
                         'gene_id':geneIDLst
                 })
         
@@ -1213,14 +1216,14 @@ def main():
         
         # Two options based on if IR is included or excluded
         if (args.includeIR.upper() == 'Y'):
-                # Create XSCRIPT dictionary and ERS_GRP list
+                # Create XSCRIPT dictionary and ERG list
                 mstrXscriptDct, erInfoDf = gleanInputDf(inDf=inputDf, includeIR=True, gtfOne=gtfOne, gtfTwo=gtfTwo)
                 
                 toc = time.perf_counter()       
                 print(f"Gleaning complete,  took {toc-omegatic:0.4f} seconds")
                 
                 tic = time.perf_counter()
-                mstrERSGrpLst = createERSGrps(xscriptDct=mstrXscriptDct)
+                mstrERGLst = createERGs(xscriptDct=mstrXscriptDct)
                 
                 
                 
@@ -1230,30 +1233,30 @@ def main():
                 
                 tic = time.perf_counter()
                 # Create Output Dataframes
-                xscriptDf = createXscriptOutDf(xscriptDct=mstrXscriptDct, ersGrpLst=mstrERSGrpLst)
-                ersDf = createERSOutDf(ersGrpLst=mstrERSGrpLst, xscriptDct=mstrXscriptDct, includeIR=True, gtfOne=gtfOne, gtfTwo=gtfTwo)
-                geneDf = createGeneOutDf(xscriptDct=mstrXscriptDct,ersGrpLst=mstrERSGrpLst)
+                xscriptDf = createXscriptOutDf(xscriptDct=mstrXscriptDct, ergLst=mstrERGLst)
+                ergDf = createERGOutDf(ergLst=mstrERGLst, xscriptDct=mstrXscriptDct, includeIR=True, gtfOne=gtfOne, gtfTwo=gtfTwo)
+                geneDf = createGeneOutDf(xscriptDct=mstrXscriptDct,ergLst=mstrERGLst)
                 
                 # Configure descriptive file name
                 xscript_output_file = "{}/{}_xscript_output.csv".format(args.outdir, prefix)
-                ers_output_file = "{}/{}_ers_output.csv".format(args.outdir, prefix)
+                erg_output_file = "{}/{}_erg_output.csv".format(args.outdir, prefix)
                 gene_output_file = "{}/{}_gene_output.csv".format(args.outdir, prefix)
                 
-                gtf_output_file = "{}/{}_ers_gtf.gtf".format(args.outdir, prefix)
+                gtf_output_file = "{}/{}_erg_gtf.gtf".format(args.outdir, prefix)
                                 
                 toc = time.perf_counter()       
                 print(f"Df building complete,  took {toc-tic:0.4f} seconds")
                 
         elif (args.includeIR.upper() == 'N'):  
-                # Create XSCRIPT dictionary and ERS_GRP list
+                # Create XSCRIPT dictionary and ERG list
                 mstrXscriptDct, erInfoDf = gleanInputDf(inDf=inputDf, includeIR=False, gtfOne=gtfOne, gtfTwo=gtfTwo)
-                mstrERSGrpLst = createERSGrps(xscriptDct=mstrXscriptDct)
+                mstrERGLst = createERGs(xscriptDct=mstrXscriptDct)
                 
                 toc = time.perf_counter()       
                 print(f"Gleaning complete,  took {toc-omegatic:0.4f} seconds")
                 
                 tic = time.perf_counter()
-                mstrERSGrpLst = createERSGrps(xscriptDct=mstrXscriptDct)
+                mstrERGLst = createERGs(xscriptDct=mstrXscriptDct)
                 
                 toc = time.perf_counter()       
                 print(f"Grouping complete,  took {toc-tic:0.4f} seconds")
@@ -1261,30 +1264,30 @@ def main():
                 
                 tic = time.perf_counter()
                 # Create Output Dataframes
-                xscriptDf = createXscriptOutDf(xscriptDct=mstrXscriptDct, ersGrpLst=mstrERSGrpLst)
-                ersDf = createERSOutDf(ersGrpLst=mstrERSGrpLst, xscriptDct=mstrXscriptDct, includeIR=False, gtfOne=gtfOne, gtfTwo=gtfTwo)
-                geneDf = createGeneOutDf(xscriptDct=mstrXscriptDct,ersGrpLst=mstrERSGrpLst)
+                xscriptDf = createXscriptOutDf(xscriptDct=mstrXscriptDct, ergLst=mstrERGLst)
+                ergDf = createERGOutDf(ergLst=mstrERGLst, xscriptDct=mstrXscriptDct, includeIR=False, gtfOne=gtfOne, gtfTwo=gtfTwo)
+                geneDf = createGeneOutDf(xscriptDct=mstrXscriptDct,ergLst=mstrERGLst)
                 
 
                 # Configure descriptive file name
                 xscript_output_file = "{}/{}_xscript_output_noIR.csv".format(args.outdir, prefix)
-                ers_output_file = "{}/{}_ers_output_noIR.csv".format(args.outdir, prefix)
+                erg_output_file = "{}/{}_erg_output_noIR.csv".format(args.outdir, prefix)
                 gene_output_file = "{}/{}_gene_output_noIR.csv".format(args.outdir, prefix)
                 
-                gtf_output_file = "{}/{}_ers_noIR_gtf.gtf".format(args.outdir, prefix)
+                gtf_output_file = "{}/{}_erg_noIR_gtf.gtf".format(args.outdir, prefix)
                                 
                 toc = time.perf_counter()       
                 print(f"Df building complete,  took {toc-tic:0.4f} seconds")
                 
 
         if args.outputGTF:
-                gtfDf = createGTFDf(ersGrpLst=mstrERSGrpLst, xscriptDct=mstrXscriptDct)
+                gtfDf = createGTFDf(ergLst=mstrERGLst, xscriptDct=mstrXscriptDct)
         
 
         # Output Df to CSV, will raise an error if output directory does not already exist
         try:
                 xscriptDf.to_csv(xscript_output_file,index=False)
-                ersDf.to_csv(ers_output_file,index=False)
+                ergDf.to_csv(erg_output_file,index=False)
                 geneDf.to_csv(gene_output_file,index=False)
                 
                 if args.outputGTF:
@@ -1303,7 +1306,7 @@ def main():
         # Used to assure each transcript is put into a group only once.
         print("Generating split dataframe...")
         # Used in testing to see that each transcript is only assigned to one group.
-        splitDf = split_column_by_sep(ersDf, col_name="xscripts", sep="|")
+        splitDf = split_column_by_sep(ergDf, col_name="xscripts", sep="|")
         dup = splitDf.duplicated("xscripts", keep=False)
         dupes = splitDf[dup]
 
@@ -1312,11 +1315,11 @@ def main():
         print ("Actually complete!")
         
         # Only returns these things for quick checking during development
-        return mstrXscriptDct, mstrERSGrpLst, xscriptDf, ersDf, geneDf, erInfoDf, splitDf, dupes
+        return mstrXscriptDct, mstrERGLst, xscriptDf, ergDf, geneDf, erInfoDf, splitDf, dupes
 
 if __name__ == '__main__':
         global args
         args = getOptions()
-        mstrXscriptDct, mstrERSGrpLst, xscriptDf, ersDf, geneDf, erInfoDf, splitDf, dupes = main()
+        mstrXscriptDct, mstrERGLst, xscriptDf, ergDf, geneDf, erInfoDf, splitDf, dupes = main()
 
         
