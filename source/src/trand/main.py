@@ -74,6 +74,16 @@ def parse_args(print_help=False):
         help="One or two input GTF file(s).",
     )
     parser.add_argument(
+        "--subset-pairs",
+        action="store",
+        dest="subset_file",
+        type=str,
+        required=False,
+        help="""CSV file of transcript pairs that will be processed in pairwise mode and all other pairs will be skipped.
+        Default is to process all pairs.""",
+        default = None
+    )
+    parser.add_argument(
         "-o",
         "--outdir",
         action="store",
@@ -296,6 +306,7 @@ def cli():
                 args.skip_plots,
                 args.skip_interm,
                 args.prefix,
+                args.subset_file
             )
         finally:
             # Only for bedtools. Remove when bedtools are refactored out.
@@ -318,6 +329,7 @@ def cli():
                 args.name1,
                 args.name2,
                 args.prefix,
+                args.subset_file
             )
         finally:
             # Only for bedtools. Remove when bedtools are refactored out.
