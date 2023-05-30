@@ -19,11 +19,11 @@ def getOptions():
     parser = argparse.ArgumentParser(
         description=(
                 "Make TranD plots from output files for 1 GTF gene "
-                "(--exon-region, --exon-fragment, --intron-retention, "
+                "(--exon-region, --exon-EF, --intron-retention, "
                 "--uniq-exon), 1 GTF pairwise (--pairwise-1gtf), or "
                 "2 GTF pairwise (--pairwise-2gtf, --name1, --name2, --gtf1, "
-                "--gtf2). If both 1 GTF gene exon fragment file "
-                "(--exon-fragment) and 1 GTF pairwise distance file "
+                "--gtf2). If both 1 GTF gene exon EF file "
+                "(--exon-EF) and 1 GTF pairwise distance file "
                 "(--pairwise-1gtf) are included, a new density plot of "
                 "nucleotide variablility separated by AS type will be made."
         )
@@ -38,17 +38,17 @@ def getOptions():
         help=(
                 "For 1 GTF gene plots: "
                 "Exon regions output file (event_analysis_er.csv) from "
-                "TranD (must be used with --exon-fragment argument)."
+                "TranD (must be used with --exon-EF argument)."
         )
     )
     parser.add_argument(
         "-ef",
-        "--exon-fragment",
+        "--exon-EF",
         dest="ef_data",
         required=False,
         help=(
                 "For 1 GTF gene plots: "
-                "Exon fragment output file (event_analysis_ef.csv) from "
+                "Exon EF output file (event_analysis_ef.csv) from "
                 "TranD (must be used with --exon-region argument)."
         )
     )
@@ -198,21 +198,21 @@ er_df_cols = ['gene_id', 'er_id', 'er_chr', 'er_start', 'er_end', 'er_strand', '
 ef_df_cols = ['gene_id', 'er_id', 'ef_id', 'ef_chr', 'ef_start', 'ef_end', 'ef_strand',
               'ef_exon_ids', 'ef_transcript_ids', 'exons_per_ef', 'transcripts_per_ef',
               'ef_ir_flag', 'ea_annotation_frequency']
-td_df_cols = ['gene_id','transcript_1','transcript_2','num_junction_T1_only','num_junction_T2_only',
-             'num_junction_shared','prop_junction_diff','prop_junction_similar',
-             'junction_T1_only','junction_T2_only','junction_shared','num_ER_T1_only',
-             'num_ER_T2_only','num_ER_shared','prop_ER_diff','prop_ER_similar',
-             'ER_T1_only','ER_T2_only','ER_shared','num_fragment_T1_only',
-             'num_fragment_T2_only','num_fragment_shared','prop_fragment_diff',
-             'prop_fragment_similar','fragment_T1_only','fragment_T2_only','fragment_shared',
-             'num_fragment_singletons_T1_only','num_fragment_singletons_T2_only',
-             'num_fragment_singletons_shared','num_IR_fragment_T1','num_IR_fragment_T2',
-             'IR_fragment_T1','IR_fragment_T2','num_nt_shared','num_nt_T1_only',
-             'num_nt_T2_only','num_nt_diff','total_nt','prop_nt_diff','prop_nt_similar','num_nt_T1_only_in_shared_ER',
-             'num_nt_T2_only_in_shared_ER','num_nt_shared_in_shared_ER','total_nt_in_shared_ER',
-             'prop_nt_diff_in_shared_ER','prop_nt_similar_in_shared_ER','num_nt_T1_only_in_unique_ER',
-             'num_nt_T2_only_in_unique_ER','flag_FSM','flag_IR','flag_5_variation',
-             'flag_3_variation','flag_alt_donor_acceptor','flag_alt_exon','flag_no_shared_nt']
+td_df_cols = ['gene_id','transcript_1','transcript_2','num_jxn_only_T1','num_jxn_only_T2',
+             'num_jxn_ovlp','prop_jxn_noOvlp','prop_jxn_ovlp',
+             'jxn_only_T1','jxn_only_T2','jxn_same','num_ER_only_T1',
+             'num_ER_only_T2','num_ER_ovlp','prop_ER_noOvlp','prop_ER_ovlp',
+             'ER_only_T1','ER_only_T2','ER_ovlp','num_EF_only_T1',
+             'num_EF_only_T2','num_EF_ovlp','prop_EF_noOvlp',
+             'prop_EF_ovlp','EF_only_T1','EF_only_T2','EF_ovlp',
+             'num_exon_only_T1','num_exon_only_T2',
+             'num_exon_ovlp','num_IR_EF_T1','num_IR_EF_T2',
+             'IR_EF_T1','IR_EF_T2','num_nt_ovlp','num_nt_only_T1',
+             'num_nt_only_T2','num_nt_noOvlp','total_nt','prop_nt_noOvlp','prop_nt_ovlp','num_nt_only_T1_in_ovlpER',
+             'num_nt_only_T2_in_ovlpER','num_nt_ovlp_in_ovlpER','total_nt_in_ovlpER',
+             'prop_nt_noOvlp_in_ovlpER','prop_nt_ovlp_in_ovlpER','num_nt_only_T1_in_uniqER',
+             'num_nt_only_T2_in_uniqER','flag_FSM','flag_IR','flag_5_var',
+             'flag_3_var','flag_alt_DA','flag_alt_exon','flag_no_ovlp_nt']
 ir_df_cols = ['er_transcript_ids']
 ue_df_cols = ['gene_id', 'num_uniq_exon']
 
@@ -224,7 +224,7 @@ def check_args(args):
     oneGTFpair = False
     oneGTFgene = False
     twoGTF = False
-    # Check for 1 GTF pairwise outupt and 1 GTF gene exon fragment output
+    # Check for 1 GTF pairwise outupt and 1 GTF gene exon EF output
     #   for nt variablility density plot
     if args.td_data1 is not None and args.ef_data is not None:
         ntVar = True
@@ -246,7 +246,7 @@ def check_args(args):
         (args.ue_data is not None)
         ) and (args.td_data1 is None):
         exit(
-                "!!!ERROR: Must provide exon region, exon fragment, "
+                "!!!ERROR: Must provide exon region, exon EF, "
                 "intron retention, and unique exons per gene files to "
                 "properly plot TranD 1 GTF gene plots."
         )
@@ -282,13 +282,13 @@ def validate_input(inType, args):
             )
         else:
             if inType == "ntVar":
-                # Check if all exon fragment columns are present
+                # Check if all exon EF columns are present
                 ef_data = pd.read_csv(args.ef_data, low_memory=False)
                 if [c for c in ef_data if c in ef_df_cols] == ef_df_cols:
                     return td_data, ef_data
                 else:
                     exit(
-                        "!!!ERROR: Single GTF exon fragment file missing "
+                        "!!!ERROR: Single GTF exon EF file missing "
                         "columns from TranD output."
                     )
             else:
@@ -298,7 +298,7 @@ def validate_input(inType, args):
         ef_data = pd.read_csv(args.ef_data, low_memory=False)
         ir_data = pd.read_csv(args.ir_data, low_memory=False)
         ue_data = pd.read_csv(args.ue_data, low_memory=False)
-        # Check that all exon region and exon fragment columns are present
+        # Check that all exon region and exon EF columns are present
         if (
                 [c for c in er_data if c in er_df_cols] == er_df_cols and
                 [c for c in ef_data if c in ef_df_cols] == ef_df_cols and
@@ -314,7 +314,7 @@ def validate_input(inType, args):
                 )
             if [c for c in ef_data if c in ef_df_cols] != ef_df_cols:
                 exit(
-                        "!!!ERROR: Single GTF exon fragment file missing "
+                        "!!!ERROR: Single GTF exon EF file missing "
                         "columns from TranD output."
                 )
             if [c for c in ir_data if c in ir_df_cols] != ir_df_cols:
@@ -385,7 +385,7 @@ def plot_gene_prop_nt_variablility_AS(td_data, ef_data, density_th=None):
     Plot distribution of proportion of nucleotide variability across all
     multi-transcript genes, split by AS categories
     """
-    # Get lengths of exon fragments
+    # Get lengths of exon EFs
     ef_data['num_nt_varying'] = np.where(
             ef_data['ea_annotation_frequency']!="constitutive",
             ef_data['ef_end'] - ef_data['ef_start'],
@@ -425,27 +425,27 @@ def plot_gene_prop_nt_variablility_AS(td_data, ef_data, density_th=None):
     td_gene_data = td_data.groupby('gene_id')[
             [c for c in td_data.columns if "flag_" in c]
     ].max().reset_index()
-    # Check if IR were dropped from fragment file (no -k option used in trand)
+    # Check if IR were dropped from EF file (no -k option used in trand)
     if ef_data['ef_ir_flag'].sum() == 0:
         labelDict = {
-                'flag_5_variation': "5\' Variation",
-                'flag_3_variation': "3\' Variation",
-                'flag_alt_donor_acceptor': "Alt. Donor/Acceptor",
+                'flag_5_var': "5\' Variation",
+                'flag_3_var': "3\' Variation",
+                'flag_alt_DA': "Alt. Donor/Acceptor",
                 'flag_alt_exon': "Alt. Exon"
         }
     else:
         labelDict = {
                 'flag_IR': "Intron Retention",
-                'flag_5_variation': "5\' Variation",
-                'flag_3_variation': "3\' Variation",
-                'flag_alt_donor_acceptor': "Alt. Donor/Acceptor",
+                'flag_5_var': "5\' Variation",
+                'flag_3_var': "3\' Variation",
+                'flag_alt_DA': "Alt. Donor/Acceptor",
                 'flag_alt_exon': "Alt. Exon"
         }
     colorDict = {
             'flag_IR': '#1f77b4',
-            'flag_5_variation': '#ff750e',
-            'flag_3_variation': '#2ca02c',
-            'flag_alt_donor_acceptor': '#d62728',
+            'flag_5_var': '#ff750e',
+            'flag_3_var': '#2ca02c',
+            'flag_alt_DA': '#d62728',
             'flag_alt_exon': '#9467bd'
     }
     for col in labelDict.keys():

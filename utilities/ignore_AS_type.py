@@ -165,26 +165,26 @@ def plotCustomPlot(inDf, legendOut, ignoreDct):
             "transcript_1",
             "transcript_2",
             "flag_alt_exon",
-            "flag_alt_donor_acceptor",
+            "flag_alt_DA",
             "flag_IR",
-            "flag_5_variation",
-            "flag_3_variation",
-            "flag_no_shared_nt",
-            "num_nt_diff",
-            "prop_nt_diff",
+            "flag_5_var",
+            "flag_3_var",
+            "flag_no_ovlp_nt",
+            "num_nt_noOvlp",
+            "prop_nt_noOvlp",
         ]
     ].copy()
 
     # Ensure number of nt different are int and float values
-    pairAS["num_nt_diff"] = pairAS["num_nt_diff"].astype(int)
-    pairAS["prop_nt_diff"] = pairAS["prop_nt_diff"].astype(float)
+    pairAS["num_nt_noOvlp"] = pairAS["num_nt_noOvlp"].astype(int)
+    pairAS["prop_nt_noOvlp"] = pairAS["prop_nt_noOvlp"].astype(float)
 
     # assures that an exorbitant amt of nucleotides diff are not included in graph
     # bc nsnt will have 100% difference
-    pairAS["num_nt_diff"] = np.where(
-        pairAS["flag_no_shared_nt"] == 1,
+    pairAS["num_nt_noOvlp"] = np.where(
+        pairAS["flag_no_ovlp_nt"] == 1,
         np.nan,
-        pairAS["num_nt_diff"]
+        pairAS["num_nt_noOvlp"]
     )
 
     # Make AS flags boolean values and rename
@@ -193,23 +193,23 @@ def plotCustomPlot(inDf, legendOut, ignoreDct):
         "transcript_1",
         "transcript_2",
         "flag_alt_exon",
-        "flag_alt_donor_acceptor",
+        "flag_alt_DA",
         "flag_IR",
-        "flag_5_variation",
-        "flag_3_variation",
-        "flag_no_shared_nt",
+        "flag_5_var",
+        "flag_3_var",
+        "flag_no_ovlp_nt",
     ]
     pairAS[xcrptFlagCols] = pairAS[xcrptFlagCols].astype(bool)
     pairAS = pairAS.rename(
         columns={
             "flag_alt_exon": "Alt. Exon",
-            "flag_alt_donor_acceptor": "Alt. Donor/Acceptor",
+            "flag_alt_DA": "Alt. Donor/Acceptor",
             "flag_IR": "Intron Retention",
-            "flag_5_variation": "5' Variation",
-            "flag_3_variation": "3' Variation",
-            "flag_no_shared_nt": "No Shared NT",
-            "num_nt_diff": "# NT Different",
-            "prop_nt_diff": "Proportion\nNT Different",
+            "flag_5_var": "5' Variation",
+            "flag_3_var": "3' Variation",
+            "flag_no_ovlp_nt": "No Shared NT",
+            "num_nt_noOvlp": "# NT Different",
+            "prop_nt_noOvlp": "Proportion\nNT Different",
         }
     )
 
@@ -304,9 +304,9 @@ def buildPrefix(args, ignoreDct):
         ignoreLst = [args.ignore_3, args.ignore_5, args.ignore_AD, args.ignore_AE, args.ignore_IR, args.ignore_NSNT]
         
         if ignoreLst[0]:
-                prefix = prefix + "ignore_3_variation_"
+                prefix = prefix + "ignore_3_var_"
         if ignoreLst[1]:
-                prefix = prefix + "ignore_5_variation_"
+                prefix = prefix + "ignore_5_var_"
         if ignoreLst[2]:
                 prefix = prefix + "ignore_Alt_Donor_Acceptor_"
         if ignoreLst[3]:

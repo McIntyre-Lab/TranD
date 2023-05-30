@@ -96,9 +96,9 @@ class XSCRIPT:
                 
         irSet (set of strings): Set of all the transcripts that overlap with this transcript and have intron retention activity.
                 
-        num_nuc_diff (list of ints): A list of all num NT diffs for all transcripts that have full overlap.
+        num_nuc_noOvlp (list of ints): A list of all num NT diffs for all transcripts that have full overlap.
                 
-        prop_nuc_diff (list of floats): A list of all prop NT diffs for all transcripts that have full overlap.
+        prop_nuc_noOvlp (list of floats): A list of all prop NT diffs for all transcripts that have full overlap.
         
         gtfOne (boolean): If the transcript from the first GTF (2 GTF input)
         
@@ -121,8 +121,8 @@ class XSCRIPT:
                 
                 self.irSet = set()
                 
-                self.num_nuc_diff = []
-                self.prop_nuc_diff = []
+                self.num_nuc_noOvlp = []
+                self.prop_nuc_noOvlp = []
                 
                 self.gtfOne = False
                 self.gtfTwo = False
@@ -144,8 +144,8 @@ class XSCRIPT:
         
         # Add a num and prop diff to the list of nucleotide differences
         def addDiff(self, num, prop):
-                self.num_nuc_diff.append(num)
-                self.prop_nuc_diff.append(prop)
+                self.num_nuc_noOvlp.append(num)
+                self.prop_nuc_noOvlp.append(prop)
         
         def addExon(self, exon):
                 if exon not in self.exonLst: 
@@ -316,7 +316,7 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
 
         """
         
-        # if ('transcript_in_gene' in inDf.columns):
+        # if ('transcript_inGene' in inDf.columns):
                 
         
         #NEW
@@ -326,15 +326,15 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
                         "gene_id",
                         "transcript_1",
                         "transcript_2",
-                        "num_ER_T1_only",
-                        "num_ER_T2_only",
-                        "num_ER_shared",
-                        "prop_ER_similar",
-                        "ER_T1_only",
-                        "ER_T2_only",
-                        "ER_shared",
-                        "num_nt_diff",
-                        "prop_nt_diff",
+                        "num_ER_only_T1",
+                        "num_ER_only_T2",
+                        "num_ER_ovlp",
+                        "prop_ER_ovlp",
+                        "ER_only_T1",
+                        "ER_only_T2",
+                        "ER_ovlp",
+                        "num_nt_noOvlp",
+                        "prop_nt_noOvlp",
                         "flag_IR"
                 ]
         ].copy()
@@ -342,11 +342,11 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
         #print (len(pd.concat([erInfoDf['transcript_1'], erInfoDf['transcript_2']]).unique()))
 
         # Convert all number rows into string for ease of access.
-        erInfoDf['num_ER_shared'] = erInfoDf['num_ER_shared'].astype(str)
-        erInfoDf['num_ER_T1_only'] = erInfoDf['num_ER_T1_only'].astype(str)
-        erInfoDf['num_ER_T2_only'] = erInfoDf['num_ER_T2_only'].astype(str)
-        erInfoDf['num_nt_diff'] = erInfoDf['num_nt_diff'].astype(str)
-        erInfoDf['prop_nt_diff'] = erInfoDf['prop_nt_diff'].astype(str)
+        erInfoDf['num_ER_ovlp'] = erInfoDf['num_ER_ovlp'].astype(str)
+        erInfoDf['num_ER_only_T1'] = erInfoDf['num_ER_only_T1'].astype(str)
+        erInfoDf['num_ER_only_T2'] = erInfoDf['num_ER_only_T2'].astype(str)
+        erInfoDf['num_nt_noOvlp'] = erInfoDf['num_nt_noOvlp'].astype(str)
+        erInfoDf['prop_nt_noOvlp'] = erInfoDf['prop_nt_noOvlp'].astype(str)
         
         unqXscriptSet = set(pd.concat([erInfoDf['transcript_1'], erInfoDf['transcript_2']]))
         print ("Number of transcripts: " + str(len(unqXscriptSet)))
@@ -359,36 +359,36 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
                 erInfoDf['transcript_1'] = (
                         erInfoDf['gene_id'] + "/" + 
                         erInfoDf['transcript_1'] + "/" + 
-                        erInfoDf['num_ER_shared'].fillna(0) + "/" + 
-                        erInfoDf['num_ER_T1_only'].fillna(0) + "/" +
-                        erInfoDf['ER_shared'].fillna('') + "/" +
-                        erInfoDf['ER_T1_only'].fillna('') + "/" +
+                        erInfoDf['num_ER_ovlp'].fillna(0) + "/" + 
+                        erInfoDf['num_ER_only_T1'].fillna(0) + "/" +
+                        erInfoDf['ER_ovlp'].fillna('') + "/" +
+                        erInfoDf['ER_only_T1'].fillna('') + "/" +
                         gtfOne)
                 
                 erInfoDf['transcript_2'] = (
                         erInfoDf['gene_id'] + "/" + 
                         erInfoDf['transcript_2'] + "/" + 
-                        erInfoDf['num_ER_shared'].fillna(0) + "/" + 
-                        erInfoDf['num_ER_T2_only'].fillna(0) + "/" +
-                        erInfoDf['ER_shared'].fillna('') + "/" +
-                        erInfoDf['ER_T2_only'].fillna('') + "/" +
+                        erInfoDf['num_ER_ovlp'].fillna(0) + "/" + 
+                        erInfoDf['num_ER_only_T2'].fillna(0) + "/" +
+                        erInfoDf['ER_ovlp'].fillna('') + "/" +
+                        erInfoDf['ER_only_T2'].fillna('') + "/" +
                         gtfTwo)
         else:
                 erInfoDf['transcript_1'] = (
                         erInfoDf['gene_id'] + "/" + 
                         erInfoDf['transcript_1'] + "/" + 
-                        erInfoDf['num_ER_shared'].fillna(0) + "/" + 
-                        erInfoDf['num_ER_T1_only'].fillna(0) + "/" +
-                        erInfoDf['ER_shared'].fillna('') + "/" +
-                        erInfoDf['ER_T1_only'].fillna(''))
+                        erInfoDf['num_ER_ovlp'].fillna(0) + "/" + 
+                        erInfoDf['num_ER_only_T1'].fillna(0) + "/" +
+                        erInfoDf['ER_ovlp'].fillna('') + "/" +
+                        erInfoDf['ER_only_T1'].fillna(''))
                 
                 erInfoDf['transcript_2'] = (
                         erInfoDf['gene_id'] + "/" + 
                         erInfoDf['transcript_2'] + "/" + 
-                        erInfoDf['num_ER_shared'].fillna(0) + "/" + 
-                        erInfoDf['num_ER_T2_only'].fillna(0) + "/" +
-                        erInfoDf['ER_shared'].fillna('') + "/" +
-                        erInfoDf['ER_T2_only'].fillna(''))
+                        erInfoDf['num_ER_ovlp'].fillna(0) + "/" + 
+                        erInfoDf['num_ER_only_T2'].fillna(0) + "/" +
+                        erInfoDf['ER_ovlp'].fillna('') + "/" +
+                        erInfoDf['ER_only_T2'].fillna(''))
                 
         # Create set of all unique transcripts (used for leftovers)
         unqXscriptSet = set(pd.concat([erInfoDf['transcript_1'], erInfoDf['transcript_2']]))
@@ -414,13 +414,13 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
                 
                 exonChain = model1.split('/')[4].split('|')
                 
-                flagFullOvlp = row['prop_ER_similar'] == 1
+                flagFullOvlp = row['prop_ER_ovlp'] == 1
                 flagIR = row['flag_IR'] == 1
                 
-                numER = int(row['num_ER_shared'])
+                numER = int(row['num_ER_ovlp'])
                 
-                numNTDiff = row['num_nt_diff']
-                propNTDiff = row['prop_nt_diff']
+                numNTDiff = row['num_nt_noOvlp']
+                propNTDiff = row['prop_nt_noOvlp']
                 
                 # Only perform further operations on the row if there is full overlap
                 if (flagFullOvlp):                        
@@ -502,8 +502,8 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
                 
         
         # Creates a set of all transcripts that have full overlap
-        olpXscriptSet = set(pd.concat([erInfoDf[erInfoDf['prop_ER_similar']==1]['transcript_1'],
-                                 erInfoDf[erInfoDf['prop_ER_similar']==1]['transcript_2']]
+        olpXscriptSet = set(pd.concat([erInfoDf[erInfoDf['prop_ER_ovlp']==1]['transcript_1'],
+                                 erInfoDf[erInfoDf['prop_ER_ovlp']==1]['transcript_2']]
                                 ).unique())
         
         # Leftover transcripts that overlap with no other transcript:
@@ -513,10 +513,10 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
         # Convert leftovers to XSCRIPT object and add to dictionary
                 # 0 = geneID
                 # 1 = xscript
-                # 2 = num_ER_shared
+                # 2 = num_ER_ovlp
                 # 3 = num_ER_only
-                # 4 = ER_shared (junction string)
-                # 5 = ER_T2_only (junction string)
+                # 4 = ER_ovlp (junction string)
+                # 5 = ER_only_T2 (junction string)
                 # 6 = which GTF
         for leftover in leftovers:
                 geneid = leftover.split('/')[0]
@@ -531,7 +531,7 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
                         whichGTF = leftover.split('/')[6]
                 
                 if (xscriptStr not in addedXscriptSet):
-                        # Number of exon regions = num_ER_shared + num_ER_T1_only
+                        # Number of exon regions = num_ER_ovlp + num_ER_only_T1
                         # or T2 only depending.
                         # This calculation works I promise. I think.
                         
@@ -843,10 +843,10 @@ def createERGOutDf(ergLst, xscriptDct, includeIR, gtfOne, gtfTwo):
                                         containsGTFTwo = True
                                 
 
-                        for numDiff in xscriptDct.get(xscriptStr).num_nuc_diff:
+                        for numDiff in xscriptDct.get(xscriptStr).num_nuc_noOvlp:
                                 numNTLst.append(float(numDiff))
                                 
-                        for propDiff in xscriptDct.get(xscriptStr).prop_nuc_diff:
+                        for propDiff in xscriptDct.get(xscriptStr).prop_nuc_noOvlp:
                                 propNTLst.append(float(propDiff))
                 
                 if (gtfOne and gtfTwo):
@@ -913,14 +913,14 @@ def createERGOutDf(ergLst, xscriptDct, includeIR, gtfOne, gtfTwo):
                 'num_IR_xscripts':numIRLst,
                 'prop_IR':propIRLst,
                 'num_ER':numERLst,
-                'min_num_nt_diff':minNumNTLst,
-                'max_num_nt_diff':maxNumNTLst,
-                'mean_num_nt_diff':meanNumNTLst,
-                'median_num_nt_diff':medNumNTLst,
-                'min_prop_nt_diff':minPropNTLst,
-                'max_prop_nt_diff':maxPropNTLst,
-                'mean_prop_nt_diff':meanPropNTLst,
-                'median_prop_nt_diff':medPropNTLst
+                'min_num_nt_noOvlp':minNumNTLst,
+                'max_num_nt_noOvlp':maxNumNTLst,
+                'mean_num_nt_noOvlp':meanNumNTLst,
+                'median_num_nt_noOvlp':medNumNTLst,
+                'min_prop_nt_noOvlp':minPropNTLst,
+                'max_prop_nt_noOvlp':maxPropNTLst,
+                'mean_prop_nt_noOvlp':meanPropNTLst,
+                'median_prop_nt_noOvlp':medPropNTLst
                 })
         
         return outDf
@@ -1194,17 +1194,17 @@ def main():
                 print("2 GTF")
                 
                 for column in inputDf.columns:
-                        if column.startswith("num_transcript_in_gene_"):
+                        if column.startswith("num_transcript_inGene_"):
                                 gtfOne = column
                                 break
                 
                 for column in inputDf.columns:
-                        if column.startswith("num_transcript_in_gene_") and column != gtfOne:
+                        if column.startswith("num_transcript_inGene_") and column != gtfOne:
                                 gtfTwo = column
                                 break 
                 
-                gtfOne = gtfOne[len(("num_transcript_in_gene_")):]
-                gtfTwo = gtfTwo[len(("num_transcript_in_gene_")):]
+                gtfOne = gtfOne[len(("num_transcript_inGene_")):]
+                gtfTwo = gtfTwo[len(("num_transcript_inGene_")):]
                 
                 print ("GTF1: " + gtfOne)
                 print ("GTF2: " + gtfTwo)

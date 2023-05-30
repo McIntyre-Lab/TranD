@@ -12,9 +12,9 @@ import math
 
 def calculate_donor_ratio_newINF(unit, feature, count_col, data):
     df = data.groupby([unit, feature])[count_col].count().reset_index().rename(columns = {count_col : "num_col_id"})
-    df["flag_donor_acceptor"] = np.where(df["num_col_id"] > 1, 1, 0)
-    df2 = df.groupby(unit).agg({feature : "count", "flag_donor_acceptor" : 'sum'})
-    res = df2["flag_donor_acceptor"]/df2[feature]
+    df["flag_DA"] = np.where(df["num_col_id"] > 1, 1, 0)
+    df2 = df.groupby(unit).agg({feature : "count", "flag_DA" : 'sum'})
+    res = df2["flag_DA"]/df2[feature]
     return res
 
 def uniqueList(test_list):

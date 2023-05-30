@@ -113,7 +113,7 @@ def split_column_by_sep(df,col_name=None,sep=None,sort_list=None):
     del(tempDF, splitList)
     return splitDF
 
-def get_internal_nt_diff(td_df):
+def get_internal_nt_noOvlp(td_df):
     # Count number of internal (altnerative donor/acceptor or IR) nt differences in ERS
     #   Get the number of nt unique to T1/T2 in shared exon regions
     #   Subtract from this number the number of nt difference from a 5'/3' end length difference
@@ -126,31 +126,31 @@ def get_internal_nt_diff(td_df):
     #       3. ERS, negative strand, 5' end difference, T1 has the longer 5' end
     #       4. ERS, negative strand, 5' end difference, T2 has the longer 5' end
     tssConditions = [
-        (td_df["prop_ER_diff"] == 0)
-            & (td_df["flag_5_variation"]==1)
-            & (td_df["fragment_shared"].str.split("|").str[0].str.split(":").str[3]=="+")
-            & (td_df["fragment_shared"].str.split("|").str[0].str.split(":").str[1] == td_df["fragment_T1_only"].str.split("|").str[0].str.split(":").str[2]),
-        (td_df["prop_ER_diff"] == 0)
-            & (td_df["flag_5_variation"]==1)
-            & (td_df["fragment_shared"].str.split("|").str[0].str.split(":").str[3]=="+")
-            & (td_df["fragment_shared"].str.split("|").str[0].str.split(":").str[1] == td_df["fragment_T2_only"].str.split("|").str[0].str.split(":").str[2]),
-        (td_df["prop_ER_diff"] == 0)
-            & (td_df["flag_5_variation"]==1)
-            & (td_df["fragment_shared"].str.split("|").str[0].str.split(":").str[3]=="-")
-           & (td_df["fragment_shared"].str.split("|").str[-1].str.split(":").str[2] == td_df["fragment_T1_only"].str.split("|").str[-1].str.split(":").str[1]),
-        (td_df["prop_ER_diff"] == 0)
-            & (td_df["flag_5_variation"]==1)
-            & (td_df["fragment_shared"].str.split("|").str[0].str.split(":").str[3]=="-")
-            & (td_df["fragment_shared"].str.split("|").str[-1].str.split(":").str[2] == td_df["fragment_T2_only"].str.split("|").str[-1].str.split(":").str[1]),
+        (td_df["prop_ER_noOvlp"] == 0)
+            & (td_df["flag_5_var"]==1)
+            & (td_df["EF_ovlp"].str.split("|").str[0].str.split(":").str[3]=="+")
+            & (td_df["EF_ovlp"].str.split("|").str[0].str.split(":").str[1] == td_df["EF_only_T1"].str.split("|").str[0].str.split(":").str[2]),
+        (td_df["prop_ER_noOvlp"] == 0)
+            & (td_df["flag_5_var"]==1)
+            & (td_df["EF_ovlp"].str.split("|").str[0].str.split(":").str[3]=="+")
+            & (td_df["EF_ovlp"].str.split("|").str[0].str.split(":").str[1] == td_df["EF_only_T2"].str.split("|").str[0].str.split(":").str[2]),
+        (td_df["prop_ER_noOvlp"] == 0)
+            & (td_df["flag_5_var"]==1)
+            & (td_df["EF_ovlp"].str.split("|").str[0].str.split(":").str[3]=="-")
+           & (td_df["EF_ovlp"].str.split("|").str[-1].str.split(":").str[2] == td_df["EF_only_T1"].str.split("|").str[-1].str.split(":").str[1]),
+        (td_df["prop_ER_noOvlp"] == 0)
+            & (td_df["flag_5_var"]==1)
+            & (td_df["EF_ovlp"].str.split("|").str[0].str.split(":").str[3]=="-")
+            & (td_df["EF_ovlp"].str.split("|").str[-1].str.split(":").str[2] == td_df["EF_only_T2"].str.split("|").str[-1].str.split(":").str[1]),
 
     ]
     tssChoices = [
-        td_df["fragment_T1_only"].str.split("|").str[0].str.split(":").str[2].astype(float) - td_df["fragment_T1_only"].str.split("|").str[0].str.split(":").str[1].astype(float),
-        td_df["fragment_T2_only"].str.split("|").str[0].str.split(":").str[2].astype(float) - td_df["fragment_T2_only"].str.split("|").str[0].str.split(":").str[1].astype(float),
-        td_df["fragment_T1_only"].str.split("|").str[-1].str.split(":").str[2].astype(float) - td_df["fragment_T1_only"].str.split("|").str[-1].str.split(":").str[1].astype(float),
-        td_df["fragment_T2_only"].str.split("|").str[-1].str.split(":").str[2].astype(float) - td_df["fragment_T2_only"].str.split("|").str[-1].str.split(":").str[1].astype(float),
+        td_df["EF_only_T1"].str.split("|").str[0].str.split(":").str[2].astype(float) - td_df["EF_only_T1"].str.split("|").str[0].str.split(":").str[1].astype(float),
+        td_df["EF_only_T2"].str.split("|").str[0].str.split(":").str[2].astype(float) - td_df["EF_only_T2"].str.split("|").str[0].str.split(":").str[1].astype(float),
+        td_df["EF_only_T1"].str.split("|").str[-1].str.split(":").str[2].astype(float) - td_df["EF_only_T1"].str.split("|").str[-1].str.split(":").str[1].astype(float),
+        td_df["EF_only_T2"].str.split("|").str[-1].str.split(":").str[2].astype(float) - td_df["EF_only_T2"].str.split("|").str[-1].str.split(":").str[1].astype(float),
     ]
-    td_df["num_ERS_nt_diff_TSS"] = np.select(tssConditions, tssChoices, np.nan)
+    td_df["num_ERS_nt_noOvlp_TSS"] = np.select(tssConditions, tssChoices, np.nan)
 
     # Get difference of TTS
     #   Conditions:
@@ -159,36 +159,36 @@ def get_internal_nt_diff(td_df):
     #       3. ERS, negative strand, 3' end difference, T1 has the longer 3' end
     #       4. ERS, negative strand, 3' end difference, T2 has the longer 3' end
     ttsConditions = [
-        (td_df["prop_ER_diff"] == 0)
-            & (td_df["flag_3_variation"]==1)
-            & (td_df["fragment_shared"].str.split("|").str[0].str.split(":").str[3]=="+")
-            & (td_df["fragment_shared"].str.split("|").str[-1].str.split(":").str[2] == td_df["fragment_T1_only"].str.split("|").str[-1].str.split(":").str[1]),
-        (td_df["prop_ER_diff"] == 0)
-            & (td_df["flag_3_variation"]==1)
-            & (td_df["fragment_shared"].str.split("|").str[0].str.split(":").str[3]=="+")
-            & (td_df["fragment_shared"].str.split("|").str[-1].str.split(":").str[2] == td_df["fragment_T2_only"].str.split("|").str[-1].str.split(":").str[1]),
-        (td_df["prop_ER_diff"] == 0)
-            & (td_df["flag_3_variation"]==1)
-            & (td_df["fragment_shared"].str.split("|").str[0].str.split(":").str[3]=="-")
-           & (td_df["fragment_shared"].str.split("|").str[0].str.split(":").str[1] == td_df["fragment_T1_only"].str.split("|").str[0].str.split(":").str[2]),
-        (td_df["prop_ER_diff"] == 0)
-            & (td_df["flag_3_variation"]==1)
-            & (td_df["fragment_shared"].str.split("|").str[0].str.split(":").str[3]=="-")
-            & (td_df["fragment_shared"].str.split("|").str[0].str.split(":").str[1] == td_df["fragment_T2_only"].str.split("|").str[0].str.split(":").str[2]),
+        (td_df["prop_ER_noOvlp"] == 0)
+            & (td_df["flag_3_var"]==1)
+            & (td_df["EF_ovlp"].str.split("|").str[0].str.split(":").str[3]=="+")
+            & (td_df["EF_ovlp"].str.split("|").str[-1].str.split(":").str[2] == td_df["EF_only_T1"].str.split("|").str[-1].str.split(":").str[1]),
+        (td_df["prop_ER_noOvlp"] == 0)
+            & (td_df["flag_3_var"]==1)
+            & (td_df["EF_ovlp"].str.split("|").str[0].str.split(":").str[3]=="+")
+            & (td_df["EF_ovlp"].str.split("|").str[-1].str.split(":").str[2] == td_df["EF_only_T2"].str.split("|").str[-1].str.split(":").str[1]),
+        (td_df["prop_ER_noOvlp"] == 0)
+            & (td_df["flag_3_var"]==1)
+            & (td_df["EF_ovlp"].str.split("|").str[0].str.split(":").str[3]=="-")
+           & (td_df["EF_ovlp"].str.split("|").str[0].str.split(":").str[1] == td_df["EF_only_T1"].str.split("|").str[0].str.split(":").str[2]),
+        (td_df["prop_ER_noOvlp"] == 0)
+            & (td_df["flag_3_var"]==1)
+            & (td_df["EF_ovlp"].str.split("|").str[0].str.split(":").str[3]=="-")
+            & (td_df["EF_ovlp"].str.split("|").str[0].str.split(":").str[1] == td_df["EF_only_T2"].str.split("|").str[0].str.split(":").str[2]),
 
     ]
     ttsChoices = [
-        td_df["fragment_T1_only"].str.split("|").str[-1].str.split(":").str[2].astype(float) - td_df["fragment_T1_only"].str.split("|").str[-1].str.split(":").str[1].astype(float),
-        td_df["fragment_T2_only"].str.split("|").str[-1].str.split(":").str[2].astype(float) - td_df["fragment_T2_only"].str.split("|").str[-1].str.split(":").str[1].astype(float),
-        td_df["fragment_T1_only"].str.split("|").str[0].str.split(":").str[2].astype(float) - td_df["fragment_T1_only"].str.split("|").str[0].str.split(":").str[1].astype(float),
-        td_df["fragment_T2_only"].str.split("|").str[0].str.split(":").str[2].astype(float) - td_df["fragment_T2_only"].str.split("|").str[0].str.split(":").str[1].astype(float),
+        td_df["EF_only_T1"].str.split("|").str[-1].str.split(":").str[2].astype(float) - td_df["EF_only_T1"].str.split("|").str[-1].str.split(":").str[1].astype(float),
+        td_df["EF_only_T2"].str.split("|").str[-1].str.split(":").str[2].astype(float) - td_df["EF_only_T2"].str.split("|").str[-1].str.split(":").str[1].astype(float),
+        td_df["EF_only_T1"].str.split("|").str[0].str.split(":").str[2].astype(float) - td_df["EF_only_T1"].str.split("|").str[0].str.split(":").str[1].astype(float),
+        td_df["EF_only_T2"].str.split("|").str[0].str.split(":").str[2].astype(float) - td_df["EF_only_T2"].str.split("|").str[0].str.split(":").str[1].astype(float),
     ]
-    td_df["num_ERS_nt_diff_TTS"] = np.select(ttsConditions, ttsChoices, np.nan)
+    td_df["num_ERS_nt_noOvlp_TTS"] = np.select(ttsConditions, ttsChoices, np.nan)
 
     # Get donor/acceptor/IR length difference
-    td_df["num_ERS_nt_diff_internal"] = np.where(
-        td_df["prop_ER_diff"] == 0,
-        td_df["num_nt_diff"].astype(int) - td_df["num_ERS_nt_diff_TSS"].fillna(0) - td_df["num_ERS_nt_diff_TTS"].fillna(0),
+    td_df["num_ERS_nt_noOvlp_internal"] = np.where(
+        td_df["prop_ER_noOvlp"] == 0,
+        td_df["num_nt_noOvlp"].astype(int) - td_df["num_ERS_nt_noOvlp_TSS"].fillna(0) - td_df["num_ERS_nt_noOvlp_TTS"].fillna(0),
         np.nan
     )
     return td_df
@@ -252,7 +252,7 @@ def main():
 #    distDf = pd.read_csv("/Volumes/blue/mcintyre/share/transcript_distance/human_analysis/TranD_consol_refseq_vs_ensembl/all_chrom_pairwise_transcript_distance.csv", low_memory=False)
 
     # Get internal nt difference
-    distDf2 = get_internal_nt_diff(distDf)
+    distDf2 = get_internal_nt_noOvlp(distDf)
     del(distDf)
 
     # Drop all distance rows that are not minimum pairs and remove suffix from TranD 2 GTF pairwise
@@ -262,21 +262,21 @@ def main():
     distDf3[name2+"_uniq_jxn_id"] = distDf3["transcript_2"].str[:-len(prefix2)-1]        
 
     # Get all pairs that are reciprocal minimum and extras
-    rmpDf = distDf3[distDf3["flag_recip_min_match"]==1].copy()
+    rmpDf = distDf3[distDf3["flag_RMP"]==1].copy()
     rmpDf["flag_ERS_noIR"] = np.where(
-        (rmpDf["prop_ER_diff"]==0) & (rmpDf["flag_IR"]==0),
+        (rmpDf["prop_ER_noOvlp"]==0) & (rmpDf["flag_IR"]==0),
         1,
         0
     )
-    rmpDf["flag_ERS_withIR"] = np.where(
-        (rmpDf["prop_ER_diff"]==0) & (rmpDf["flag_IR"]==1),
+    rmpDf["flag_ERS_wIR"] = np.where(
+        (rmpDf["prop_ER_noOvlp"]==0) & (rmpDf["flag_IR"]==1),
         1,
         0
     )
     rmpDf["flag_RMP"] = 1
 
     # !!! TODO: merge in minimum distance of "extras" that do not have RMP
-#    extraDf = distDf3[distDf3["flag_recip_min_match"]!=1].copy()
+#    extraDf = distDf3[distDf3["flag_RMP"]!=1].copy()
     
     # Merge minimum distance pairs with union UJC in both annotations
     unionRMP = pd.merge(
@@ -339,9 +339,9 @@ def main():
         # Add variable that is FSM, ERS_noIR_small (ERS_noIR with < N nt internal difference), ERS_noIR_large (ERS_noIR with >= N nt internal difference), ERS_wIR, ERN (recip min that is not FSM/ERS), NRM (no reciprocal minimum match)
         compConditions = [
             unionRMP["flag_FSM"] == 1,
-            (unionRMP["flag_ERS_noIR"] == 1) & (unionRMP["num_ERS_nt_diff_internal"] < args.smallDiff),
-            (unionRMP["flag_ERS_noIR"] == 1) & (unionRMP["num_ERS_nt_diff_internal"] >= args.smallDiff),
-            unionRMP["flag_ERS_withIR"]==1,
+            (unionRMP["flag_ERS_noIR"] == 1) & (unionRMP["num_ERS_nt_noOvlp_internal"] < args.smallDiff),
+            (unionRMP["flag_ERS_noIR"] == 1) & (unionRMP["num_ERS_nt_noOvlp_internal"] >= args.smallDiff),
+            unionRMP["flag_ERS_wIR"]==1,
             unionRMP["flag_RMP"] == 1,
             (unionRMP["flag_RMP"] == 0) & (unionRMP[name1+"_transcript_id"].isna()),
             (unionRMP["flag_RMP"] == 0) & (unionRMP[name2+"_transcript_id"].isna()),    
@@ -360,7 +360,7 @@ def main():
         compConditions = [
             unionRMP["flag_FSM"] == 1,
             unionRMP["flag_ERS_noIR"] == 1,
-            unionRMP["flag_ERS_withIR"]==1,
+            unionRMP["flag_ERS_wIR"]==1,
             unionRMP["flag_RMP"] == 1,
             (unionRMP["flag_RMP"] == 0) & (unionRMP[name1+"_transcript_id"].isna()),
             (unionRMP["flag_RMP"] == 0) & (unionRMP[name2+"_transcript_id"].isna()),    
