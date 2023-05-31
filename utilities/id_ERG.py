@@ -994,8 +994,6 @@ def createGeneOutDf(xscriptDct, ergLst):
                         numERLst.append(int(grp.num_er))
                         numSizeLst.append(int(grp.size))
                 
-                if geneStr == "FBgn0039883":
-                        print (numERLst)
                 
                 # and do stats on them.
                 minERLst.append(min(numERLst))
@@ -1136,23 +1134,23 @@ def createGTFDf(ergLst,xscriptDct):
         return exonDf       
 
 # Only used for dev testing
-def split_column_by_sep(df,col_name=None,sep=None,sort_list=None):
-        # Split variable by some character like '|' or ',' and keep all other values the same
-        if col_name == None:
-                col_name = 'transcript_id'
+# def split_column_by_sep(df,col_name=None,sep=None,sort_list=None):
+#         # Split variable by some character like '|' or ',' and keep all other values the same
+#         if col_name == None:
+#                 col_name = 'transcript_id'
                 
-        if sep == None:
-                sep = "|"
+#         if sep == None:
+#                 sep = "|"
                 
-        splitList = df[col_name].str.split(sep).apply(pd.Series, 1).stack()
-        splitList.index = splitList.index.droplevel(-1)
-        tempDF = df.copy()
-        del(tempDF[col_name])
-        splitDF = tempDF.join(splitList.rename(col_name))
-        if sort_list != None:
-                splitDF = splitDF.sort_values(by=sort_list)
-        del(tempDF, splitList)
-        return splitDF
+#         splitList = df[col_name].str.split(sep).apply(pd.Series, 1).stack()
+#         splitList.index = splitList.index.droplevel(-1)
+#         tempDF = df.copy()
+#         del(tempDF[col_name])
+#         splitDF = tempDF.join(splitList.rename(col_name))
+#         if sort_list != None:
+#                 splitDF = splitDF.sort_values(by=sort_list)
+#         del(tempDF, splitList)
+#         return splitDF
 
 
 def main():
@@ -1301,18 +1299,18 @@ def main():
 
         # End timer to track how long the process takes
         toc = time.perf_counter()       
-        print(f"complete, operation took {toc-omegatic:0.4f} seconds")
+        print(f"Complete! Operation took {toc-omegatic:0.4f} seconds")
         
         # Used to assure each transcript is put into a group only once.
-        print("Generating split dataframe...")
-        # Used in testing to see that each transcript is only assigned to one group.
-        splitDf = split_column_by_sep(ergDf, col_name="xscripts", sep="|")
-        dup = splitDf.duplicated("xscripts", keep=False)
-        dupes = splitDf[dup]
+        # print("Generating split dataframe...")
+        # # Used in testing to see that each transcript is only assigned to one group.
+        # splitDf = split_column_by_sep(ergDf, col_name="xscripts", sep="|")
+        # dup = splitDf.duplicated("xscripts", keep=False)
+        # dupes = splitDf[dup]
 
-        #splitDf.to_csv('test.csv')
+        # #splitDf.to_csv('test.csv')
         
-        print ("Actually complete!")
+        # print ("Actually complete!")
         
         # Only returns these things for quick checking during development
         return mstrXscriptDct, mstrERGLst, xscriptDf, ergDf, geneDf, erInfoDf, splitDf, dupes
