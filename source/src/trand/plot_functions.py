@@ -16,7 +16,7 @@ from upsetplot import UpSet
 #  Plot Functions
 
 
-def plot_transcript_in_gene_split_pie(
+def plot_transcript_inGene_split_pie(
     md_data, f1_odds, f2_odds, name1, name2, legendOut
 ):
     """
@@ -27,7 +27,7 @@ def plot_transcript_in_gene_split_pie(
             multi-transcript in both datasets
     """
     # Get counts
-    cols = {"transcript_id": "num_transcript_in_gene_" + name1}
+    cols = {"transcript_id": "num_transcript_inGene_" + name1}
     geneF1only = (
         f1_odds.groupby("gene_id")["transcript_id"]
         .nunique()
@@ -35,17 +35,17 @@ def plot_transcript_in_gene_split_pie(
         .rename(columns=cols)
     )
 
-    geneF1only["num_transcript_in_gene_" + name2] = 0
-    geneF1only["transcript_in_gene"] = name1 + "_only"
-    cols = {"transcript_id": "num_transcript_in_gene_" + name2}
+    geneF1only["num_transcript_inGene_" + name2] = 0
+    geneF1only["transcript_inGene"] = name1 + "_only"
+    cols = {"transcript_id": "num_transcript_inGene_" + name2}
     geneF2only = (
         f2_odds.groupby("gene_id")["transcript_id"]
         .nunique()
         .reset_index()
         .rename(columns=cols)
     )
-    geneF2only["num_transcript_in_gene_" + name1] = 0
-    geneF2only["transcript_in_gene"] = name2 + "_only"
+    geneF2only["num_transcript_inGene_" + name1] = 0
+    geneF2only["transcript_inGene"] = name2 + "_only"
 
     # Make dictionary of names for plot and order
     geneCountNameDict = {
@@ -75,13 +75,13 @@ def plot_transcript_in_gene_split_pie(
         if num == 1:
             geneCount = pd.concat(
                 [
-                    md_data[["gene_id", "transcript_in_gene"]].drop_duplicates(),
+                    md_data[["gene_id", "transcript_inGene"]].drop_duplicates(),
                     geneF1only,
                     geneF2only,
                 ],
                 ignore_index=True,
                 sort=False,
-            )["transcript_in_gene"].value_counts(sort=False)
+            )["transcript_inGene"].value_counts(sort=False)
             title = "All Genes (n = {})".format(geneCount.sum())
             totalGenes = geneCount.sum()
             legendLabels = geneCount.reindex(list(geneCountOrderDict)).index.map(
@@ -91,37 +91,37 @@ def plot_transcript_in_gene_split_pie(
             geneCount = pd.concat(
                 [
                     md_data[
-                        (md_data["num_transcript_in_gene_" + name1] == 1)
-                        | (md_data["num_transcript_in_gene_" + name2] == 1)
-                    ][["gene_id", "transcript_in_gene"]].drop_duplicates(),
-                    geneF1only[geneF1only["num_transcript_in_gene_" + name1] == 1],
-                    geneF2only[geneF2only["num_transcript_in_gene_" + name2] == 1],
+                        (md_data["num_transcript_inGene_" + name1] == 1)
+                        | (md_data["num_transcript_inGene_" + name2] == 1)
+                    ][["gene_id", "transcript_inGene"]].drop_duplicates(),
+                    geneF1only[geneF1only["num_transcript_inGene_" + name1] == 1],
+                    geneF2only[geneF2only["num_transcript_inGene_" + name2] == 1],
                 ],
                 ignore_index=True,
                 sort=False,
-            )["transcript_in_gene"].value_counts(sort=False)
+            )["transcript_inGene"].value_counts(sort=False)
             title = "Genes with 1 Transcript\n(in at least one dataset, n = {})".format(
                 geneCount.sum()
             )
         elif num == 3:
             geneCount = pd.concat(
                 [
-                    geneF1only[geneF1only["num_transcript_in_gene_" + name1] > 1],
-                    geneF2only[geneF2only["num_transcript_in_gene_" + name2] > 1],
+                    geneF1only[geneF1only["num_transcript_inGene_" + name1] > 1],
+                    geneF2only[geneF2only["num_transcript_inGene_" + name2] > 1],
                 ],
                 ignore_index=True,
                 sort=False,
-            )["transcript_in_gene"].value_counts(sort=False)
+            )["transcript_inGene"].value_counts(sort=False)
             title = "Genes with >1 Transcript\n(exclusive to one dataset, n = {})".format(
                 geneCount.sum()
             )
         else:
             geneCount = (
                 md_data[
-                    (md_data["num_transcript_in_gene_" + name1] > 1)
-                    & (md_data["num_transcript_in_gene_" + name2] > 1)
-                ][["gene_id", "transcript_in_gene"]]
-                .drop_duplicates()["transcript_in_gene"]
+                    (md_data["num_transcript_inGene_" + name1] > 1)
+                    & (md_data["num_transcript_inGene_" + name2] > 1)
+                ][["gene_id", "transcript_inGene"]]
+                .drop_duplicates()["transcript_inGene"]
                 .value_counts(sort=False)
             )
             title = "Genes with >1 Transcript\n(in both datasets, n = {})".format(
@@ -130,7 +130,7 @@ def plot_transcript_in_gene_split_pie(
         if len(geneCount) > 0:
             geneCount.reindex(list(geneCountOrderDict)).plot(
                 kind="pie",
-                y="transcript_in_gene",
+                y="transcript_inGene",
                 labels=None,
                 figsize=(12, 6),
                 autopct=(lambda pct: get_pie_label(pct, geneCount)),
@@ -192,12 +192,12 @@ def plot_gene_stack(md_data, name1, name2, legendOut, useProp=False):
     or proportions of Match or Greater genes
     """
     genePairDF = (
-        md_data.groupby(["transcript_in_gene", "recip_min_pair_in_gene"])["gene_id"]
+        md_data.groupby(["transcript_inGene", "recip_min_pair_inGene"])["gene_id"]
         .nunique()
         .reset_index()
         .pivot_table(
-            index=["transcript_in_gene"],
-            columns="recip_min_pair_in_gene",
+            index=["transcript_inGene"],
+            columns="recip_min_pair_inGene",
             values="gene_id",
         )
     )
@@ -296,7 +296,7 @@ def plot_gene_stack(md_data, name1, name2, legendOut, useProp=False):
         end_rtf(outFile)
 
 
-def plot_transcript_in_gene_upset(md_data, f1_odds, f2_odds, name1, name2, legendOut):
+def plot_transcript_inGene_upset(md_data, f1_odds, f2_odds, name1, name2, legendOut):
     """
     UpSet plot for number of transcripts in genes
     """
@@ -304,26 +304,26 @@ def plot_transcript_in_gene_upset(md_data, f1_odds, f2_odds, name1, name2, legen
         f1_odds.groupby("gene_id")["transcript_id"]
         .nunique()
         .reset_index()
-        .rename(columns={"transcript_id": "num_transcript_in_gene_" + name1})
+        .rename(columns={"transcript_id": "num_transcript_inGene_" + name1})
     )
-    geneF1only["num_transcript_in_gene_" + name2] = 0
-    geneF1only["transcript_in_gene"] = name1 + "_only"
+    geneF1only["num_transcript_inGene_" + name2] = 0
+    geneF1only["transcript_inGene"] = name1 + "_only"
     geneF2only = (
         f2_odds.groupby("gene_id")["transcript_id"]
         .nunique()
         .reset_index()
-        .rename(columns={"transcript_id": "num_transcript_in_gene_" + name2})
+        .rename(columns={"transcript_id": "num_transcript_inGene_" + name2})
     )
-    geneF2only["num_transcript_in_gene_" + name1] = 0
-    geneF2only["transcript_in_gene"] = name2 + "_only"
+    geneF2only["num_transcript_inGene_" + name1] = 0
+    geneF2only["transcript_inGene"] = name2 + "_only"
     geneAll = pd.concat(
         [
             md_data[
                 [
                     "gene_id",
-                    "num_transcript_in_gene_" + name1,
-                    "num_transcript_in_gene_" + name2,
-                    "transcript_in_gene",
+                    "num_transcript_inGene_" + name1,
+                    "num_transcript_inGene_" + name2,
+                    "transcript_inGene",
                 ]
             ].drop_duplicates(),
             geneF1only,
@@ -336,20 +336,20 @@ def plot_transcript_in_gene_upset(md_data, f1_odds, f2_odds, name1, name2, legen
     # Flag when genes have 1-4 transcripts
     for num in range(1, 5):
         geneAll[str(num) + " Transcript(s) " + name1] = np.where(
-            geneAll["num_transcript_in_gene_" + name1] == num, True, False
+            geneAll["num_transcript_inGene_" + name1] == num, True, False
         )
         colList.append(str(num) + " Transcript(s) " + name1)
         geneAll[str(num) + " Transcript(s) " + name2] = np.where(
-            geneAll["num_transcript_in_gene_" + name2] == num, True, False
+            geneAll["num_transcript_inGene_" + name2] == num, True, False
         )
         colList.append(str(num) + " Transcript(s) " + name2)
     # Flag when genes have 5+ transcripts
     geneAll["5+ Transcript(s) " + name1] = np.where(
-        geneAll["num_transcript_in_gene_" + name1] >= 5, True, False
+        geneAll["num_transcript_inGene_" + name1] >= 5, True, False
     )
     colList.append("5+ Transcript(s) " + name1)
     geneAll["5+ Transcript(s) " + name2] = np.where(
-        geneAll["num_transcript_in_gene_" + name2] >= 5, True, False
+        geneAll["num_transcript_inGene_" + name2] >= 5, True, False
     )
     colList.append("5+ Transcript(s) " + name2)
     legendText = (
@@ -364,11 +364,11 @@ def plot_transcript_in_gene_upset(md_data, f1_odds, f2_odds, name1, name2, legen
             name2,
             sum(
                 [
-                    get_value_count(geneAll, "transcript_in_gene", name1 + "_only"),
-                    get_value_count(geneAll, "transcript_in_gene", name2 + "_only"),
-                    get_value_count(geneAll, "transcript_in_gene", "match"),
-                    get_value_count(geneAll, "transcript_in_gene", name1 + "_greater"),
-                    get_value_count(geneAll, "transcript_in_gene", name2 + "_greater"),                    
+                    get_value_count(geneAll, "transcript_inGene", name1 + "_only"),
+                    get_value_count(geneAll, "transcript_inGene", name2 + "_only"),
+                    get_value_count(geneAll, "transcript_inGene", "match"),
+                    get_value_count(geneAll, "transcript_inGene", name1 + "_greater"),
+                    get_value_count(geneAll, "transcript_inGene", name2 + "_greater"),                    
                 ]
             ),
         )
@@ -396,12 +396,12 @@ def plot_min_pair_AS_upset_nt_box(md_data, name1, name2, legendOut, reciprocal=T
     """
     if reciprocal:
         # Plot only reciprocal minimum pairs
-        minPairAS = md_data[md_data["flag_recip_min_match"] == 1].copy()
+        minPairAS = md_data[md_data["flag_RMP"] == 1].copy()
     else:
         if pairs == None:
             # Plot only minimum pairs of extras, or those without a recip min pair
             minPairAS = md_data[
-                (md_data["flag_recip_min_match"] != 1)
+                (md_data["flag_RMP"] != 1)
                 & (
                     (md_data["flag_min_match_" + name1] == 1)
                     | (md_data["flag_min_match_" + name2] == 1)
@@ -428,31 +428,31 @@ def plot_min_pair_AS_upset_nt_box(md_data, name1, name2, legendOut, reciprocal=T
             "transcript_1",
             "transcript_2",
             "flag_alt_exon",
-            "flag_alt_donor_acceptor",
+            "flag_alt_DA",
             "flag_IR",
-            "flag_5_variation",
-            "flag_3_variation",
-            "flag_no_shared_nt",
-            "num_nt_diff",
-            "prop_nt_diff",
+            "flag_5_var",
+            "flag_3_var",
+            "flag_no_ovlp_nt",
+            "num_nt_noOvlp",
+            "prop_nt_noOvlp",
         ]
     ]
     # Set No Shared NT genes to have np.nan nucleotide difference
-    minPairAS["num_nt_diff"] = np.where(
-        minPairAS["flag_no_shared_nt"] == 1,
+    minPairAS["num_nt_noOvlp"] = np.where(
+        minPairAS["flag_no_ovlp_nt"] == 1,
         np.nan,
-        minPairAS["num_nt_diff"]
+        minPairAS["num_nt_noOvlp"]
     )
     minPairAS = minPairAS.rename(
         columns={
             "flag_alt_exon": "Alt. Exon",
-            "flag_alt_donor_acceptor": "Alt. Donor/Acceptor",
+            "flag_alt_DA": "Alt. Donor/Acceptor",
             "flag_IR": "Intron Retention",
-            "flag_5_variation": "5' Variation",
-            "flag_3_variation": "3' Variation",
-            "flag_no_shared_nt": "No Shared NT",
-            "num_nt_diff": "# NT Different",
-            "prop_nt_diff": "Proportion\nNT Different",
+            "flag_5_var": "5' Variation",
+            "flag_3_var": "3' Variation",
+            "flag_no_ovlp_nt": "No Shared NT",
+            "num_nt_noOvlp": "# NT Different",
+            "prop_nt_noOvlp": "Proportion\nNT Different",
         }
     )
     AScols = [
@@ -589,57 +589,57 @@ def plot_gene_recip_min_AS_upset(md_data, name1, name2, legendOut):
             of the number of min match pairs present in the gene and the number
             of transcripts in each dataset
     """
-    recipMinPairAS = md_data[md_data["flag_recip_min_match"] == 1][
+    recipMinPairAS = md_data[md_data["flag_RMP"] == 1][
         [
             "gene_id",
-            "flag_alt_exon_recip_min_match",
-            "flag_alt_donor_acceptor_recip_min_match",
-            "flag_IR_recip_min_match",
-            "flag_5_variation_recip_min_match",
-            "flag_3_variation_recip_min_match",
-            "flag_no_shared_nt_recip_min_match",
-            "num_recip_min_match_in_gene",
-            "num_transcript_in_gene_" + name1,
-            "num_transcript_in_gene_" + name2,
+            "flag_alt_exon_RMP",
+            "flag_alt_DA_RMP",
+            "flag_IR_RMP",
+            "flag_5_var_RMP",
+            "flag_3_var_RMP",
+            "flag_no_ovlp_nt_RMP",
+            "num_RMP_inGene",
+            "num_transcript_inGene_" + name1,
+            "num_transcript_inGene_" + name2,
         ]
     ].copy()
     geneRecipMatchAS = (
         recipMinPairAS.groupby("gene_id")
         .agg(
             {
-                "flag_alt_exon_recip_min_match": "max",
-                "flag_alt_donor_acceptor_recip_min_match": "max",
-                "flag_IR_recip_min_match": "max",
-                "flag_5_variation_recip_min_match": "max",
-                "flag_3_variation_recip_min_match": "max",
-                "flag_no_shared_nt_recip_min_match": "max",
-                "num_recip_min_match_in_gene": "max",
-                "num_transcript_in_gene_" + name1: "max",
-                "num_transcript_in_gene_" + name2: "max",
+                "flag_alt_exon_RMP": "max",
+                "flag_alt_DA_RMP": "max",
+                "flag_IR_RMP": "max",
+                "flag_5_var_RMP": "max",
+                "flag_3_var_RMP": "max",
+                "flag_no_ovlp_nt_RMP": "max",
+                "num_RMP_inGene": "max",
+                "num_transcript_inGene_" + name1: "max",
+                "num_transcript_inGene_" + name2: "max",
             }
         )
         .reset_index()
     )
     geneFlagCols = [
-        "flag_alt_exon_recip_min_match",
-        "flag_alt_donor_acceptor_recip_min_match",
-        "flag_IR_recip_min_match",
-        "flag_5_variation_recip_min_match",
-        "flag_3_variation_recip_min_match",
-        "flag_no_shared_nt_recip_min_match",
+        "flag_alt_exon_RMP",
+        "flag_alt_DA_RMP",
+        "flag_IR_RMP",
+        "flag_5_var_RMP",
+        "flag_3_var_RMP",
+        "flag_no_ovlp_nt_RMP",
     ]
     geneRecipMatchAS[geneFlagCols] = geneRecipMatchAS[geneFlagCols].astype(bool)
     geneRecipMatchAS = geneRecipMatchAS.rename(
         columns={
-            "flag_alt_exon_recip_min_match": "Alt. Exon",
-            "flag_alt_donor_acceptor_recip_min_match": "Alt. Donor/Acceptor",
-            "flag_IR_recip_min_match": "Intron Retention",
-            "flag_5_variation_recip_min_match": "5' Variation",
-            "flag_3_variation_recip_min_match": "3' Variation",
-            "flag_no_shared_nt_recip_min_match": "No Shared NT",
-            "num_recip_min_match_in_gene": "# Recip. Min.\nTranscript Pairs",
-            "num_transcript_in_gene_" + name1: "# Transcripts\nin " + name1,
-            "num_transcript_in_gene_" + name2: "# Transcripts\nin " + name2,
+            "flag_alt_exon_RMP": "Alt. Exon",
+            "flag_alt_DA_RMP": "Alt. Donor/Acceptor",
+            "flag_IR_RMP": "Intron Retention",
+            "flag_5_var_RMP": "5' Variation",
+            "flag_3_var_RMP": "3' Variation",
+            "flag_no_ovlp_nt_RMP": "No Shared NT",
+            "num_RMP_inGene": "# Recip. Min.\nTranscript Pairs",
+            "num_transcript_inGene_" + name1: "# Transcripts\nin " + name1,
+            "num_transcript_inGene_" + name2: "# Transcripts\nin " + name2,
         }
     )
     AScols = [
@@ -670,7 +670,7 @@ def plot_gene_recip_min_AS_upset(md_data, name1, name2, legendOut):
             name1,
             name2,
             len(geneRecipMatchAS),
-            len(md_data[md_data["flag_recip_min_match"] == 1]),
+            len(md_data[md_data["flag_RMP"] == 1]),
             name1,
             name2,
         )
@@ -698,11 +698,11 @@ def plot_gene_AS_upset(td_data, legendOut):
             "transcript_1",
             "transcript_2",
             "flag_alt_exon",
-            "flag_alt_donor_acceptor",
+            "flag_alt_DA",
             "flag_IR",
-            "flag_5_variation",
-            "flag_3_variation",
-            "flag_no_shared_nt",
+            "flag_5_var",
+            "flag_3_var",
+            "flag_no_ovlp_nt",
         ]
     ].copy()
     # Get AS flags at the gene level
@@ -711,11 +711,11 @@ def plot_gene_AS_upset(td_data, legendOut):
         .agg(
             {
                 "flag_alt_exon": "max",
-                "flag_alt_donor_acceptor": "max",
+                "flag_alt_DA": "max",
                 "flag_IR": "max",
-                "flag_5_variation": "max",
-                "flag_3_variation": "max",
-                "flag_no_shared_nt": "max",
+                "flag_5_var": "max",
+                "flag_3_var": "max",
+                "flag_no_ovlp_nt": "max",
             }
         )
         .reset_index()
@@ -746,24 +746,24 @@ def plot_gene_AS_upset(td_data, legendOut):
     geneFlagCols = [
         "gene_id",
         "flag_alt_exon",
-        "flag_alt_donor_acceptor",
+        "flag_alt_DA",
         "flag_IR",
-        "flag_5_variation",
-        "flag_3_variation",
-        "flag_no_shared_nt",
+        "flag_5_var",
+        "flag_3_var",
+        "flag_no_ovlp_nt",
     ]
     mergeASxcrptPerGene[geneFlagCols] = mergeASxcrptPerGene[geneFlagCols].astype(bool)
     mergeASxcrptPerGene = mergeASxcrptPerGene.rename(
         columns={
             "flag_alt_exon": "Alt. Exon",
-            "flag_alt_donor_acceptor": "Alt. Donor/Acceptor",
+            "flag_alt_DA": "Alt. Donor/Acceptor",
             "flag_IR": "Intron Retention",
-            "flag_5_variation": "5' Variation",
-            "flag_3_variation": "3' Variation",
-            "flag_no_shared_nt": "No Shared NT",
+            "flag_5_var": "5' Variation",
+            "flag_3_var": "3' Variation",
+            "flag_no_ovlp_nt": "No Shared NT",
             "num_transcript_per_gene": "# Transcripts\nPer Gene",
-            "num_nt_diff": "Avg #\nNT Different",
-            "prop_nt_diff": "Avg Proportion\nNT Different",
+            "num_nt_noOvlp": "Avg #\nNT Different",
+            "prop_nt_noOvlp": "Avg Proportion\nNT Different",
         }
     )
     AScols = [
@@ -812,46 +812,46 @@ def plot_pair_AS_upset_nt_box(td_data, legendOut):
             "transcript_1",
             "transcript_2",
             "flag_alt_exon",
-            "flag_alt_donor_acceptor",
+            "flag_alt_DA",
             "flag_IR",
-            "flag_5_variation",
-            "flag_3_variation",
-            "flag_no_shared_nt",
-            "num_nt_diff",
-            "prop_nt_diff",
+            "flag_5_var",
+            "flag_3_var",
+            "flag_no_ovlp_nt",
+            "num_nt_noOvlp",
+            "prop_nt_noOvlp",
         ]
     ].copy()
     # Ensure number of nt different are int and float values
-    pairAS["num_nt_diff"] = pairAS["num_nt_diff"].astype(int)
-    pairAS["prop_nt_diff"] = pairAS["prop_nt_diff"].astype(float)
+    pairAS["num_nt_noOvlp"] = pairAS["num_nt_noOvlp"].astype(int)
+    pairAS["prop_nt_noOvlp"] = pairAS["prop_nt_noOvlp"].astype(float)
     # Set No Shared NT pairs to have np.nan nucleotide difference
-    pairAS["num_nt_diff"] = np.where(
-        pairAS["flag_no_shared_nt"] == 1,
+    pairAS["num_nt_noOvlp"] = np.where(
+        pairAS["flag_no_ovlp_nt"] == 1,
         np.nan,
-        pairAS["num_nt_diff"]
+        pairAS["num_nt_noOvlp"]
     )
     # Make AS flags boolean values and rename
     xcrptFlagCols = [
         "transcript_1",
         "transcript_2",
         "flag_alt_exon",
-        "flag_alt_donor_acceptor",
+        "flag_alt_DA",
         "flag_IR",
-        "flag_5_variation",
-        "flag_3_variation",
-        "flag_no_shared_nt",
+        "flag_5_var",
+        "flag_3_var",
+        "flag_no_ovlp_nt",
     ]
     pairAS[xcrptFlagCols] = pairAS[xcrptFlagCols].astype(bool)
     pairAS = pairAS.rename(
         columns={
             "flag_alt_exon": "Alt. Exon",
-            "flag_alt_donor_acceptor": "Alt. Donor/Acceptor",
+            "flag_alt_DA": "Alt. Donor/Acceptor",
             "flag_IR": "Intron Retention",
-            "flag_5_variation": "5' Variation",
-            "flag_3_variation": "3' Variation",
-            "flag_no_shared_nt": "No Shared NT",
-            "num_nt_diff": "# NT Different",
-            "prop_nt_diff": "Proportion\nNT Different",
+            "flag_5_var": "5' Variation",
+            "flag_3_var": "3' Variation",
+            "flag_no_ovlp_nt": "No Shared NT",
+            "num_nt_noOvlp": "# NT Different",
+            "prop_nt_noOvlp": "Proportion\nNT Different",
         }
     )
     AScols = [
@@ -919,7 +919,7 @@ def plot_upset(df, title, boxCols=None):
     plt.suptitle(title)
 
 
-def plot_gene_avg_nt_diff_pairs(md_data, name1, name2, legendOut, zoomMean=False):
+def plot_gene_avg_nt_noOvlp_pairs(md_data, name1, name2, legendOut, zoomMean=False):
     """
     Plot average number of nt different in recip. min match pairs against
             avg number of nt different in min pairs that are extra
@@ -930,61 +930,61 @@ def plot_gene_avg_nt_diff_pairs(md_data, name1, name2, legendOut, zoomMean=False
     minPairNT = md_data[
         [
             "gene_id",
-            "transcript_in_gene",
-            "recip_min_pair_in_gene",
-            "flag_recip_min_match",
+            "transcript_inGene",
+            "recip_min_pair_inGene",
+            "flag_RMP",
             "flag_min_match_" + name1,
             "flag_min_match_" + name2,
-            "num_nt_diff",
-            "prop_nt_diff",
+            "num_nt_noOvlp",
+            "prop_nt_noOvlp",
         ]
     ].copy()
     # Ensure number of nt different are int and float values
-    minPairNT["num_nt_diff"] = minPairNT["num_nt_diff"].astype(int)
-    minPairNT["prop_nt_diff"] = minPairNT["prop_nt_diff"].astype(float)
-    minPairNT["num_nt_diff_recip_min"] = np.where(
-        minPairNT["flag_recip_min_match"] == 1, minPairNT["num_nt_diff"], 0
+    minPairNT["num_nt_noOvlp"] = minPairNT["num_nt_noOvlp"].astype(int)
+    minPairNT["prop_nt_noOvlp"] = minPairNT["prop_nt_noOvlp"].astype(float)
+    minPairNT["num_nt_noOvlp_recip_min"] = np.where(
+        minPairNT["flag_RMP"] == 1, minPairNT["num_nt_noOvlp"], 0
     )
-    minPairNT["num_nt_diff_extra"] = np.where(
-        (minPairNT["flag_recip_min_match"] == 0)
+    minPairNT["num_nt_noOvlp_extra"] = np.where(
+        (minPairNT["flag_RMP"] == 0)
         & (
             minPairNT["flag_min_match_" + name1] + minPairNT["flag_min_match_" + name2]
             == 1
         ),
-        minPairNT["num_nt_diff"],
+        minPairNT["num_nt_noOvlp"],
         0,
     )
     minPairNTGene = (
         minPairNT.groupby("gene_id")
         .agg(
             {
-                "transcript_in_gene": "first",
-                "recip_min_pair_in_gene": "first",
-                "num_nt_diff_recip_min": "mean",
-                "num_nt_diff_extra": "mean",
+                "transcript_inGene": "first",
+                "recip_min_pair_inGene": "first",
+                "num_nt_noOvlp_recip_min": "mean",
+                "num_nt_noOvlp_extra": "mean",
             }
         )
         .reset_index()
     )
     recipConditions = [
-        (minPairNTGene["transcript_in_gene"] == "match")
-        & (minPairNTGene["recip_min_pair_in_gene"] == "reciprocal_pairs"),
-        (minPairNTGene["transcript_in_gene"] == "match")
-        & (minPairNTGene["recip_min_pair_in_gene"] == "partial_reciprocal_pairs"),
-        (minPairNTGene["transcript_in_gene"] == "match")
-        & (minPairNTGene["recip_min_pair_in_gene"] == "no_reciprocal_pairs"),
-        (minPairNTGene["transcript_in_gene"] == name1 + "_greater")
-        & (minPairNTGene["recip_min_pair_in_gene"] == "reciprocal_pairs"),
-        (minPairNTGene["transcript_in_gene"] == name1 + "_greater")
-        & (minPairNTGene["recip_min_pair_in_gene"] == "partial_reciprocal_pairs"),
-        (minPairNTGene["transcript_in_gene"] == name1 + "_greater")
-        & (minPairNTGene["recip_min_pair_in_gene"] == "no_reciprocal_pairs"),
-        (minPairNTGene["transcript_in_gene"] == name2 + "_greater")
-        & (minPairNTGene["recip_min_pair_in_gene"] == "reciprocal_pairs"),
-        (minPairNTGene["transcript_in_gene"] == name2 + "_greater")
-        & (minPairNTGene["recip_min_pair_in_gene"] == "partial_reciprocal_pairs"),
-        (minPairNTGene["transcript_in_gene"] == name2 + "_greater")
-        & (minPairNTGene["recip_min_pair_in_gene"] == "no_reciprocal_pairs"),
+        (minPairNTGene["transcript_inGene"] == "match")
+        & (minPairNTGene["recip_min_pair_inGene"] == "reciprocal_pairs"),
+        (minPairNTGene["transcript_inGene"] == "match")
+        & (minPairNTGene["recip_min_pair_inGene"] == "partial_reciprocal_pairs"),
+        (minPairNTGene["transcript_inGene"] == "match")
+        & (minPairNTGene["recip_min_pair_inGene"] == "no_reciprocal_pairs"),
+        (minPairNTGene["transcript_inGene"] == name1 + "_greater")
+        & (minPairNTGene["recip_min_pair_inGene"] == "reciprocal_pairs"),
+        (minPairNTGene["transcript_inGene"] == name1 + "_greater")
+        & (minPairNTGene["recip_min_pair_inGene"] == "partial_reciprocal_pairs"),
+        (minPairNTGene["transcript_inGene"] == name1 + "_greater")
+        & (minPairNTGene["recip_min_pair_inGene"] == "no_reciprocal_pairs"),
+        (minPairNTGene["transcript_inGene"] == name2 + "_greater")
+        & (minPairNTGene["recip_min_pair_inGene"] == "reciprocal_pairs"),
+        (minPairNTGene["transcript_inGene"] == name2 + "_greater")
+        & (minPairNTGene["recip_min_pair_inGene"] == "partial_reciprocal_pairs"),
+        (minPairNTGene["transcript_inGene"] == name2 + "_greater")
+        & (minPairNTGene["recip_min_pair_inGene"] == "no_reciprocal_pairs"),
     ]
     recipChoices = [
         "Match:Reciprocal Pairs",
@@ -1030,7 +1030,7 @@ def plot_gene_avg_nt_diff_pairs(md_data, name1, name2, legendOut, zoomMean=False
         limit = (
             max(
                 minPairNTGene[
-                        ["num_nt_diff_recip_min", "num_nt_diff_extra"]
+                        ["num_nt_noOvlp_recip_min", "num_nt_noOvlp_extra"]
                         ].max().max(),
                 1
             )
@@ -1040,11 +1040,11 @@ def plot_gene_avg_nt_diff_pairs(md_data, name1, name2, legendOut, zoomMean=False
             limit = round(
                 np.nanmax(
                     [
-                        minPairNTGene[minPairNTGene["num_nt_diff_recip_min"] > 0][
-                            "num_nt_diff_recip_min"
+                        minPairNTGene[minPairNTGene["num_nt_noOvlp_recip_min"] > 0][
+                            "num_nt_noOvlp_recip_min"
                         ].mean(),
-                        minPairNTGene[minPairNTGene["num_nt_diff_extra"] > 0][
-                            "num_nt_diff_extra"
+                        minPairNTGene[minPairNTGene["num_nt_noOvlp_extra"] > 0][
+                            "num_nt_noOvlp_extra"
                         ].mean(),
                     ]
                 )
@@ -1054,8 +1054,8 @@ def plot_gene_avg_nt_diff_pairs(md_data, name1, name2, legendOut, zoomMean=False
     plt.figure(figsize=(8.45, 5))
     sns.scatterplot(
         data=minPairNTGene,
-        x="num_nt_diff_recip_min",
-        y="num_nt_diff_extra",
+        x="num_nt_noOvlp_recip_min",
+        y="num_nt_noOvlp_extra",
         hue="Category",
         palette=colorPalleteRecip,
     )

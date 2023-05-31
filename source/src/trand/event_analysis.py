@@ -58,9 +58,6 @@ from . import plot_one_gtf_gene as P1GG
 # Import complexity calculation function
 from . import calculate_complexity as COMP
 
-# Import consolidation function
-from . import consolidation as CONSOL
-
 # CONFIGURATION
 # Output columns
 jct_df_cols = ['gene_id', 'transcript_id', 'coords']
@@ -75,9 +72,6 @@ ef_df_cols = ['gene_id', 'er_id', 'ef_id', 'ef_chr', 'ef_start', 'ef_end', 'ef_s
               'ef_ir_flag', 'ea_annotation_frequency']
 ir_df_cols = ['er_transcript_ids']
 ue_df_cols = ['gene_id', 'num_uniq_exon']
-consol_key_cols = ['gene_id', 'transcript_id', 'consolidation_transcript_id',
-                   "num_transcript_in_consol_transcript", "num_transcript_id_in_gene",
-                   "num_consol_transcript_id_in_gene", "flag_gene_consolidated"]
 
 # Set start method of multiprocessing to forkserver
 #set_start_method("forkserver")
@@ -140,30 +134,6 @@ def chunks(lst, n):
 
 def callback(result):
     print("Received result:"+result.get())
-
-#def callback_pair_results(results):
-#    # Callback function to append result to list of results for pairwise mode
-#    ea_data_cat, jct_data_cat, td_data_cat = results
-#    ea_list.append(ea_data_cat)
-#    jct_list.append(jct_data_cat)
-#    td_list.append(td_data_cat)
-
-
-#def callback_gene_results(results):
-#    # Callback function to append result to list of results for gene mode
-#    er_data_cat, ef_data_cat, jct_data_cat, ir_data_cat = results
-#    er_list.append(er_data_cat)
-#    ef_list.append(ef_data_cat)
-#    jct_list.append(jct_data_cat)
-#    ir_list.append(ir_data_cat)
-
-
-#def callback_consol_results(results):
-#    # Callback function to append results to list of results for consolidation
-#    data, genes, keys = results
-#    data_list.append(data)
-#    keys_list.append(keys)
-
 
 def _create_bed_df(tx_str):
     """Create a data structure resembling a bed record for a transcript"""
@@ -1052,8 +1022,7 @@ def ea_pairwise(gene_id, data):
     return ea_df, jct_df, td_df
 
 def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
-                        complexity_only, skip_plots, skip_interm, consolidate,
-                        consol_prefix, consol_outfiles, output_prefix):
+                        complexity_only, skip_plots, skip_interm, output_prefix):
     """
     Pairwise or full gene transcript event analysis (TranD) on a single GTF file.
     """
@@ -1082,84 +1051,14 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
     # Set up parallel manager for if >1 cpu provided
     with Manager() as manager1:
 
-        # If requested, consolidate transcripts with identical junctions
-        #   (remove 5'/3' variation in redundantly spliced transcripts)
-        if consolidate:
-            logger.info("Consolidation of transcript with identical junctions.")
-            # Open consolidation output files
-            if not skip_interm:
-                if output_prefix is not None:
-                    prefix_consol_outfiles = {
-                        k: "{}_{}".format(output_prefix, v) for k, v in consol_outfiles.items()
-                    }
-                    consol_fhs = open_output_files(outdir, prefix_consol_outfiles)
-                else:
-                    consol_fhs = open_output_files(outdir, consol_outfiles)
-                consol_fhs["key_fh"].write_text(",".join(consol_key_cols) + "\n")
-            # Serial consolidation
-            if cpu_cores == 1:
-                data, genes, keys = CONSOL.consolidate_transcripts(data, consol_prefix,
-                                                                   genes.groups)
-            # Parallel consolidation
-            else:
-                # Generate multiprocess Pool with specified number of cpus
-                #     to loop through genes and consolidate
-                # Create shared lists that can be accessed by multiple processes
-                data_list = manager1.list()
-                keys_list = manager1.list()
-                # Create process pool
-                pool = Pool(cpu_cores)
-                for gene in list(genes.groups):
-                    # Check if gene has a single transcript
-                    if data[data["gene_id"] == gene]["transcript_id"].nunique() == 1:
-                        consol_gene, key_gene = CONSOL.consolidate_single_xcrpt(
-                            data[data["gene_id"] == gene].copy(),
-                            gene,
-                            consol_prefix
-                        )
-                        # Add columns for number of transcript_id, number of consolidated_transcript_id
-                        #   and a flag for if the gene was consolidated
-                        key_gene["num_transcript_in_consol_transcript"] = 1
-                        key_gene["num_transcript_id_in_gene"] = 1
-                        key_gene["num_consol_transcript_id_in_gene"] = 1
-                        key_gene["flag_gene_consolidated"] = 0
-                        # Concatenate to output list
-                        data_list.append(consol_gene)
-                        keys_list.append(key_gene)
-                    # If more than one transcript then send to new cpu for processing
-                    else:
-                        pool.apply_async(process_consol, args=(
-                                data,
-                                consol_prefix,
-                                [gene],
-                                data_list,
-                                keys_list
-                            ))
-                pool.close()
-                pool.join()
-                # Concatenate parallel consolidation output
-                data = pd.concat(data_list, ignore_index=True)
-                genes = data.groupby("gene_id")
-                keys = pd.concat(keys_list, ignore_index=True)
-    
-            # Output consolidated GTF and key file
-            if not skip_interm:
-                write_gtf(data, consol_fhs, "consol_gtf_fh")
-                write_output(keys, consol_fhs, "key_fh")
-            # Output gene and transcript counts after consolidation
-            num_tx = data.groupby(["gene_id", "transcript_id"])
-            logger.info(
-                "After consolidation: {} genes and {} transcripts", len(genes), len(num_tx)
-            )
-    
         # Output complexity measures using GTF data
         uniq_ex = COMP.calculate_complexity(outdir, data, skip_plots, output_prefix)
-    
+
         # If requested, skip all other functions
         if complexity_only:
             logger.info("Complexity only option selected. Skipping all other functions.")
             return
-    
+
         # Full processing
         if output_prefix is not None:
             prefix_outfiles = {
@@ -1209,7 +1108,7 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
             # Pairwise EA
             else:
                 # Set up results lists (no managers needed since on 1 cpu)
-                result_managers = {"ea_list":[],  "jct_list":[], "ir_list":[]}
+                result_managers = {"ea_list":[],  "jct_list":[], "ir_list":[], "td_list":[]}
                 ea_data, jct_data, td_data = loop_over_genes(
                         list(genes.groups),
                         out_fhs,
@@ -1447,7 +1346,7 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
         # Serial processing
         if cpu_cores == 1:
             # Set up results lists (no managers needed since on 1 cpu)
-            result_managers = {"ea_list":[],  "jct_list":[], "ir_list":[]}
+            result_managers = {"ea_list":[],  "jct_list":[], "ir_list":[], "td_list":[]}
             ea_data, jct_data, td_data = loop_over_genes(
                     gene_list,
                     out_fhs,
@@ -1551,18 +1450,6 @@ def list_pairs(f1_data, f2_data=None):
                 tx_data[transcript] = transcript_df
             for pair in itertools.combinations(tx_data.keys(), 2):
                 yield pair
-
-
-def process_consol(data, consol_prefix, gene, data_list, keys_list):
-    """
-    Loop over genes in given gene list and consolidate identical splice junctions
-        within each gene
-    NOTE: Currently gene must be a list with a single gene value in it since the
-        consolidation function utilizes a loop over a list of genes
-    """
-    consol_data, consol_genes, keys = CONSOL.consolidate_transcripts(data, consol_prefix, gene)
-    data_list.append(consol_data)
-    keys_list.append(keys)
 
 
 def loop_over_genes(gene_list, out_fhs, ea_mode, keep_ir, data1, result_managers,
@@ -1703,7 +1590,7 @@ def process_pair(pair, out_fhs, data1, keep_ir, result_managers,
         result_managers["ea_list"].append(ea_data)
         result_managers["jct_list"].append(jct_data)
         result_managers["td_list"].append(td_data)
-        
+
     # Concatenate and return outputs if result managers are lists (from single cpu)
     if type(result_managers["jct_list"]) is list:
         logger.debug("Single CPU concatenation of lists")
