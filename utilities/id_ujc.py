@@ -319,7 +319,6 @@ def createUJCDf(ujcDct, trPrefix, ignoreGene):
                 monoXscriptDf['tmpEnd'] = monoXscriptDf['end']
                 
                 appendedRowLst = []
-                # it works :)
                 for row in monoXscriptDf.to_dict('records'):
                         if appendedRowLst:
                                 lastRow = appendedRowLst[-1]

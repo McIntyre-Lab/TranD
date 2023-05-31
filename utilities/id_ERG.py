@@ -223,9 +223,9 @@ def getOptions():
 
         """
         
-        parser = argparse.ArgumentParser(description="Identifies groups of transcripts with full exon region overlap."
+        parser = argparse.ArgumentParser(description="Identifies groups of transcripts with full exon region overlap. "
                                          "Output 3 csvs containing information on "
-                                         "these exon region groups (ERGs) (one transcript focused, one gene focused, and one ERG focused)"
+                                         "these exon region groups (ERGs) (one transcript focused, one gene focused, and one ERG focused) "
                                          "for a list of transcripts using pairwise transcript distance TRAND output "
                                          "data. Contains the option to include or exclude "
                                          "transcripts with intron retention events (--includeIR). "
