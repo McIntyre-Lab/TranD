@@ -222,7 +222,6 @@ def extractJunction(exonData):
                 # 5 = end
                 # 6 = strand
         
-        # This takes less than 5 seconds for the small file. 
         for row in sortedDf.to_dict('records'):                
                 xscript = row['transcript_id']
                 
