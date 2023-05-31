@@ -36,8 +36,8 @@ def getOptions():
 
         """
     # Parse command line arguments
-    parser = argparse.ArgumentParser(description="Make customizable plots of ALL pairs of a TranD ouput file "
-                                     "with the option to ignore up to 4 types of AS."
+    parser = argparse.ArgumentParser(description="Make customizable plots of ALL pairs of a TranD output (specifically, the pairwise transcript distance) "
+                                     "file with the option to ignore up to 4 types of AS."
                                      "Default plot will show all types of AS"
                                      "Input a trand output file (typically a .csv) (--indir), ignore options (up to 4), "
                                      "(--ignore-3, --ignore-5 --ignoreAD, --ignoreAE, "
@@ -124,14 +124,6 @@ def getOptions():
             "Prefix will default to the original file name if nothing entered"
         )
     )    
-
-    # parser.add_argument(
-    #     "-f",
-    #     "--force",
-    #     dest="force",
-    #     action="store_true",
-    #     help="Force overwrite existing output directory and files within.",
-    # )
 
     args = parser.parse_args()
     return args
