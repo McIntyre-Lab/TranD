@@ -919,7 +919,7 @@ def plot_upset(df, title, boxCols=None):
     plt.suptitle(title)
 
 
-def plot_gene_avg_nt_noOvlp_pairs(md_data, name1, name2, legendOut, zoomMean=False):
+def plot_gene_avg_nt_diff_pairs(md_data, name1, name2, legendOut, zoomMean=False):
     """
     Plot average number of nt different in recip. min match pairs against
             avg number of nt different in min pairs that are extra
