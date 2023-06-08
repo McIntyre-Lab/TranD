@@ -16,7 +16,7 @@ from upsetplot import UpSet
 #  Plot Functions
 
 
-def plot_transcript_inGene_split_pie(
+def plot_transcript_in_gene_split_pie(
     md_data, f1_odds, f2_odds, name1, name2, legendOut
 ):
     """
@@ -296,7 +296,7 @@ def plot_gene_stack(md_data, name1, name2, legendOut, useProp=False):
         end_rtf(outFile)
 
 
-def plot_transcript_inGene_upset(md_data, f1_odds, f2_odds, name1, name2, legendOut):
+def plot_transcript_in_gene_upset(md_data, f1_odds, f2_odds, name1, name2, legendOut):
     """
     UpSet plot for number of transcripts in genes
     """
@@ -919,7 +919,7 @@ def plot_upset(df, title, boxCols=None):
     plt.suptitle(title)
 
 
-def plot_gene_avg_nt_noOvlp_pairs(md_data, name1, name2, legendOut, zoomMean=False):
+def plot_gene_avg_nt_diff_pairs(md_data, name1, name2, legendOut, zoomMean=False):
     """
     Plot average number of nt different in recip. min match pairs against
             avg number of nt different in min pairs that are extra

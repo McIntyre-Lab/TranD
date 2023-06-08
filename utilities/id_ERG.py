@@ -1301,23 +1301,12 @@ def main():
         toc = time.perf_counter()       
         print(f"Complete! Operation took {toc-omegatic:0.4f} seconds")
         
-        # Used to assure each transcript is put into a group only once.
-        # print("Generating split dataframe...")
-        # # Used in testing to see that each transcript is only assigned to one group.
-        # splitDf = split_column_by_sep(ergDf, col_name="xscripts", sep="|")
-        # dup = splitDf.duplicated("xscripts", keep=False)
-        # dupes = splitDf[dup]
-
-        # #splitDf.to_csv('test.csv')
-        
-        # print ("Actually complete!")
-        
         # Only returns these things for quick checking during development
-        return mstrXscriptDct, mstrERGLst, xscriptDf, ergDf, geneDf, erInfoDf, splitDf, dupes
+        return mstrXscriptDct, mstrERGLst, xscriptDf, ergDf, geneDf, erInfoDf
 
 if __name__ == '__main__':
         global args
         args = getOptions()
-        mstrXscriptDct, mstrERGLst, xscriptDf, ergDf, geneDf, erInfoDf, splitDf, dupes = main()
+        mstrXscriptDct, mstrERGLst, xscriptDf, ergDf, geneDf, erInfoDf = main()
 
         
