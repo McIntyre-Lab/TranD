@@ -429,15 +429,14 @@ if __name__ == '__main__':
         tic = time.perf_counter()
                 
         outDf = createOutput(ujcDf=ujcDf, ignoreGene=args.noGene)
-        
-        if not args.noGene:
-                outputPath = args.outdir + "/" + args.prefix + "_UJC_count.csv"
+        outputPath = args.outdir + "/" + args.prefix + "_UJC_count.csv"
 
-        else:
-                outputPath = args.outdir + "/" + args.prefix + "_ignoregene_UJC_count.csv"
-                        
-        outDf.to_csv(outputPath, index=False)
+        try:
+                outDf.to_csv(outputPath, index=False)
+        except OSError:
+                raise OSError("Output directory must already exist.")
                 
+                                        
         toc = time.perf_counter()
         print(f"Complete! Operation took {toc-omegatic:0.4f} total seconds.")
         
