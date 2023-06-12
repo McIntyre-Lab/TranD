@@ -728,6 +728,7 @@ def createXscriptOutDf(xscriptDct, ergLst):
         nonOlpFlagLst = []
         nonOlpXscriptLst = []
         numERLst = []
+        whichGtfLst = []
         
         # Loop through every XSCRIPT object in the dictionary and append the necessary info to each list
         for xscript in xscriptDct.values():
@@ -741,13 +742,23 @@ def createXscriptOutDf(xscriptDct, ergLst):
                 # one other transcript in the group
                 flagNonOlp = xscript.ovlpCnt < grpSize - 1
                 
-                
                 geneIDLst.append(xscript.gene_id)
                 xscriptStrLst.append(xscript.xscript_id)
                 grpNumLst.append(xscript.ERG_num)
                 numERLst.append(xscript.num_er)
                 
                 nonOlpFlagLst.append('1' if flagNonOlp else '0')
+                
+                
+                if xscript.gtfOne and xscript.gtfTwo:
+                        print("what")
+                
+                if xscript.gtfOne:
+                        whichGtfLst.append(1)
+                elif xscript.gtfTwo:
+                        whichGtfLst.append(2)
+                else:
+                        print ("what the")
                 
                 # If there is nonOlp. Create a piped list of all transcripts that the xscript does not overlap with
                 if flagNonOlp:
@@ -768,7 +779,8 @@ def createXscriptOutDf(xscriptDct, ergLst):
                 'ERG_num':grpNumLst, 
                 'flag_nonolp_pair':nonOlpFlagLst,
                 'nonolp_xscript_id':nonOlpXscriptLst,
-                'num_ER':numERLst
+                'num_ER':numERLst,
+                'which_gtf':whichGtfLst
                 })
                 
         return outDf

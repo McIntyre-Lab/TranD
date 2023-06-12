@@ -5,7 +5,9 @@ import pandas as pd
 
 def getOptions():
     # Parse command line arguments
-    parser = argparse.ArgumentParser(description="Make union key file using UJC of 1) dataset 1, 2) datasest2, and 3) the concatenation of consolidated dataset1 and consolidated dataset2.")
+    parser = argparse.ArgumentParser(description="Make union key file using UJC of 1) dataset1, 2) "
+                                     "dataset2, and 3) the concatenation of consolidated dataset1 "
+                                     "and consolidated dataset2.")
 
     # Input data
     parser.add_argument(
@@ -169,7 +171,7 @@ def main():
     unionDf = mergeConsol2.groupby(["gene_id", "union_uniq_jxn_id"]).agg({
         name1 + "_transcript_id": lambda x: "" if len(x)==0 else "|".join(x.dropna().astype(str)),
         name1 + "_uniq_jxn_id": lambda x: "" if len(x)==0 else "|".join(x.dropna().drop_duplicates().astype(str)),
-        name2+"_transcript_id": lambda x: "" if len(x)==0 else "|".join(x.dropna().astype(str)),
+        name2 + "_transcript_id": lambda x: "" if len(x)==0 else "|".join(x.dropna().astype(str)),
         name2 + "_uniq_jxn_id": lambda x: "" if len(x)==0 else "|".join(x.dropna().drop_duplicates().astype(str)),
     }).reset_index()
 
