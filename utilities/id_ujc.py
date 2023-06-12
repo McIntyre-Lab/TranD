@@ -76,7 +76,8 @@ def getOptions():
                                          "transcripts with that same junction chain. The utility sorts the group of "
                                          "transcripts alphabetically and selects the first one as the representative."
                                          "Also, outputs a GTF file with representative transcript models for each UJC. Input a GTF "
-                                         "file (--gtf), an output directory (--outdir) and a prefix for the output files (--prefix). "
+                                         "file (--gtf), an optional prefix for the ujc_ids (--transcript-prefix), an output directory (--outdir) "
+                                         "and a prefix for the output files (--prefix). "
                                          "Allows the option to skip the output of the GTF file with representative transcript models."
                                          "(--skip-gtf).")
         
@@ -87,6 +88,16 @@ def getOptions():
                 dest="inGTF",
                 required=True,
                 help="Input a GTF file."
+        )
+        
+        parser.add_argument(
+                "-x",
+                "--transcript-prefix",
+                dest="trPrefix",
+                required=False,
+                default=None,
+                help="Input a transcript prefix for the ujc_id. Useful for marking "
+                        "which gtf a transcript came from. Defaults to no prefix. "
         )
         
         parser.add_argument(
@@ -248,7 +259,7 @@ def extractJunction(exonData):
         
         return ujcDct
 
-def createUJCDf(ujcDct):
+def createUJCDf(ujcDct, trPrefix):
         """
         Takes extracted junction information and creates a dataframe that is 
         UJC focused (all transcripts under one UJC grouped into the transcript_id column).
@@ -257,6 +268,8 @@ def createUJCDf(ujcDct):
         ----------
         ujcDct : DICTIONARY {Transcript_id: [info]}
                 A dictionary of transcripts keyed to their info.
+        trPrefix: STRING
+                A prefix for the ujc_id.
 
         Returns
         -------
@@ -365,7 +378,12 @@ def createUJCDf(ujcDct):
                 
         allUJC["split"] = allUJC["transcript_id"].str.split('|').apply(sorted)
         
-        allUJC["ujc_id"] = allUJC["split"].str[0]
+        if trPrefix:
+                allUJC["ujc_id"] = trPrefix + "_" + allUJC["split"].str[0]
+        
+        else:
+                allUJC["ujc_id"] = allUJC["split"].str[0]
+
         
         allUJC.drop(columns="split")
                 
@@ -552,7 +570,7 @@ def main():
         print (f"Complete! Operation took {toc-tic:0.4f} seconds. Creating UJC DataFrame...")
         tic = time.perf_counter()
         
-        ujcDf = createUJCDf(ujcDct=ujcDct)
+        ujcDf = createUJCDf(ujcDct=ujcDct, trPrefix=args.trPrefix)
         
         # if (os.path.exists(prefix + '_allUJC.pickle') and os.path.getsize(prefix + '_allUJC.pickle') > 0):
         #         with open(prefix + '_allUJC.pickle', 'rb') as f:
@@ -569,9 +587,7 @@ def main():
         outDf = createOutput(ujcDf=ujcDf, ujcDct=ujcDct)
         
         outputPath = args.outdir + "/" + args.prefix + "_UJC_ID.csv"
-       
-        
-        
+
         try:
                 outDf.to_csv(outputPath, index=False)
         except OSError:

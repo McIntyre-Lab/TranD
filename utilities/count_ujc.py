@@ -50,7 +50,8 @@ def getOptions():
         # Parse command line arguments
         parser = argparse.ArgumentParser(description="Counts the transcripts per unique junction chain (UJC) found within a "
                                          "GTF file and outputs a summary file with this information. "
-                                         "Input a GTF file (--gtf), an output path (--outdir) and a prefix for the output files (--prefix). "
+                                         "Input a GTF file (--gtf), an optional prefix for the ujc_ids (--transcript-prefix), "
+                                         "an output path (--outdir) and a prefix for the output files (--prefix). "
                                          "Please note: The ujc_id is a representative transcript for all the "
                                          "transcripts with that same junction chain. The utility sorts the group of "
                                          "transcripts alphabetically and selects the first one as the representative.")
@@ -62,6 +63,16 @@ def getOptions():
                 dest="inGTF",
                 required=True,
                 help="Input a GTF file."
+        )
+        
+        parser.add_argument(
+                "-x",
+                "--transcript-prefix",
+                dest="trPrefix",
+                required=False,
+                default=None,
+                help="Input a transcript prefix for the ujc_id. Useful for marking "
+                        "which gtf a transcript came from. Defaults to no prefix. "
         )
         
         ## OUTPUT
@@ -213,7 +224,7 @@ def extractJunction(exonData):
         
         return ujcDct
 
-def createUJCDf(ujcDct, trPrefix, ignoreGene):
+def createUJCDf(ujcDct, trPrefix):
         """
         Takes extracted junction information and creates a dataframe that is 
         UJC focused (all transcripts under one UJC grouped into the transcript_id column).
@@ -330,8 +341,10 @@ def createUJCDf(ujcDct, trPrefix, ignoreGene):
                 
         allUJC["split"] = allUJC["transcript_id"].str.split('|').apply(sorted)
         
-        allUJC["ujc_id"] = allUJC["split"].str[0]
-        
+        if trPrefix:
+                allUJC["ujc_id"] = trPrefix + "_" + allUJC["split"].str[0]
+        else:
+                allUJC["ujc_id"] = allUJC["split"].str[0]        
         allUJC.drop(columns="split")
                 
         return allUJC
@@ -411,7 +424,7 @@ if __name__ == '__main__':
         
         tic = time.perf_counter()
         
-        ujcDf = createUJCDf(ujcDct=ujcDct, trPrefix=args.trPrefix, ignoreGene=args.noGene)
+        ujcDf = createUJCDf(ujcDct=ujcDct, trPrefix=args.trPrefix)
         
         # if (os.path.exists(prefix + '_allUJC.pickle') and os.path.getsize(prefix + '_allUJC.pickle') > 0):
         #         with open(prefix + '_allUJC.pickle', 'rb') as f:

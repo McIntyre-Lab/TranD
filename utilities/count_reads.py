@@ -93,6 +93,16 @@ def getOptions():
         )
         
         parser.add_argument(
+                "-x",
+                "--transcript-prefix",
+                dest="trPrefix",
+                required=False,
+                default=None,
+                help="Input a transcript prefix for the ujc_id. Useful for marking "
+                        "which gtf a transcript came from. Defaults to no prefix. "
+        )
+        
+        parser.add_argument(
                 "-s",
                 "--skip-gtf",
                 dest="outGTF",
@@ -252,7 +262,7 @@ def extractJunction(exonData):
         
         return ujcDct
 
-def createUJCDf(ujcDct):
+def createUJCDf(ujcDct, trPrefix):
         """
         Takes extracted junction information and creates a dataframe that is 
         UJC focused (all transcripts under one UJC grouped into the transcript_id column).
@@ -369,8 +379,11 @@ def createUJCDf(ujcDct):
                 
         allUJC["split"] = allUJC["transcript_id"].str.split('|').apply(sorted)
         
-        allUJC["ujc_id"] = allUJC["split"].str[0]
+        if trPrefix:
+                allUJC["ujc_id"] = trPrefix + "_" + allUJC["split"].str[0]
         
+        else:
+                allUJC["ujc_id"] = allUJC["split"].str[0]        
         allUJC.drop(columns="split")
                 
         return allUJC
@@ -606,7 +619,7 @@ def main():
         print (f"Complete! Operation took {toc-tic:0.4f} seconds. Creating UJC DataFrame...")
         tic = time.perf_counter()
         
-        ujcDf = createUJCDf(ujcDct=ujcDct)
+        ujcDf = createUJCDf(ujcDct=ujcDct, trPrefix=args.trPrefix)
         
         # if (os.path.exists(prefix + '_allUJC.pickle') and os.path.getsize(prefix + '_allUJC.pickle') > 0):
         #         with open(prefix + '_allUJC.pickle', 'rb') as f:
