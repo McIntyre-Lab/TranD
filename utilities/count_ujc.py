@@ -50,12 +50,10 @@ def getOptions():
         # Parse command line arguments
         parser = argparse.ArgumentParser(description="Counts the transcripts per unique junction chain (UJC) found within a "
                                          "GTF file and outputs a summary file with this information. "
-                                         "Input a GTF file (--gtf), optional prefix for the ujc_ids (--transcript-prefix), "
-                                         "an output path (--outdir) and a prefix for the output files (--prefix). "
-                                         "Allows the option ignore which gene a transcript came from when creating ujc_ids "
-                                         "(--ignore-gene). Note: \"ujc_ids\" are ranked by length. So the longest UJC under one"
-                                         "gene will prefix_gene_1, the next will be prefix_gene_2, etc. EXCEPT"
-                                         "monoexons will always be number one.")
+                                         "Input a GTF file (--gtf), an output path (--outdir) and a prefix for the output files (--prefix). "
+                                         "Please note: The ujc_id is a representative transcript for all the "
+                                         "transcripts with that same junction chain. The utility sorts the group of "
+                                         "transcripts alphabetically and selects the first one as the representative.")
         
         ## INPUT
         parser.add_argument(
@@ -64,26 +62,6 @@ def getOptions():
                 dest="inGTF",
                 required=True,
                 help="Input a GTF file."
-        )
-        
-        parser.add_argument(
-                "-x",
-                "--transcript-prefix",
-                dest="trPrefix",
-                required=False,
-                default="tr",
-                help="Input a prefix for the ujc_id. Defaults to"
-                "\'tr\'. (ex: tr_FBgn000000_1)"
-        )
-        
-        parser.add_argument(
-                "-i",
-                "--ignore-gene",
-                dest="noGene",
-                required=False,
-                action="store_true",
-                help="Add this argument to ignore genes when combining transcripts into UJCs."
-                        "Example: \"tr_FBgn000000_1\" becomes \" tr_seqname_start_end_1.\""
         )
         
         ## OUTPUT
@@ -244,10 +222,6 @@ def createUJCDf(ujcDct, trPrefix, ignoreGene):
         ----------
         ujcDct : DICTIONARY {Transcript_id: [info]}
                 A dictionary of transcripts keyed to their info.
-        trPrefix : STRING
-                The (user-input) prefix for the UJC ids..
-        ignoreGene : BOOLEAN
-                Whether the gene is ignored when consolidating/ranking UJCs.
 
         Returns
         -------
@@ -350,43 +324,15 @@ def createUJCDf(ujcDct, trPrefix, ignoreGene):
         else:
                 allUJC = multiUJC.copy()
                 del(multiUJC)
-                
         
-        allUJC["ujc_length"] = allUJC["end"] - allUJC["start"]
-        
-        sort_order = {"gene_id": "asc", "ujc_length": "asc", "start": "asc", "transcript_id": "asc"}
+        sort_order = {"gene_id": "asc", "start": "asc", "transcript_id": "asc"}
         allUJC = allUJC.sort_values(by=list(sort_order.keys()), ascending=[True if val=="asc" else False for val in sort_order.values()])
+                
+        allUJC["split"] = allUJC["transcript_id"].str.split('|').apply(sorted)
         
-        if not ignoreGene: 
-                allUJC["transcript_rank_in_gene"] = (
-                    allUJC.groupby("gene_id")["ujc_length"].rank(method="first")
-                )
-                
-                allUJC["ujc_id"] = (
-                    trPrefix
-                    + "_"
-                    + allUJC["gene_id"]
-                    + "_"
-                    + allUJC["transcript_rank_in_gene"].astype(int).map(str)
-                )
-        else:
-                allUJC["transcript_rank_in_gene"] = (
-                    allUJC["ujc_length"].rank(method="first")
-                )
-                                
-                allUJC["ujc_id"] = (
-                    trPrefix
-                    + "_"
-                    + allUJC['seqname']
-                    + "_" 
-                    + allUJC['start'].astype(str)
-                    + "_"
-                    + allUJC['end'].astype(str)
-                    + "_"
-                    + allUJC["transcript_rank_in_gene"].astype(int).map(str)
-                )
-                
-                allUJC["gene_id"] = allUJC["ujc_id"]
+        allUJC["ujc_id"] = allUJC["split"].str[0]
+        
+        allUJC.drop(columns="split")
                 
         return allUJC
 
@@ -426,22 +372,13 @@ def createOutput(ujcDf, ignoreGene):
                 jStringLst.append(jString)
                 geneIDLst.append(geneID)
         
-        if not ignoreGene:
-                outDf = pd.DataFrame(
-                        {
-                                'gene_id':geneIDLst,
-                                'ujc_id':ujcIDLst,
-                                'num_xscripts':numXscriptLst,
-                                'junction_string':jStringLst
-                        })
-        
-        else:
-                outDf = pd.DataFrame(
-                        {
-                                'ujc_id':ujcIDLst,
-                                'num_xscripts':numXscriptLst,
-                                'junction_string':jStringLst
-                        })
+        outDf = pd.DataFrame(
+                {
+                        'gene_id':geneIDLst,
+                        'ujc_id':ujcIDLst,
+                        'num_xscripts':numXscriptLst,
+                        'junction_string':jStringLst
+                })
         
         return outDf
 
@@ -450,7 +387,6 @@ if __name__ == '__main__':
         print ("Loading...")
         omegatic = time.perf_counter()
         args = getOptions()
-        prefix= args.prefix
         
         #main
         # if (os.path.exists(prefix + '.pickle') and os.path.getsize(prefix + '.pickle') > 0):
