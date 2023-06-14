@@ -1228,9 +1228,9 @@ def ea_pairwise_two_files(f1_data, f2_data, gene_id, name1, name2):
     td_df = pd.DataFrame(columns=TD.td_df_cols)
     for pair in transcript_combos:
         tx_df_1 = f1_data[f1_data['transcript_id'] == pair[0]]
-        tx_df_1_s = tx_df_1.assign(transcript_id=lambda x: x.transcript_id + '_' + name1)
+        tx_df_1_s = tx_df_1.assign(transcript_id=lambda x: x.transcript_id)
         tx_df_2 = f2_data[f2_data['transcript_id'] == pair[1]]
-        tx_df_2_s = tx_df_2.assign(transcript_id=lambda x: x.transcript_id + '_' + name2)
+        tx_df_2_s = tx_df_2.assign(transcript_id=lambda x: x.transcript_id)
         tx_pair_data = pd.concat([tx_df_1_s, tx_df_2_s])
         try:
             ea_data, jct_data, td_data = do_ea_pair(tx_pair_data)
