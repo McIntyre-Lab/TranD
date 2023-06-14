@@ -28,7 +28,7 @@ class ERG:
         """
         Class representation of an ERG.
         
-        num (int): The group number (main group identifier).
+        erg_id (int): The group identifier: gene_id + a number ranked by transcript (alphabetically).
                 
         gene_id (string): The gene that all the transcripts in the group belong to.
                 
@@ -47,6 +47,8 @@ class ERG:
                 self.num_er = num_er
 
                 self.size = 0
+                
+                self.erg_id = None
                 
                 self.xscriptSet = set()
                 
@@ -72,7 +74,7 @@ class ERG:
         
         # Group numbers used to compare two groups.
         def __eq__(self, other):
-                return self.num == other.num
+                return self.erg_id == other.erg_id
         
         def __hash__(self):
                 return hash(str(self))
@@ -92,7 +94,7 @@ class XSCRIPT:
                 
         ovlpCnt (int): Number of transcripts that this transcript has full overlap with.
                 
-        erg_num (int): ERG that the transcript belongs to.
+        erg_id (int): ERG that the transcript belongs to.
                 
         irSet (set of strings): Set of all the transcripts that overlap with this transcript and have intron retention activity.
                 
@@ -118,6 +120,7 @@ class XSCRIPT:
                 self.ovlpCnt = 0
                 
                 self.erg_num = None
+                self.erg_id = None
                 
                 self.irSet = set()
                 
@@ -600,7 +603,9 @@ def createERGs(xscriptDct):
                                 # AND all the transcripts that overlap with what it overlaps with
                                 if xscript.xscript_id in erg.xscriptSet:
                                         erg.addXscript(xscript.xscript_id)
-                                        xscript.erg_num = erg.num                                                        
+
+                                        xscript.erg_num = erg.num 
+
                                         erg.xscriptSet.update(xscript.ovlpSet)
                                         
                                         erg = addToGrp(grp=erg, initXscript=xscript, xscriptDct=xscriptDct)
@@ -615,7 +620,9 @@ def createERGs(xscriptDct):
                                 tmpERG = ERG(num=groupCount, gene_id=xscript.gene_id, num_er=xscript.num_er)
                                 
                                 tmpERG.addXscript(xscript.xscript_id)
-                                xscript.erg_num = tmpERG.num
+                                
+                                xscript.erg_num = tmpERG.num 
+                                
                                 tmpERG.xscriptSet.update(xscript.ovlpSet)
 
                                 tmpERG = addToGrp (grp=tmpERG, initXscript=xscript, xscriptDct=xscriptDct)
@@ -628,8 +635,8 @@ def createERGs(xscriptDct):
                         groupCount += 1
                         tmpERG = ERG(num=groupCount, gene_id=xscript.gene_id, num_er=xscript.num_er)
                         
-                        tmpERG.addXscript(xscript.xscript_id)
-                        xscript.erg_num = tmpERG.num
+                        xscript.erg_num = tmpERG.num 
+
                         tmpERG.xscriptSet.update(xscript.ovlpSet)
                         
                         tmpERG = addToGrp (grp=tmpERG, initXscript=xscript, xscriptDct=xscriptDct)
@@ -660,9 +667,11 @@ def addToGrp(grp, initXscript, xscriptDct):
 
         """
         
-        grp.addXscript(initXscript.xscript_id)
-        initXscript.ERG_num = grp.num
-        grp.xscriptSet.update(initXscript.ovlpSet)
+        # grp.addXscript(initXscript.xscript_id)
+        # initXscript.erg_id = grp.erg_id
+        # initXscript.erg_num = grp.num 
+
+        # grp.xscriptSet.update(initXscript.ovlpSet)
         
         # at this stage there may or may not be missing xscripts due to
         # the INITIAL xscript not overlapping with some other xscripts
@@ -685,7 +694,6 @@ def addToGrp(grp, initXscript, xscriptDct):
                 for transcript in grp.xscriptSet:
                         tmpSize = len(tmpSet)
                         
-                        
                         tmpSet.update(xscriptDct.get(transcript).ovlpSet)
                         xscriptDct.get(transcript).erg_num = grp.num
                         
@@ -696,7 +704,58 @@ def addToGrp(grp, initXscript, xscriptDct):
                 grp.xscriptSet.update(tmpSet)
                 grp.size = len(grp.xscriptSet)
 
-        return grp   
+        return grp
+
+def createGeneDct(ergLst):
+        # Create empty gene dictionary following the same structre as the XSCRIPT dictionary
+        geneDct = {}
+        
+        # Loop through every group in the list.
+        for grp in ergLst:
+                
+                # If the gene_id that the group belongs to is already added,
+                # Grab the already existing GENE object and add that group to its ergSet
+                if grp.gene_id in geneDct:
+                        tmpGene = geneDct.get(grp.gene_id)
+                        tmpGene.addGrp(grp)
+                
+                # Otherwise create a new GENE and add the group to its ergSet, and add the 
+                # new GENE to the dictionary
+                else:
+                        tmpGene = GENE(gene_id=grp.gene_id)
+                        tmpGene.addGrp(grp)
+                        
+                        geneDct[grp.gene_id] = tmpGene
+        
+        return geneDct
+
+def idERGs(geneDct, xscriptDct):
+        for geneStr, gene in geneDct.items():
+                
+                tmpERGLst = list(gene.ergSet)
+                
+                if len(tmpERGLst) > 1:
+                        
+                        for x in tmpERGLst:
+                                x.xscriptSet = sorted(x.xscriptSet)
+                                        
+                        # tmpERGLst = sorted(tmpERGLst, key=lambda x: (len(x.xscriptSet), x))
+                        
+                        count = 1
+                        for erg in tmpERGLst:
+                                erg.erg_id = geneStr + "_" + str(count)
+                                count += 1
+                                
+                                for xscript in erg.xscriptSet:
+                                        xscriptDct.get(xscript).erg_id = erg.erg_id
+                        
+                        
+                else:
+                        tmpERGLst[0].erg_id = geneStr + "_1"
+                        for xscript in tmpERGLst[0].xscriptSet:
+                                xscriptDct.get(xscript).erg_id = tmpERGLst[0].erg_id
+        return None
+                
         
 def createXscriptOutDf(xscriptDct, ergLst):
         """
@@ -724,7 +783,7 @@ def createXscriptOutDf(xscriptDct, ergLst):
         # and concatenating.
         geneIDLst = []
         xscriptStrLst = []
-        grpNumLst = []
+        ergIDLst = []
         nonOlpFlagLst = []
         nonOlpXscriptLst = []
         numERLst = []
@@ -744,7 +803,7 @@ def createXscriptOutDf(xscriptDct, ergLst):
                 
                 geneIDLst.append(xscript.gene_id)
                 xscriptStrLst.append(xscript.xscript_id)
-                grpNumLst.append(xscript.ERG_num)
+                ergIDLst.append(xscript.erg_id)
                 numERLst.append(xscript.num_er)
                 
                 nonOlpFlagLst.append('1' if flagNonOlp else '0')
@@ -776,7 +835,7 @@ def createXscriptOutDf(xscriptDct, ergLst):
                 {
                 'gene_id':geneIDLst,
                 'xscript_model_id':xscriptStrLst, 
-                'ERG_num':grpNumLst, 
+                'ERG_id':ergIDLst, 
                 'flag_nonolp_pair':nonOlpFlagLst,
                 'nonolp_xscript_id':nonOlpXscriptLst,
                 'num_ER':numERLst,
@@ -811,7 +870,7 @@ def createERGOutDf(ergLst, xscriptDct, includeIR, gtfOne, gtfTwo):
         # Each column is given a list, each name represents a heading. -> Each position represents a row in the dataframe
         # Building these lists is far faster than building a dataframe for each row
         # and concatenating.
-        numLst = []
+        ergIDLst = []
         sizeLst = []
         geneIDLst = []
         xscriptStrLst = []
@@ -829,10 +888,11 @@ def createERGOutDf(ergLst, xscriptDct, includeIR, gtfOne, gtfTwo):
         meanPropNTLst = []
         medPropNTLst = []
         sourceLst = []
+                
         
         # Loop through every ERG in the list and append necessary info to each column list
         for erg in ergLst:
-                numLst.append(erg.num)
+                ergIDLst.append(erg.erg_id)
                 sizeLst.append(erg.size)
                 geneIDLst.append(erg.gene_id)
                 numERLst.append(erg.num_er)
@@ -915,7 +975,7 @@ def createERGOutDf(ergLst, xscriptDct, includeIR, gtfOne, gtfTwo):
         # Create output dataframe using the lists
         outDf = pd.DataFrame(
                 {
-                'ERG_num':numLst, 
+                'ERG_id':ergIDLst, 
                 'ERG_size':sizeLst,
                 'gene_id':geneIDLst,
                 'xscripts':xscriptStrLst,
@@ -937,7 +997,7 @@ def createERGOutDf(ergLst, xscriptDct, includeIR, gtfOne, gtfTwo):
         
         return outDf
 
-def createGeneOutDf(xscriptDct, ergLst):
+def createGeneOutDf(xscriptDct, ergLst, geneDct):
         """
         Creates a dictionary of GENE objects based on the information gleaned and stored
         in the XSCRIPT dictionary and ERG list. Then creates a gene focused 
@@ -957,26 +1017,6 @@ def createGeneOutDf(xscriptDct, ergLst):
                 Output dataframe to be converted to a csv.
 
         """
-        
-        # Create empty gene dictionary following the same structre as the XSCRIPT dictionary
-        geneDct = {}
-        
-        # Loop through every group in the list.
-        for grp in ergLst:
-                
-                # If the gene_id that the group belongs to is already added,
-                # Grab the already existing GENE object and add that group to its ergSet
-                if grp.gene_id in geneDct:
-                        tmpGene = geneDct.get(grp.gene_id)
-                        tmpGene.addGrp(grp)
-                
-                # Otherwise create a new GENE and add the group to its ergSet, and add the 
-                # new GENE to the dictionary
-                else:
-                        tmpGene = GENE(gene_id=grp.gene_id)
-                        tmpGene.addGrp(grp)
-                        
-                        geneDct[grp.gene_id] = tmpGene
                         
         
         # Each column is given a list, each name represents a heading. -> Each position represents a row in the dataframe
@@ -1119,7 +1159,7 @@ def createGTFDf(ergLst,xscriptDct):
         for erg in ergLst:
                 seqname = erg.exonChain[0].seqname
                 strand = erg.exonChain[0].strand
-                ergID = "erg_" + str(erg.num) + "_tr"
+                ergID = "erg_" + str(erg.erg_id) + "_tr"
                 geneID = erg.gene_id
                 
                 
@@ -1183,18 +1223,18 @@ def main():
         else: 
                 prefix = os.path.splitext(os.path.basename(args.infile))[0]
         
-        # #Used for testing, made it faster to run multiple times on the same file
-        # if (os.path.exists(prefix + ".pickle") and os.path.getsize(prefix + ".pickle") > 0):
-        #         with open (prefix + ".pickle", 'rb') as f:
-        #                 inputDf = pickle.load(f)
-        # else:
-        #         inputDf = pd.read_csv (args.infile, low_memory=False)
-        #         with open (prefix + ".pickle", 'wb') as f:
-        #                 pickle.dump(inputDf, f)
+        #Used for testing, made it faster to run multiple times on the same file
+        if (os.path.exists(prefix + "csv.pickle") and os.path.getsize(prefix + "csv.pickle") > 0):
+                with open (prefix + "csv.pickle", 'rb') as f:
+                        inputDf = pickle.load(f)
+        else:
+                inputDf = pd.read_csv (args.infile, low_memory=False)
+                with open (prefix + "csv.pickle", 'wb') as f:
+                        pickle.dump(inputDf, f)
 
         #Grab input DF from input CSV
         print("Reading input file.... ")
-        inputDf = pd.read_csv (args.infile, low_memory=False)
+        # inputDf = pd.read_csv (args.infile, low_memory=False)
 
         print ("Read complete! GTF Info: ")
         # Start timer to track how long the looping process takes
@@ -1225,70 +1265,55 @@ def main():
         
         
         # Two options based on if IR is included or excluded
+        
         if (args.includeIR.upper() == 'Y'):
-                # Create XSCRIPT dictionary and ERG list
-                mstrXscriptDct, erInfoDf = gleanInputDf(inDf=inputDf, includeIR=True, gtfOne=gtfOne, gtfTwo=gtfTwo)
-                
-                toc = time.perf_counter()       
-                print(f"Gleaning complete,  took {toc-omegatic:0.4f} seconds")
-                
-                tic = time.perf_counter()
-                mstrERGLst = createERGs(xscriptDct=mstrXscriptDct)
-                
-                
-                
-                toc = time.perf_counter()       
-                print(f"Grouping complete,  took {toc-tic:0.4f} seconds")
-                
-                
-                tic = time.perf_counter()
-                # Create Output Dataframes
-                xscriptDf = createXscriptOutDf(xscriptDct=mstrXscriptDct, ergLst=mstrERGLst)
-                ergDf = createERGOutDf(ergLst=mstrERGLst, xscriptDct=mstrXscriptDct, includeIR=True, gtfOne=gtfOne, gtfTwo=gtfTwo)
-                geneDf = createGeneOutDf(xscriptDct=mstrXscriptDct,ergLst=mstrERGLst)
-                
-                # Configure descriptive file name
-                xscript_output_file = "{}/{}_xscript_output.csv".format(args.outdir, prefix)
-                erg_output_file = "{}/{}_erg_output.csv".format(args.outdir, prefix)
-                gene_output_file = "{}/{}_gene_output.csv".format(args.outdir, prefix)
-                
-                gtf_output_file = "{}/{}_erg_gtf.gtf".format(args.outdir, prefix)
-                                
-                toc = time.perf_counter()       
-                print(f"Df building complete,  took {toc-tic:0.4f} seconds")
-                
-        elif (args.includeIR.upper() == 'N'):  
-                # Create XSCRIPT dictionary and ERG list
-                mstrXscriptDct, erInfoDf = gleanInputDf(inDf=inputDf, includeIR=False, gtfOne=gtfOne, gtfTwo=gtfTwo)
-                mstrERGLst = createERGs(xscriptDct=mstrXscriptDct)
-                
-                toc = time.perf_counter()       
-                print(f"Gleaning complete,  took {toc-omegatic:0.4f} seconds")
-                
-                tic = time.perf_counter()
-                mstrERGLst = createERGs(xscriptDct=mstrXscriptDct)
-                
-                toc = time.perf_counter()       
-                print(f"Grouping complete,  took {toc-tic:0.4f} seconds")
-                
-                
-                tic = time.perf_counter()
-                # Create Output Dataframes
-                xscriptDf = createXscriptOutDf(xscriptDct=mstrXscriptDct, ergLst=mstrERGLst)
-                ergDf = createERGOutDf(ergLst=mstrERGLst, xscriptDct=mstrXscriptDct, includeIR=False, gtfOne=gtfOne, gtfTwo=gtfTwo)
-                geneDf = createGeneOutDf(xscriptDct=mstrXscriptDct,ergLst=mstrERGLst)
-                
+                includeIR = True
+        elif (args.includeIR.lower() == 'N'):
+                includeIR = False
+        else:
+                print ("Input Error")
+                quit()
 
-                # Configure descriptive file name
+        
+        # Create XSCRIPT dictionary and ERG list
+        mstrXscriptDct, erInfoDf = gleanInputDf(inDf=inputDf, includeIR=includeIR, gtfOne=gtfOne, gtfTwo=gtfTwo)        
+        
+        toc = time.perf_counter()       
+        print(f"Gleaning complete,  took {toc-omegatic:0.4f} seconds")
+                
+        tic = time.perf_counter()
+        mstrERGLst = createERGs(xscriptDct=mstrXscriptDct)
+        
+        toc = time.perf_counter()       
+        print(f"Grouping complete,  took {toc-tic:0.4f} seconds")
+                
+        
+        tic = time.perf_counter()
+        # Create Output Dataframes
+        geneDct = createGeneDct(ergLst=mstrERGLst)
+        idERGs(geneDct=geneDct, xscriptDct=mstrXscriptDct)
+        
+        ergDf = createERGOutDf(ergLst=mstrERGLst, xscriptDct=mstrXscriptDct, includeIR=includeIR, gtfOne=gtfOne, gtfTwo=gtfTwo)
+        geneDf = createGeneOutDf(xscriptDct=mstrXscriptDct,ergLst=mstrERGLst, geneDct=geneDct)
+        xscriptDf = createXscriptOutDf(xscriptDct=mstrXscriptDct, ergLst=mstrERGLst)
+
+                
+        # Configure descriptive file name
+        xscript_output_file = "{}/{}_xscript_output.csv".format(args.outdir, prefix)
+        erg_output_file = "{}/{}_erg_output.csv".format(args.outdir, prefix)
+        gene_output_file = "{}/{}_gene_output.csv".format(args.outdir, prefix)
+        
+        gtf_output_file = "{}/{}_erg_gtf.gtf".format(args.outdir, prefix)
+                               
+        if not includeIR:  
                 xscript_output_file = "{}/{}_xscript_output_noIR.csv".format(args.outdir, prefix)
                 erg_output_file = "{}/{}_erg_output_noIR.csv".format(args.outdir, prefix)
                 gene_output_file = "{}/{}_gene_output_noIR.csv".format(args.outdir, prefix)
                 
                 gtf_output_file = "{}/{}_erg_noIR_gtf.gtf".format(args.outdir, prefix)
-                                
-                toc = time.perf_counter()       
-                print(f"Df building complete,  took {toc-tic:0.4f} seconds")
-                
+        
+        toc = time.perf_counter()       
+        print(f"Df building complete,  took {toc-tic:0.4f} seconds")
 
         if args.outputGTF:
                 gtfDf = createGTFDf(ergLst=mstrERGLst, xscriptDct=mstrXscriptDct)
