@@ -1224,17 +1224,17 @@ def main():
                 prefix = os.path.splitext(os.path.basename(args.infile))[0]
         
         #Used for testing, made it faster to run multiple times on the same file
-        if (os.path.exists(prefix + "csv.pickle") and os.path.getsize(prefix + "csv.pickle") > 0):
-                with open (prefix + "csv.pickle", 'rb') as f:
-                        inputDf = pickle.load(f)
-        else:
-                inputDf = pd.read_csv (args.infile, low_memory=False)
-                with open (prefix + "csv.pickle", 'wb') as f:
-                        pickle.dump(inputDf, f)
+       # if (os.path.exists(prefix + "csv.pickle") and os.path.getsize(prefix + "csv.pickle") > 0):
+       #        with open (prefix + "csv.pickle", 'rb') as f:
+       #                 inputDf = pickle.load(f)
+       # else:
+       #         inputDf = pd.read_csv (args.infile, low_memory=False)
+       #         with open (prefix + "csv.pickle", 'wb') as f:
+       #                 pickle.dump(inputDf, f)
 
         #Grab input DF from input CSV
         print("Reading input file.... ")
-        # inputDf = pd.read_csv (args.infile, low_memory=False)
+        inputDf = pd.read_csv (args.infile, low_memory=False)
 
         print ("Read complete! GTF Info: ")
         # Start timer to track how long the looping process takes
