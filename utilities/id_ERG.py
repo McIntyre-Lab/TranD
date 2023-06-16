@@ -840,8 +840,8 @@ def createXscriptOutDf(xscriptDct, ergLst):
                 'gene_id':geneIDLst,
                 'xscript_model_id':xscriptStrLst, 
                 'ERG_id':ergIDLst, 
-                'flag_nonolp_pair':nonOlpFlagLst,
-                'nonolp_xscript_id':nonOlpXscriptLst,
+                'flag_nonOlp_pair':nonOlpFlagLst,
+                'nonOlp_xscript_id':nonOlpXscriptLst,
                 'num_ER':numERLst,
                 })
         
@@ -987,7 +987,7 @@ def createERGOutDf(ergLst, xscriptDct, includeIR, gtfOne, gtfTwo):
                 'gene_id':geneIDLst,
                 'xscripts':xscriptStrLst,
                 'contains_which_gtf':sourceLst,
-                'flag_nonolp_pair':nonOlpFlagLst,
+                'flag_nonOlp_pair':nonOlpFlagLst,
                 'flag_IR_in_set':irFlagLst,
                 'num_IR_xscripts':numIRLst,
                 'prop_IR':propIRLst,
