@@ -817,7 +817,7 @@ def createXscriptOutDf(xscriptDct, ergLst):
                 elif xscript.gtfTwo:
                         whichGtfLst.append(2)
                 else:
-                        print ("what the")
+                        whichGtfLst.append(None)
                 
                 # If there is nonOlp. Create a piped list of all transcripts that the xscript does not overlap with
                 if flagNonOlp:
@@ -829,7 +829,11 @@ def createXscriptOutDf(xscriptDct, ergLst):
                         nonOlpXscriptLst.append(nonOlpXscript)
                 else:
                         nonOlpXscriptLst.append(np.NaN)
-
+                        
+        
+        if all(x == None for x in whichGtfLst):
+                whichGtfLst = None
+                
         # Create output dataframe using the lists
         outDf = pd.DataFrame(
                 {
@@ -839,8 +843,11 @@ def createXscriptOutDf(xscriptDct, ergLst):
                 'flag_nonolp_pair':nonOlpFlagLst,
                 'nonolp_xscript_id':nonOlpXscriptLst,
                 'num_ER':numERLst,
-                'which_gtf':whichGtfLst
                 })
+        
+        if whichGtfLst:
+                outDf['which_gtf'] = whichGtfLst
+        
                 
         return outDf
 
