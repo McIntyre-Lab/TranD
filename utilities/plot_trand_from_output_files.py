@@ -16,13 +16,13 @@ from trand import io
 
 def getOptions():
     # Parse command line arguments
-    parser = argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
         description=(
-                "Make TranD plots from output files for 1 GTF gene "
+                "Make TranD plots from output files for:\n\n 1 GTF gene "
                 "(--exon-region, --exon-EF, --intron-retention, "
-                "--uniq-exon), 1 GTF pairwise (--pairwise-1gtf), or "
+                "--uniq-exon),\n 1 GTF pairwise (--pairwise-1gtf),\n or "
                 "2 GTF pairwise (--pairwise-2gtf, --name1, --name2, --gtf1, "
-                "--gtf2). If both 1 GTF gene exon EF file "
+                "--gtf2).\n\n If both 1 GTF gene exon EF file "
                 "(--exon-EF) and 1 GTF pairwise distance file "
                 "(--pairwise-1gtf) are included, a new density plot of "
                 "nucleotide variablility separated by AS type will be made."
@@ -178,7 +178,7 @@ def getOptions():
         required=True,
         help=(
                 "Output prefix for plots. "
-                "Default: no prefix for 1GTF, 'name1_vs_name2' for 2GTF."
+                "Required."
         )
     )
     parser.add_argument(

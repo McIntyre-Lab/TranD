@@ -19,66 +19,77 @@ def getOptions():
         )
         
         parser.add_argument(
-            "-e",
-            "--ERG-file",
-            dest="ERG",
-            required=True,
-            help=(
-                "Input file location for xscript_output ERG file created from TranD output data."
-            )
+                "-e",
+                "--ERG-file",
+                dest="ERG",
+                required=True,
+                help=(
+                    "Input file location for xscript_output ERG file created from TranD output data."
+                )
         )
         
         parser.add_argument(
-            "-p",
-            "--pairwise",
-            dest="PD",
-            required=True,
-            help=(
-                "Input file location of pairwise distance file."
-            )
+                "-p",
+                "--pairwise",
+                dest="PD",
+                required=True,
+                help=(
+                    "Input file location of pairwise distance file."
+                )
         )
         
         parser.add_argument(
-            "-1",
-            "--name1",
-            dest="GTF1",
-            required=False,
-            default="gtf1",
-            help=(
-                "Optional name for the first GTF when processing 2 GTF output."
-                "Added to the header of the column when merged."
-                "Default: gtf1"
-            )
+                "-1",
+                "--name1",
+                dest="GTF1",
+                required=False,
+                default="gtf1",
+                help=(
+                    "Optional name for the first GTF when processing 2 GTF output."
+                    "Added to the header of the column when merged."
+                    "Default: gtf1"
+                )
         )
         
         parser.add_argument(
-            "-2",
-            "--name2",
-            dest="GTF2",
-            required=False,
-            default="gtf2",
-            help=(
-                "Optional name for the first GTF when processing 2 GTF output."
-                "Added to the header of the column when merged."
-                "Default: gtf2"
-            )
+                "-2",
+                "--name2",
+                dest="GTF2",
+                required=False,
+                default="gtf2",
+                help=(
+                    "Optional name for the first GTF when processing 2 GTF output."
+                    "Added to the header of the column when merged."
+                    "Default: gtf2"
+                )
         )
                 
         parser.add_argument(
-            "-o",
-            "--outdir",
-            dest="outDir",
-            required=True,
-            help=(
-                    "Output directory, must already exist."
-            )
+                "-o",
+                "--outdir",
+                dest="outDir",
+                required=True,
+                help=(
+                        "Output directory, must already exist."
+                )
+        )
+        
+        parser.add_argument(
+                "-c",
+                "--col-prefix",
+                dest="colPrefix",
+                required=False,
+                default = None,
+                help = (
+                        "Add a short prefix for all the columns"
+                        "in the output."
+                        "Default: no prefix"
+                )
         )
         
         args = parser.parse_args()
         return args
 
-
-#def main():
         
 
 if __name__ == '__main__':
@@ -100,14 +111,14 @@ if __name__ == '__main__':
         
         ergDf1 = ergDf1.rename(columns = {"xscript_model_id":"transcript_1", 
                                  "ERG_id":"ERG_id_" + args.GTF1, 
-                                 "flag_nonolp_pair":"flag_nonOlp_pair_" + args.GTF1,
-                                 "nonolp_xscript_id":"nonOlp_xscript_id_" + args.GTF1,
+                                 "flag_nonOlp_pair":"flag_nonOlp_pair_" + args.GTF1,
+                                 "nonOlp_xscript_id":"nonOlp_xscript_id_" + args.GTF1,
                                  "num_ER":"num_ER_" + args.GTF1})
         
         ergDf2 = ergDf2.rename(columns = {"xscript_model_id":"transcript_2", 
                                  "ERG_id":"ERG_id_" + args.GTF2, 
-                                 "flag_nonolp_pair":"flag_nonOlp_pair_" + args.GTF2,
-                                 "nonolp_xscript_id":"nonOlp_xscript_id_" + args.GTF2,
+                                 "flag_nonOlp_pair":"flag_nonOlp_pair_" + args.GTF2,
+                                 "nonOlp_xscript_id":"nonOlp_xscript_id_" + args.GTF2,
                                  "num_ER":"num_ER_" + args.GTF2})
         
         
@@ -157,6 +168,8 @@ if __name__ == '__main__':
         # Merging Time
         ergDf1 = ergDf1.drop(columns="gene_id")
         ergDf2 = ergDf2.drop(columns="gene_id")
+        ergDf1 = ergDf1.drop(columns="which_gtf")
+        ergDf2 = ergDf2.drop(columns="which_gtf")
         
         # First Merge
         merge1 = pd.merge(trueMinDf, ergDf1, on=['transcript_1'], how='outer', indicator='merge_check')
@@ -182,7 +195,7 @@ if __name__ == '__main__':
         
         # Remove Xscripts that dont appear in the subset PD
         # Union Complete
-        unionDf = merge2[~merge2['merge_check'].str.contains('right')].copy(deep=True)
+        unionDf = merge2[~merge2['merge_check'].str.contains('right')].copy()
 
 
         #Checking Removed Transcripts
@@ -202,6 +215,16 @@ if __name__ == '__main__':
         ergMatch = unionDf['ERG_id_' + args.GTF1] == unionDf['ERG_id_' + args.GTF2]
         
         unionDf['flag_ERG_match'] = ergMatch * 1
+        
+        unionDf = unionDf.drop(columns="merge_check")
+        
+        if args.colPrefix:
+                colPrefix = args.colPrefix
+                unionDf = unionDf.add_prefix(colPrefix + "_")
+                
+                unionDf = unionDf.rename(columns={colPrefix + "_transcript_1":"transcript_1",
+                                colPrefix + "_transcript_2":"transcript_2"})
+        
         
         outputFile = args.outDir + "/" + args.GTF1 + "_" + args.GTF2 + "_" + "union.csv"
         
