@@ -4,6 +4,7 @@
 Created on Fri Jun 16 16:04:12 2023
 
 @author: k.bankole
+
 """
 
 import argparse
@@ -67,7 +68,7 @@ def getOptions():
             "-o",
             "--outdir",
             dest="outDir",
-            required=False,
+            required=True,
             help=(
                     "Output directory, must already exist."
             )
@@ -86,20 +87,47 @@ if __name__ == '__main__':
         args = getOptions()
         
         ergDf = pd.read_csv(args.ERG, low_memory=False)
-        
-        print ("Num ERG Xscripts: " + str(len(ergDf)))
+        print ("ERG INFO: ")
+        print ("ERG XSCRIPTS: " + str(len(ergDf)))
         
         ergDf1 = ergDf[ergDf['which_gtf'] == 1]
-        print ("Num GTF1 XSCRIPTS: " + str(len(ergDf1)))
+        print ("GTF1 XSCRIPTS: " + str(len(ergDf1)))
         
         ergDf2 = ergDf[ergDf['which_gtf'] == 2]
-        print ("Num GTF1 XSCRIPTS: " + str(len(ergDf2)))    
+        print ("GTF2 XSCRIPTS: " + str(len(ergDf2)))
+        
+        print ("GENES: " + str(len(set(ergDf['gene_id']))))
+        
+        ergDf1 = ergDf1.rename(columns = {"xscript_model_id":"transcript_1", 
+                                 "ERG_id":"ERG_id_" + args.GTF1, 
+                                 "flag_nonolp_pair":"flag_nonOlp_pair_" + args.GTF1,
+                                 "nonolp_xscript_id":"nonOlp_xscript_id_" + args.GTF1,
+                                 "num_ER":"num_ER_" + args.GTF1})
+        
+        ergDf2 = ergDf2.rename(columns = {"xscript_model_id":"transcript_2", 
+                                 "ERG_id":"ERG_id_" + args.GTF2, 
+                                 "flag_nonolp_pair":"flag_nonOlp_pair_" + args.GTF2,
+                                 "nonolp_xscript_id":"nonOlp_xscript_id_" + args.GTF2,
+                                 "num_ER":"num_ER_" + args.GTF2})
+        
+        
+        print ()
+        print ("PAIRWISE DISTANCE INFO: ")        
 
         pdDf = pd.read_csv(args.PD, low_memory=False)
         
+        print ("Len PD: " + str(len(pdDf)))
+        print ("Genes: " + str(len(set(pdDf['gene_id']))))
+        print ("Len T1: " + str(len(set(pdDf['transcript_1']))))
+        print ("Len T2: " + str(len(set(pdDf['transcript_2']))))
+
         unqXscriptSet = set(pd.concat([pdDf['transcript_1'], pdDf['transcript_2']]))
         
-        print ("Num PD Xscripts: " + str(len(unqXscriptSet)))        
+        print()
+        print ("Xscripts: " + str(len(unqXscriptSet)))        
+        
+        print()
+        
         
         for col in pdDf.columns:
                 
@@ -115,13 +143,71 @@ if __name__ == '__main__':
                                 continue
                         else:
                                 break
-                
-        subsetDf = pdDf[(pdDf['flag_min_match_' + gtf1] == 1) | (pdDf['flag_min_match_' + gtf2] == 1)]
         
-        subsetDf = subsetDf[subsetDf['flag_RMP'] == 1]
-                
-        print ("Num true minimums: " + str(len(subsetDf)))
-                
+        
+        minmatchDf = pdDf[(pdDf['flag_min_match_' + gtf1] == 1) | (pdDf['flag_min_match_' + gtf2] == 1)]
+        print ()
+        print ("flagminmatch: " + str(len(minmatchDf)))
+        
+        trueMinDf = minmatchDf[minmatchDf['flag_RMP'] == 1]
+        print ("Num true minimums: " + str(len(trueMinDf)))
+        print ()
+        
+        
+        # Merging Time
+        ergDf1 = ergDf1.drop(columns="gene_id")
+        ergDf2 = ergDf2.drop(columns="gene_id")
+        
+        # First Merge
+        merge1 = pd.merge(trueMinDf, ergDf1, on=['transcript_1'], how='outer', indicator='merge_check')
+        
+        print ("First Merge Check: ")
+        print (merge1['merge_check'].value_counts(dropna=False).sort_index())
+        print()
+        
+        oops1 = merge1[merge1['merge_check'].str.contains('right')]
+        
+        # Remove Xscripts that dont appear in the subset PD
+        subMerge1 = merge1[~merge1['merge_check'].str.contains('right')]
+        subMerge1 = subMerge1.drop(columns="merge_check")
+        
+        # Second Merge
+        merge2 = pd.merge(subMerge1, ergDf2, on=['transcript_2'], how='outer', indicator = 'merge_check')
+        
+        print ("Second Merge Check: ")
+        print (merge2['merge_check'].value_counts(dropna=False).sort_index())
+        print()
+        
+        oops2 = merge2[merge2['merge_check'].str.contains('right')]
+        
+        # Remove Xscripts that dont appear in the subset PD
+        # Union Complete
+        unionDf = merge2[~merge2['merge_check'].str.contains('right')].copy(deep=True)
 
-    
-#   main()
+
+        #Checking Removed Transcripts
+        # Create List of Removed Transcipts
+        minXscripts = set(pd.concat([trueMinDf['transcript_1'], trueMinDf['transcript_2']]))
+        leftovers = unqXscriptSet - minXscripts
+        oopsSet = set(pd.concat([oops1['transcript_1'], oops2['transcript_2']]))
+        
+        checkRemoved = leftovers == oopsSet
+        
+        if checkRemoved:
+                print ("Valid Merge")
+        else:
+                print ("Missing transcripts in the final union")
+        
+        
+        ergMatch = unionDf['ERG_id_' + args.GTF1] == unionDf['ERG_id_' + args.GTF2]
+        
+        unionDf['flag_ERG_match'] = ergMatch * 1
+        
+        outputFile = args.outDir + "/" + args.GTF1 + "_" + args.GTF2 + "_" + "union.csv"
+        
+        try:
+                unionDf.to_csv(outputFile,index=False)
+        except OSError:
+                raise OSError("Output directory must already exist.")
+
+        print ("Complete!")                
