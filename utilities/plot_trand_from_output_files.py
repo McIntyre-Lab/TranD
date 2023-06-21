@@ -188,6 +188,15 @@ def getOptions():
         action="store_true",
         help="Force overwrite existing output directory and files within.",
     )
+    
+    parser.add_argument(
+            "-ns",
+            "--no-suffix",
+            dest="noSuff",
+            action="store_true",
+            help="Add this argument if there is no suffix on the transcripts in the 2GTF data"
+            )
+    
     args = parser.parse_args()
     return args
 
@@ -351,9 +360,13 @@ def validate_input(inType, args):
         if [c for c in td_data if c in td_df_cols] == td_df_cols:
             # Check that name1 and name2 provided are present
             #   in the transcript_1 and transcript 2 columns
-            if td_data['transcript_1'].str.contains(args.name1).all():
-                if td_data['transcript_2'].str.contains(args.name2).all():
+            if not args.noSuff: 
+                    if td_data['transcript_1'].str.contains(args.name1).all():
+                            if td_data['transcript_2'].str.contains(args.name2).all():
+                                    return td_data, name1, name2, f1_odds, f2_odds
+            else:
                     return td_data, name1, name2, f1_odds, f2_odds
+
         else:
             exit(
                     "!!!ERROR: Two GTF pairwise transcript distance file "
@@ -508,12 +521,16 @@ def main():
                 prefix=args.outPrefix,
         )
     if twoGTF:
-        td_data, name1, name2, f1_odds, f2_odds = (
-            validate_input(inType="twoGTF", args=args)
-        )
-        if args.outPrefix is None:
-            args.outPrefix = str(name1) + "_vs_" + str(name2)
-        P2GP.plot_two_gtf_pairwise(
+            try:
+                    td_data, name1, name2, f1_odds, f2_odds = (
+                            validate_input(inType="twoGTF", args=args)
+                    )
+            except TypeError:
+                    raise TypeError("Input was not validated. You may be missing a -ns in your arguments.")
+            if args.outPrefix is None:
+                    args.outPrefix = str(name1) + "_vs_" + str(name2)
+                
+            P2GP.plot_two_gtf_pairwise(
                 outdir,
                 td_data,
                 f1_odds,
@@ -521,7 +538,7 @@ def main():
                 name1=name1,
                 name2=name2,
                 prefix=args.outPrefix
-        )
+           )
 
 
 if __name__ == '__main__':
