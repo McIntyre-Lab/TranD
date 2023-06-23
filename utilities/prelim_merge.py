@@ -10,6 +10,9 @@ This is the TMM (ERG + PD)
 
 import argparse
 import pandas as pd
+import numpy as np
+import logging
+import os
 
 def getOptions():
         # Parse command line arguments
@@ -88,6 +91,19 @@ def getOptions():
                 )
         )
         
+        parser.add_argument(
+                "-l",
+                "--logfile",
+                dest="logFile",
+                required=False,
+                action = "store_true",
+                help = (
+                        "Add this argument to output a logfile with counts and checks"
+                        "for the merge. Located in the output directory "
+                        "as \"name1_name2_map_log.log\"."
+                 )
+        )
+        
         args = parser.parse_args()
         return args
 
@@ -109,18 +125,19 @@ if __name__ == '__main__':
         print ("GTF2 XSCRIPTS: " + str(len(ergDf2)))
         
         print ("GENES: " + str(len(set(ergDf['gene_id']))))
-        
+
+
         ergDf1 = ergDf1.rename(columns = {"xscript_model_id":"transcript_1", 
-                                 "ERG_id":"ERG_id_" + args.GTF1, 
-                                 "flag_nonOlp_pair":"flag_nonOlp_pair_" + args.GTF1,
-                                 "nonOlp_xscript_id":"nonOlp_xscript_id_" + args.GTF1,
-                                 "num_ER":"num_ER_" + args.GTF1})
+                                  "ERG_id":"ERG_id_" + args.GTF1, 
+                                  "flag_nonOlp_pair":"flag_nonOlp_pair_" + args.GTF1,
+                                  "nonOlp_xscript_id":"nonOlp_xscript_id_" + args.GTF1,
+                                  "num_ER":"num_ER_" + args.GTF1})
         
         ergDf2 = ergDf2.rename(columns = {"xscript_model_id":"transcript_2", 
-                                 "ERG_id":"ERG_id_" + args.GTF2, 
-                                 "flag_nonOlp_pair":"flag_nonOlp_pair_" + args.GTF2,
-                                 "nonOlp_xscript_id":"nonOlp_xscript_id_" + args.GTF2,
-                                 "num_ER":"num_ER_" + args.GTF2})
+                                  "ERG_id":"ERG_id_" + args.GTF2, 
+                                  "flag_nonOlp_pair":"flag_nonOlp_pair_" + args.GTF2,
+                                  "nonOlp_xscript_id":"nonOlp_xscript_id_" + args.GTF2,
+                                  "num_ER":"num_ER_" + args.GTF2})
         
         
         print ()
@@ -140,9 +157,9 @@ if __name__ == '__main__':
         
         print()
         
+
         
         for col in pdDf.columns:
-                
                 if "flag_min_match_" in col:
                         gtf1 = col[len(("flag_min_match_")):]
                         break
@@ -159,11 +176,12 @@ if __name__ == '__main__':
         
         minmatchDf = pdDf[(pdDf['flag_min_match_' + gtf1] == 1) | (pdDf['flag_min_match_' + gtf2] == 1)]
         print ()
-        print ("flagminmatch: " + str(len(minmatchDf)))
+        print ("Number of transcripts that are min_match in either GTF: " + str(len(minmatchDf)))
         
         trueMinDf = minmatchDf[minmatchDf['flag_RMP'] == 1]
-        print ("Num true minimums: " + str(len(trueMinDf)))
+        print ("Number of reciproical min pairs: " + str(len(trueMinDf)))
         print ()
+
         
         
         # Merging Time
@@ -179,6 +197,8 @@ if __name__ == '__main__':
         print (merge1['merge_check'].value_counts(dropna=False).sort_index())
         print()
         
+        
+        
         oops1 = merge1[merge1['merge_check'].str.contains('right')]
         
         # Remove Xscripts that dont appear in the subset PD
@@ -192,14 +212,14 @@ if __name__ == '__main__':
         print (merge2['merge_check'].value_counts(dropna=False).sort_index())
         print()
         
+        
         oops2 = merge2[merge2['merge_check'].str.contains('right')]
         
         # Remove Xscripts that dont appear in the subset PD
         # Union Complete
-        unionDf = merge2[~merge2['merge_check'].str.contains('right')].copy()
+        mapDf = merge2[~merge2['merge_check'].str.contains('right')].copy()
 
-
-        #Checking Removed Transcripts
+        # Checking Removed Transcripts
         # Create List of Removed Transcipts
         minXscripts = set(pd.concat([trueMinDf['transcript_1'], trueMinDf['transcript_2']]))
         leftovers = unqXscriptSet - minXscripts
@@ -208,32 +228,48 @@ if __name__ == '__main__':
         checkRemoved = leftovers == oopsSet
         
         if checkRemoved:
-                print ("Valid Merge")
+                print ("Valid Merge. All transcripts that are RMP and min_match "
+                        "appear in the final output.")
+                # if logFile:
+                #         outfile.write ("Valid Merge. All transcripts that are RMP and min_match "
+                #                 "appear in the final output.")
         else:
-                print ("Missing transcripts in the final union")
+                print ("Missing transcripts in the final output. Check the logfile"
+                        "to see which ones.")
+                
+                # if logFile:
+                #         outfile.write ("Missing transcripts in the final output. ")
+                #         outfile.write("")
+                #         outfile.write ("Transcripts that appear only in the ERG file: ")
+                #         for transcript in oopsSet:
+                #                 outfile.write (transcript)
+                        
+                #         outfile.write("")
+                #         outfile.write ("Transcripts that are not RMP or min_match:")
+                #         for transcript in leftovers:
+                #                   outfile.write (transcript)        
+                
+        ergMatch = mapDf['ERG_id_' + args.GTF1] == mapDf['ERG_id_' + args.GTF2]
+        mapDf['flag_ERG_match'] = ergMatch * 1
         
-        
-        ergMatch = unionDf['ERG_id_' + args.GTF1] == unionDf['ERG_id_' + args.GTF2]
-        unionDf['flag_ERG_match'] = ergMatch * 1
-        
-        unionDf['flag_ERG_noIR'] = ((unionDf['flag_ERG_match'] == 1) & (unionDf['flag_IR'] == 0)) * 1 
-        unionDf['flag_ERG_wIR'] = ((unionDf['flag_ERG_match'] == 1) & (unionDf['flag_IR'] == 1)) * 1 
+        mapDf['flag_ERG_noIR'] = ((mapDf['flag_ERG_match'] == 1) & (mapDf['flag_IR'] == 0)) * 1 
+        mapDf['flag_ERG_wIR'] = ((mapDf['flag_ERG_match'] == 1) & (mapDf['flag_IR'] == 1)) * 1 
 
-        unionDf = unionDf.drop(columns="merge_check")
+        mapDf = mapDf.drop(columns="merge_check")
         
         if args.colPrefix:
                 colPrefix = args.colPrefix
-                unionDf = unionDf.add_prefix(colPrefix + "_")
+                mapDf = mapDf.add_prefix(colPrefix + "_")
                 
-                unionDf = unionDf.rename(columns={colPrefix + "_transcript_1":"transcript_1",
+                mapDf = mapDf.rename(columns={colPrefix + "_transcript_1":"transcript_1",
                                 colPrefix + "_transcript_2":"transcript_2"})
         
         
         outputFile = args.outDir + "/" + args.GTF1 + "_" + args.GTF2 + "_" + "map.csv"
         
         try:
-                unionDf.to_csv(outputFile,index=False)
+                mapDf.to_csv(outputFile,index=False)
         except OSError:
                 raise OSError("Output directory must already exist.")
-
+                
         print ("Complete!")                
