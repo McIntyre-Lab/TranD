@@ -5,6 +5,7 @@ Created on Fri Jun 16 16:04:12 2023
 
 @author: k.bankole
 
+This is the TMM (ERG + PD)
 """
 
 import argparse
@@ -82,7 +83,7 @@ def getOptions():
                 default = None,
                 help = (
                         "Add a short prefix for all the columns"
-                        "in the output."
+                        "in the output. Necessary if comparing species."
                         "Default: no prefix"
                 )
         )
@@ -213,9 +214,11 @@ if __name__ == '__main__':
         
         
         ergMatch = unionDf['ERG_id_' + args.GTF1] == unionDf['ERG_id_' + args.GTF2]
-        
         unionDf['flag_ERG_match'] = ergMatch * 1
         
+        unionDf['flag_ERG_noIR'] = ((unionDf['flag_ERG_match'] == 1) & (unionDf['flag_IR'] == 0)) * 1 
+        unionDf['flag_ERG_wIR'] = ((unionDf['flag_ERG_match'] == 1) & (unionDf['flag_IR'] == 1)) * 1 
+
         unionDf = unionDf.drop(columns="merge_check")
         
         if args.colPrefix:
@@ -226,7 +229,7 @@ if __name__ == '__main__':
                                 colPrefix + "_transcript_2":"transcript_2"})
         
         
-        outputFile = args.outDir + "/" + args.GTF1 + "_" + args.GTF2 + "_" + "union.csv"
+        outputFile = args.outDir + "/" + args.GTF1 + "_" + args.GTF2 + "_" + "map.csv"
         
         try:
                 unionDf.to_csv(outputFile,index=False)
