@@ -1,7 +1,3 @@
-
-
-
-
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -143,31 +139,32 @@ def main():
 
     # Classify transcript pairs
     # If requested add classification that includes "small" ERS differences (provide a max # of nt in ERS_noIR)
-    rmpDf = distDf2[distDf2["flag_RMP"]==1].copy()
-    print(rmpDf)
+    #rmpDf = distDf2[distDf2["flag_RMP"]==1].copy()
+    #print(rmpDf)
 
     if args.smallDiff is not None:
-        rmpDf["flag_ERS_noIR"] = np.where(
-            (rmpDf["prop_ER_noOvlp"]==0) & (rmpDf["flag_IR"]==0),
+        distDf2["flag_ERS_noIR"] = np.where(
+            (distDf2["prop_ER_noOvlp"]==0) & (distDf2["flag_IR"]==0),
             1,
             0
         )
-        rmpDf["flag_ERS_wIR"] = np.where(
-            (rmpDf["prop_ER_noOvlp"]==0) & (rmpDf["flag_IR"]==1),
+        distDf2["flag_ERS_wIR"] = np.where(
+            (distDf2["prop_ER_noOvlp"]==0) & (distDf2["flag_IR"]==1),
             1,
             0
         )
-        rmpDf["flag_RMP"] = 1
+        #distDf2["flag_RMP"] = 1
+        #print(distDf2.columns.values)
 
         # Add variable that is FSM, ERS_noIR_small (ERS_noIR with < N nt internal difference), ERS_noIR_large (ERS_noIR with >= N nt internal difference), ERS_wIR, ERN (recip min that is not FSM/ERS), NRM (no reciprocal minimum match)
         compConditions = [
-            rmpDf["flag_FSM"] == 1,
-            (rmpDf["flag_ERS_noIR"] == 1) & (rmpDf["num_ERS_nt_noOvlp_internal"] < args.smallDiff),
-            (rmpDf["flag_ERS_noIR"] == 1) & (rmpDf["num_ERS_nt_noOvlp_internal"] >= args.smallDiff),
-            rmpDf["flag_ERS_wIR"]==1,
-            rmpDf["flag_RMP"] == 1,
-            (rmpDf["flag_RMP"] == 0) & (rmpDf["transcript_1"].isna()),
-            (rmpDf["flag_RMP"] == 0) & (rmpDf["transcript_2"].isna()),    
+            distDf2["flag_FSM"] == 1,
+            (distDf2["flag_ERS_noIR"] == 1) & (distDf2["num_ERS_nt_noOvlp_internal"] < args.smallDiff),
+            (distDf2["flag_ERS_noIR"] == 1) & (distDf2["num_ERS_nt_noOvlp_internal"] >= args.smallDiff),
+            distDf2["flag_ERS_wIR"]==1,
+            distDf2["flag_RMP"] == 1,
+            (distDf2["flag_RMP"] == 0) & (distDf2["transcript_1"].isna()),
+            (distDf2["flag_RMP"] == 0) & (distDf2["transcript_2"].isna()),    
         ]
         compChoices = [
             "FSM",
@@ -181,12 +178,12 @@ def main():
     else:
         # Add variable that is FSM, ERS_noIR, ERS_wIR, ERN (recip min that is not FSM/ERS), NRM (no reciprocal minimum match)
         compConditions = [
-            rmpDf["flag_FSM"] == 1,
-            rmpDf["flag_ERS_noIR"] == 1,
-            rmpDf["flag_ERS_wIR"]==1,
-            rmpDf["flag_RMP"] == 1,
-            (rmpDf["flag_RMP"] == 0) & (rmpDf["transcript_1"].isna()),
-            (rmpDf["flag_RMP"] == 0) & (rmpDf["transcript_2"].isna()),    
+            distDf2["flag_FSM"] == 1,
+            distDf2["flag_ERS_noIR"] == 1,
+            distDf2["flag_ERS_wIR"]==1,
+            distDf2["flag_RMP"] == 1,
+            (distDf2["flag_RMP"] == 0) & (distDf2["transcript_1"].isna()),
+            (distDf2["flag_RMP"] == 0) & (distDf2["transcript_2"].isna()),    
         ]
         compChoices = [
             "FSM",
@@ -196,11 +193,12 @@ def main():
             "NRM_transcript_1",
             "NRM_transcrip_2",
         ]
-    rmpDf["comparison_type"] = np.select(compConditions, compChoices, "oops")
+    distDf2["pair_classification"] = np.select(compConditions, compChoices, "oops")
 
+    outDf = distDf2[["gene_id", "transcript_1", "transcript_2", "flag_FSM", "flag_RMP", "flag_ERS_noIR", "pair_classification"]]
 
     # Output transcript map file
-    rmpDf.to_csv(args.outFile, index=False)
+    outDf.to_csv(args.outFile, index=False)
 #    unionRMP.to_csv("/Volumes/blue/mcintyre/share/transcript_distance/human_analysis/hg38_RefSeq_Ensembl_transcript_map.csv", index=False)
 
     
