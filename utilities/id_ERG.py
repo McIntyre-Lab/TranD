@@ -281,6 +281,17 @@ def getOptions():
                 )
         
         parser.add_argument(
+                "-w",
+                "--which-gtf",
+                dest="whichGTF",
+                required=False,
+                help="Add this command if entering a 1 GTF pairwise distance file. Sets the \"which_gtf\" "
+                "column to whatever number is entered. Enter a 1 or a 2. Helpful if continuing on two compare this "
+                "1 GTF ERG output to a 2 GTF output. Make sure that whichever number you enter matches "
+                "the which_gtf in the other file. If 1 is melanogaster and 2 is simulans in the 2 GTF output, and you enter "
+                "a 1 GTF file with melanogaster data, input a 1.")
+        
+        parser.add_argument(
                 "-p",
                 "--prefix",
                 dest="prefix",
@@ -832,7 +843,8 @@ def createXscriptOutDf(xscriptDct, ergLst):
                         
         
         if all(x == None for x in whichGtfLst):
-                whichGtfLst = None
+                whichGtfLst = args.whichGTF
+        
                 
         # Create output dataframe using the lists
         outDf = pd.DataFrame(

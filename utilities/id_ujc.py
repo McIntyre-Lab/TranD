@@ -124,7 +124,7 @@ def getOptions():
                 "--prefix",
                 dest="prefix",
                 required=True,
-                help="Prefix for the output file(s). Example: prefix_UJC_ID.csv"
+                help="Required prefix for the output file(s). Example: prefix_UJC_ID.csv"
         )
         
         args = parser.parse_args()
