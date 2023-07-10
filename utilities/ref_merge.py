@@ -156,19 +156,20 @@ if __name__ == '__main__':
                                 if "tie" not in col and "FSM_RMP" not in col:
                                         union2[col] = inDf2[col]        
         
-        mergedDf = pd.merge(union1, union2, on=['transcript_1', 'transcript_2'], 
+        allMergedDf = pd.merge(union1, union2, on=['transcript_1', 'transcript_2'], 
                          how='outer', indicator = 'merge_check')
         
         # print (mergedDf['merge_check'].value_counts(dropna=False).sort_index())
 
-        oops = mergedDf[mergedDf['merge_check'].str.contains('right')]
+        oops = allMergedDf[allMergedDf['merge_check'].str.contains('right')]
         
-        if len(oops) > 0:
-                sys.exit ("Error, Union Mismatch. There are transcripts in one union that"
-                          "do not appear in the other.")
-        else:
-                print ("Valid Merge. All transcripts appear in both inputs.")
-        
+#        if len(oops) > 0:
+#                sys.exit ("Error, Union Mismatch. There are transcripts in one union that"
+#                          "do not appear in the other.")
+#        else:
+#                print ("Valid Merge. All transcripts appear in both inputs.")
+
+        mergedDf = allMergedDf[~allMergedDf['merge_check'].str.contains('both')]
         mergedDf.drop(columns="merge_check")
         
         print("Num Xscripts in Merged Df: " + 

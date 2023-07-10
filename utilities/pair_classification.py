@@ -3,7 +3,7 @@
 """
 Created on Thu Mar 16 15:32:42 2023
 
-@author: adalena
+@author: adalena/alison
 """
 
 import pandas as pd
@@ -43,7 +43,7 @@ def getOptions():
         "--output",
         dest="outFile",
         required=True,
-        help="Output Transcript Map file."
+        help="Output pair classification file."
     )
 
     args = parser.parse_args()
@@ -163,8 +163,7 @@ def main():
             (distDf2["flag_ERS_noIR"] == 1) & (distDf2["num_ERS_nt_noOvlp_internal"] >= args.smallDiff),
             distDf2["flag_ERS_wIR"]==1,
             distDf2["flag_RMP"] == 1,
-            (distDf2["flag_RMP"] == 0) & (distDf2["transcript_1"].isna()),
-            (distDf2["flag_RMP"] == 0) & (distDf2["transcript_2"].isna()),    
+            distDf2["flag_RMP"] == 0,
         ]
         compChoices = [
             "FSM",
@@ -172,8 +171,7 @@ def main():
             "ERS_noIR_large",
             "ERS_wIR",
             "ERN",
-            "NRM_transcript_1",
-            "NRM_transcript_2",
+            "NRM",
         ]        
     else:
         # Add variable that is FSM, ERS_noIR, ERS_wIR, ERN (recip min that is not FSM/ERS), NRM (no reciprocal minimum match)
@@ -182,16 +180,14 @@ def main():
             distDf2["flag_ERS_noIR"] == 1,
             distDf2["flag_ERS_wIR"]==1,
             distDf2["flag_RMP"] == 1,
-            (distDf2["flag_RMP"] == 0) & (distDf2["transcript_1"].isna()),
-            (distDf2["flag_RMP"] == 0) & (distDf2["transcript_2"].isna()),    
+            distDf2["flag_RMP"] == 0,
         ]
         compChoices = [
             "FSM",
             "ERS_noIR",
             "ERS_wIR",
             "ERN",
-            "NRM_transcript_1",
-            "NRM_transcrip_2",
+            "NRM",
         ]
     distDf2["pair_classification"] = np.select(compConditions, compChoices, "oops")
 
