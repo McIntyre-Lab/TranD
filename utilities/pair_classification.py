@@ -141,7 +141,7 @@ def main():
     # If requested add classification that includes "small" ERS differences (provide a max # of nt in ERS_noIR)
     #rmpDf = distDf2[distDf2["flag_RMP"]==1].copy()
     #print(rmpDf)
-
+    
     if args.smallDiff is not None:
         distDf2["flag_ERS_noIR"] = np.where(
             (distDf2["prop_ER_noOvlp"]==0) & (distDf2["flag_IR"]==0),
@@ -175,6 +175,18 @@ def main():
         ]        
     else:
         # Add variable that is FSM, ERS_noIR, ERS_wIR, ERN (recip min that is not FSM/ERS), NRM (no reciprocal minimum match)
+        
+        distDf2["flag_ERS_noIR"] = np.where(
+            (distDf2["prop_ER_noOvlp"]==0) & (distDf2["flag_IR"]==0),
+            1,
+            0
+        )
+        distDf2["flag_ERS_wIR"] = np.where(
+            (distDf2["prop_ER_noOvlp"]==0) & (distDf2["flag_IR"]==1),
+            1,
+            0
+        )
+        
         compConditions = [
             distDf2["flag_FSM"] == 1,
             distDf2["flag_ERS_noIR"] == 1,
