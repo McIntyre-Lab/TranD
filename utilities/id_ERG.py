@@ -1178,7 +1178,7 @@ def createGTFDf(ergLst,xscriptDct):
         for erg in ergLst:
                 seqname = erg.exonChain[0].seqname
                 strand = erg.exonChain[0].strand
-                ergID = "erg_" + str(erg.erg_id) + "_tr"
+                ergID = str(erg.erg_id)
                 geneID = erg.gene_id
                 
                 
