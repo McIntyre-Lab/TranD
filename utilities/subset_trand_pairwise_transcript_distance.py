@@ -76,7 +76,6 @@ def getOptions():
         "--name1",
         dest="name1",
         required=False,
-        default="d1",
         help=(
             "For 2 GTF pairwise distance file, name used for dataset 1 "
             "that is appended to transcript_1 values "
@@ -88,7 +87,6 @@ def getOptions():
         "--name2",
         dest="name2",
         required=False,
-        default="d2",
         help=(
             "For 2 GTF pairwise distance file, name used for dataset 2 "
             "that is appended to transcript_2 values "
@@ -129,12 +127,15 @@ def main():
             if listVar == "transcript_id":
                 if args.inInclude[0] != "all":
                     t1DF = pd.read_csv(args.inInclude[0], names=[listVar])
-                    t1DF[listVar] = t1DF[listVar] + "_" + args.name1
+                    
+                    if args.name1 is not None:
+                            t1DF[listVar] = t1DF[listVar] + "_" + args.name1
                 else:
                     t1DF = tdDF[["transcript_1"]].rename(columns={"transcript_1": listVar})
                 if args.inInclude[1] != "all":
                     t2DF = pd.read_csv(args.inInclude[1], names=[listVar])
-                    t2DF[listVar] = t2DF[listVar] + "_" + args.name2
+                    if args.name2 is not None:      
+                            t2DF[listVar] = t2DF[listVar] + "_" + args.name2
                 else:
                     t2DF = tdDF[["transcript_2"]].drop_duplicates().rename(columns={"transcript_2": listVar})
             else:
@@ -150,9 +151,12 @@ def main():
         elif len(args.inExclude) == 2:
             if listVar == "transcript_id":
                 t1DF = pd.read_csv(args.inExclude[0], names=[listVar])
-                t1DF[listVar] = t1DF[listVar] + "_" + args.name1
+                if args.name1 is not None:
+                        t1DF[listVar] = t1DF[listVar] + "_" + args.name1
                 t2DF = pd.read_csv(args.inExclude[1], names=[listVar])
-                t2DF[listVar] = t2DF[listVar] + "_" + args.name2
+                
+                if args.name2 is not None:      
+                        t2DF[listVar] = t2DF[listVar] + "_" + args.name2
             else:
                 print("ERROR: -t must be transcript_id when more than one list provided.")
                 sys.exit()
@@ -195,4 +199,90 @@ if __name__ == '__main__':
     # Parse command line arguments
     global args
     args = getOptions()
-    main()
+    #main()
+    
+    # Get TranD pairwise distance file
+    tdDF = pd.read_csv(args.TD, low_memory=False)
+
+    # Get list ID variable - currently will only be gene_id
+    listVar = args.inType
+    
+    # Check that only one list argument was provided
+    if args.inInclude is None and args.inExclude is None:
+        print("ERROR: No list provided to subset pairwise file on.")
+        sys.exit()
+    elif args.inInclude is not None and args.inExclude is None:
+        include = True
+        if len(args.inInclude) == 1:
+            idDF = pd.read_csv(args.inInclude[0], names=[listVar])
+        elif len(args.inInclude) == 2:
+            if listVar == "transcript_id":
+                if args.inInclude[0] != "all":
+                    t1DF = pd.read_csv(args.inInclude[0], names=[listVar])
+                    
+                    if args.name1 is not None:
+                            t1DF[listVar] = t1DF[listVar] + "_" + args.name1
+                else:
+                    t1DF = tdDF[["transcript_1"]].rename(columns={"transcript_1": listVar})
+                if args.inInclude[1] != "all":
+                    t2DF = pd.read_csv(args.inInclude[1], names=[listVar])
+                    if args.name2 is not None:      
+                            t2DF[listVar] = t2DF[listVar] + "_" + args.name2
+                else:
+                    t2DF = tdDF[["transcript_2"]].drop_duplicates().rename(columns={"transcript_2": listVar})
+            else:
+                print("ERROR: -t must be transcript_id when more than one list provided.")
+                sys.exit()
+        else:
+            print("ERROR: A maximum of two lists can be provided as input.")
+            sys.exit()
+    elif args.inInclude is None and args.inExclude is not None:
+        include = False
+        if len(args.inExclude) == 1:
+            idDF = pd.read_csv(args.inExclude[0], names=[listVar])
+        elif len(args.inExclude) == 2:
+            if listVar == "transcript_id":
+                t1DF = pd.read_csv(args.inExclude[0], names=[listVar])
+                if args.name1 is not None:
+                        t1DF[listVar] = t1DF[listVar] + "_" + args.name1
+                t2DF = pd.read_csv(args.inExclude[1], names=[listVar])
+                
+                if args.name2 is not None:      
+                        t2DF[listVar] = t2DF[listVar] + "_" + args.name2
+            else:
+                print("ERROR: -t must be transcript_id when more than one list provided.")
+                sys.exit()
+        else:
+            print("ERROR: A maximum of two lists can be provided as input.")
+            sys.exit()
+    else:
+        print("ERROR: Cannot use both inclusion and exclusion list - only provide one or the other")
+        sys.exit()
+
+    if include:
+        # If list is for inclusion
+        # Extract rows of pairwise distance that have a value contained in list of IDs
+        if listVar == "gene_id":
+            filterDF = tdDF[tdDF[listVar].isin(idDF[listVar])]
+        else:
+            if len(args.inInclude) == 1:
+                # A pair is retained if transcript_1 and transcript_2 are BOTH in the list
+                filterDF = tdDF[(tdDF["transcript_1"].isin(idDF[listVar])) & (tdDF["transcript_2"].isin(idDF[listVar]))]
+            else:
+                # A pair is retained if transcript_1 is in list 1 and transcript_2 is in list 2
+                filterDF = tdDF[(tdDF["transcript_1"].isin(t1DF[listVar])) & (tdDF["transcript_2"].isin(t2DF[listVar]))]
+    else:
+        # If list is for exclusion
+        # Extract GTF elements that do NOT have a value contained in list of IDs
+        if listVar == "gene_id":
+            filterDF = tdDF[~tdDF[listVar].isin(idDF[listVar])]
+        else:
+            if len(args.inInclude) == 1:
+                # A pair is retained if transcript_1 AND transcript_2 are NOT in the list
+                filterDF = tdDF[(~tdDF["transcript_1"].isin(idDF[listVar])) & (~tdDF["transcript_2"].isin(idDF[listVar]))]
+            else:
+                # A pair is retained if transcript_1 is NOT in list 1 and transcript_2 is NOT in list 2
+                filterDF = tdDF[(~tdDF["transcript_1"].isin(t1DF[listVar])) & (~tdDF["transcript_2"].isin(t2DF[listVar]))]
+        
+    # Output filtered file
+    filterDF.to_csv(args.outFile, index=False)
