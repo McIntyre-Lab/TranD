@@ -486,9 +486,6 @@ def createIDOutput(ujcDf, ujcDct):
                 
         ujcDct : DICTIONARY {Transcript_id: [info]}
                 A dictionary of transcripts keyed to their info.
-                
-        ignoreGene: BOOLEAN
-                User option on ignoring genes.
 
         Returns
         -------
@@ -541,9 +538,6 @@ def createCountOutput(ujcDf):
         ----------
         ujcDf : DATAFRAME
                 Dataframe with information on the UJCs, with their ids, transcripts, etc.
-        
-        ignoreGene: BOOLEAN
-                User option on ignoring genes.
         
         Returns
         -------
@@ -648,10 +642,8 @@ def main():
         if args.outGTF:
                 gtfDf = createExonOutput(ujcDf=ujcDf, ujcDct=ujcDct)
                 
-                if not args.noGene:
-                        gtfOutPath = args.outdir + "/" + args.prefix + "_UJC.gtf"
-                else:
-                        gtfOutPath = args.outdir + "/" + args.prefix + "_UJC_ignoregene.gtf"
+                gtfOutPath = args.outdir + "/" + args.prefix + "_UJC.gtf"
+
                         
                 
                 if os.path.isfile(gtfOutPath):

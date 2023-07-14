@@ -349,16 +349,13 @@ def createUJCDf(ujcDct, trPrefix):
                 
         return allUJC
 
-def createOutput(ujcDf, ignoreGene):
+def createOutput(ujcDf):
         """
 
         Parameters
         ----------
         ujcDf : DATAFRAME
                 Dataframe with information on the UJCs, with their ids, transcripts, etc.
-        
-        ignoreGene: BOOLEAN
-                User option on ignoring genes.
         
         Returns
         -------
@@ -441,7 +438,7 @@ if __name__ == '__main__':
         print (f"Complete! Operation took {toc-tic:0.4f} seconds. Writing files...")
         tic = time.perf_counter()
                 
-        outDf = createOutput(ujcDf=ujcDf, ignoreGene=args.noGene)
+        outDf = createOutput(ujcDf=ujcDf)
         outputPath = args.outdir + "/" + args.prefix + "_UJC_count.csv"
 
         try:
