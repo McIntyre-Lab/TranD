@@ -850,7 +850,7 @@ def createXscriptOutDf(xscriptDct, ergLst):
         outDf = pd.DataFrame(
                 {
                 'gene_id':geneIDLst,
-                'xscript_model_id':xscriptStrLst, 
+                'transcript_id':xscriptStrLst, 
                 'ERG_id':ergIDLst, 
                 'flag_nonOlp_pair':nonOlpFlagLst,
                 'nonOlp_xscript_id':nonOlpXscriptLst,
