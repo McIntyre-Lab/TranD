@@ -15,6 +15,7 @@ from numpy import nan
 import pandas as pd
 from loguru import logger
 from pathlib import Path
+import os
 
 
 def prepare_outdir(out_path, force):
@@ -33,7 +34,15 @@ def open_output_files(outdir, outfiles):
     try:
         for outfile in outfiles:
             fh = Path(outdir) / outfiles[outfile]
-            open(fh, 'w')
+            
+            if outfile != 'og_fh':
+                    open(fh, 'w')
+            else:
+                    if os.path.exists(fh):
+                            os.remove(fh)
+                            
+                            
+                    
             out_fhs[outfile] = fh
     except SystemError as e:
         logger.error("Cannot open one or more output file for writing: {}", e)
@@ -48,7 +57,13 @@ def write_output(data, out_fhs, fh_name):
 def get_gtf_attribute(transcript_id, gene_id):
     return f'transcript_id "{transcript_id}"; gene_id "{gene_id}";'
 
-
+def write_txt(txtLst, out_fhs, fh_name):
+        """Write two column text output """
+        with out_fhs[fh_name].open("a") as f:
+                for line in txtLst:
+                        f.write("{:<20} {:<20}\n".format(str(line[0]), str(line[1])))
+                        # f.write((txtLst[0] + "{:<5} *2 " txtlst[1]).format(*row))
+        
 def write_gtf(data, out_fhs, fh_name):
     """Write output gtf files."""
     if len(data) == 0:
