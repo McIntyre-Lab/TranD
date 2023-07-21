@@ -119,7 +119,7 @@ def parse_args(print_help=False):
         choices=["pairwise", "gene"],
         default="pairwise",
         help="""Specify type of within gene transcript comparison: pairwise - Used with 1 or 2 GTF
-        input files. Compare pairs of transcripts within a gene. gene - Used iwth 1 GTF input file.
+        input files. Compare pairs of transcripts within a gene. gene - Used with 1 GTF input file.
         Compare all transcripts within a gene Default: pairwise""",
     )
     parser.add_argument(
