@@ -1503,7 +1503,7 @@ def loop_over_genes(gene_list, out_fhs, ea_mode, keep_ir, data1, result_managers
         td_data_cat = pd.concat(result_managers["td_list"], ignore_index=True)
         og_data_cat = result_managers["og_list"]
         
-        print(result_managers["og_list"])
+        #print(result_managers["og_list"])
         return [ea_data_cat, jct_data_cat, td_data_cat, og_data_cat]
 
 
