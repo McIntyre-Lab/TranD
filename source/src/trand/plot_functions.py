@@ -1264,9 +1264,8 @@ def plot_gene_prop_nt_variablility(ef_data, legendOut, multitranscript=False):
             )
         )
     # Plot density
-    sns.distplot(
+    sns.kdeplot(
             ef_gene_data["prop_varying_nt"],
-            hist=False
     )
     plt.xlim(0, 1)
     plt.ylabel("Density")

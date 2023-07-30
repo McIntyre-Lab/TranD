@@ -1549,14 +1549,14 @@ def process_gene(gene, out_fhs, ea_mode, keep_ir, data1, result_managers,
                         gene_df,
                         keep_ir=keep_ir
                     )
+                # Append output to lists
+                result_managers["er_list"].append(er_data)
+                result_managers["ef_list"].append(ef_data)
+                result_managers["jct_list"].append(jct_data)
+                result_managers["ir_list"].append(ir_transcripts)
+
             except ValueError as e:
                 logger.error(e)
-
-            # Append output to lists
-            result_managers["er_list"].append(er_data)
-            result_managers["ef_list"].append(ef_data)
-            result_managers["jct_list"].append(jct_data)
-            result_managers["ir_list"].append(ir_transcripts)
 
         # Pairwise EA
         else:
@@ -1565,14 +1565,14 @@ def process_gene(gene, out_fhs, ea_mode, keep_ir, data1, result_managers,
                         gene,
                         gene_df
                     )
+                # Append output to lists
+                result_managers["ea_list"].append(ea_data)
+                result_managers["jct_list"].append(jct_data)
+                result_managers["td_list"].append(td_data)
+                result_managers["og_list"] = result_managers["og_list"] + og_data
+
             except ValueError as e:
                 logger.error(e)
-
-            # Append output to lists
-            result_managers["ea_list"].append(ea_data)
-            result_managers["jct_list"].append(jct_data)
-            result_managers["td_list"].append(td_data)
-            result_managers["og_list"] = result_managers["og_list"] + og_data
 
         # Return result_managers dictionary object with new outputs appended
         #   if results managers are lists (from single cpu)
@@ -1598,20 +1598,21 @@ def process_pair(pair, out_fhs, data1, keep_ir, result_managers,
                     name1,
                     name2
                 )
+            # Append output to lists
+            result_managers["ea_list"].append(ea_data)
+            result_managers["jct_list"].append(jct_data)
+            result_managers["td_list"].append(td_data)
+
         except ValueError as e:
             logger.error(e)
-        # Append output to lists
-        result_managers["ea_list"].append(ea_data)
-        result_managers["jct_list"].append(jct_data)
-        result_managers["td_list"].append(td_data)
 
     # (2) name1 and name2 not present, do 1 GTF analysis
     else:
-            
+
         pair_df = data1[
             (data1['transcript_id'] == pair[0])
             |(data1['transcript_id'] == pair[1])]
-        
+
         # for transcript in data1['transcript_id']:
         #         if transcript not in pair_df['transcript_id']:
         #                 print (transcript)
@@ -1620,7 +1621,7 @@ def process_pair(pair, out_fhs, data1, keep_ir, result_managers,
 #                  print (list(tx_data.keys())[0])
 #                  print (list(tx_data.values()['gene_id'])[0])
         ea_data, jct_data, td_data, og_lst = ea_pairwise("", pair_df)
-                
+
         # Append output to lists
         result_managers["ea_list"].append(ea_data)
         result_managers["jct_list"].append(jct_data)
