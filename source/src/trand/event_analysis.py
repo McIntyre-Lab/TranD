@@ -1543,7 +1543,7 @@ def list_pairs(f1_data, f2_data=None, subset_pairs=None):
             )*(f2_data["gene_id"].nunique()* f2_data.groupby("gene_id")["transcript_id"].nunique().sum())
         if subset_pairs is not None:
             logger.debug("There are {} total transcript pairs for the given subset of pairs provided".format(
-                        len(subset_pairs))
+                        len(subset_pairs)))
         else:
             logger.debug("There are {} total transcript pairs for the given genes".format(
                         total_pairs))
@@ -1558,7 +1558,7 @@ def list_pairs(f1_data, f2_data=None, subset_pairs=None):
                 lambda x: nCr(x,2)).sum()
         if subset_pairs is not None:
             logger.debug("There are {} total transcript pairs for the given subset of pairs provideds".format(
-                        len(subset_pairs))
+                        len(subset_pairs)))
         else:
             logger.debug("There are {} total transcript pairs for the given genes".format(
                         total_pairs))
