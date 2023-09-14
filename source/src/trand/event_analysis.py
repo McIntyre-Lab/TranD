@@ -1028,36 +1028,38 @@ def ea_pairwise(gene_id, data, pair_subset=None):
 
 def check_subset(pair_subset, data1, data2=None):
     if data2 is not None:
+        # Checks below need to be fixed for 2GTF pair file
+        return True
         # Check that each pair is in the right order: transcript_1 in data1 and transcirpt_2 in data2
-        mergeData = pd.merge(
-            pair_subset,
-            data1[["gene_id", "transcript_id"]].drop_duplicates(),
-            how="outer",
-            left_on="transcript_1",
-            right_on="transcript_id",
-            indicator="merge_check")
-        if mergeData["merge_check"].value_counts()["left_only"] > 0:
-            logger.error("Pair list provided has transcript_id in first column that is not in the first dataset")
-            return False
-        else:
-            mergeData2 = pd.merge(
-                mergeData[mergeData["merge_check"]!="right_only"].drop(columns=["merge_check"]),
-                data2[["gene_id", "transcript_id"]].drop_duplicates(),
-                how="outer",
-                left_on="transcript_2",
-                right_on="transcript_id",
-                suffixes=["_d1", "_d2"],
-                indicator="merge_check")
-            if mergeData2["merge_check"].value_counts()["left_only"] > 0:
-                logger.error("Pair list provided has transcript_id in second column that is not in the second dataset")
-                return False
-            else:
-                # Check that each pair are within the same gene
-                if len(mergeData2[(mergeData2["merge_check"]=="both") & (mergeData2["gene_id_d1"]==mergeData2["gene_id_d2"])]) == len(mergeData2[mergeData2["merge_check"]=="both"]):
-                    logger.error("Pair list provided has transcript_id values from different genes.")
-                    return False
-                else:
-                    return True
+#        mergeData = pd.merge(
+#            pair_subset,
+#            data1[["gene_id", "transcript_id"]].drop_duplicates(),
+#            how="outer",
+#            left_on="transcript_1",
+#            right_on="transcript_id",
+#            indicator="merge_check")
+#        if mergeData["merge_check"].value_counts()["left_only"] > 0:
+#            logger.error("Pair list provided has transcript_id in first column that is not in the first dataset")
+#            return False
+#        else:
+#            mergeData2 = pd.merge(
+#                mergeData[mergeData["merge_check"]!="right_only"].drop(columns=["merge_check"]),
+#                data2[["gene_id", "transcript_id"]].drop_duplicates(),
+#                how="outer",
+#                left_on="transcript_2",
+#                right_on="transcript_id",
+#                suffixes=["_d1", "_d2"],
+#                indicator="merge_check")
+#            if mergeData2["merge_check"].value_counts()["left_only"] > 0:
+#                logger.error("Pair list provided has transcript_id in second column that is not in the second dataset")
+#                return False
+#            else:
+#                # Check that each pair are within the same gene
+#                if len(mergeData2[(mergeData2["merge_check"]=="both") & (mergeData2["gene_id_d1"]==mergeData2["gene_id_d2"])]) == len(mergeData2[mergeData2["merge_check"]=="both"]):
+#                    logger.error("Pair list provided has transcript_id values from different genes.")
+#                    return False
+#                else:
+#                    return True
     else:
         # Check that for each pair, the transcript is within the data
         mergeData = pd.merge(
@@ -1318,11 +1320,14 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                     P1GP.plot_one_gtf_pairwise(outdir, td_cat, prefix=output_prefix)
 
 
-def ea_pairwise_two_files(f1_data, f2_data, gene_id, name1, name2):
+def ea_pairwise_two_files(f1_data, f2_data, gene_id, name1, name2, pair_subset=None):
     "EA on pairs of transcripts from two files for a given gene."
     f1_transcripts = list(set(f1_data['transcript_id']))
     f2_transcripts = list(set(f2_data['transcript_id']))
-    transcript_combos = list(itertools.product(f1_transcripts, f2_transcripts))
+    if pair_subset is None:
+        transcript_combos = list(itertools.product(f1_transcripts, f2_transcripts))
+    else:
+        transcript_combos = list(pair_subset.itertuples(index=False, name=None))
     logger.debug("Transcript combinations to process for {}: \n{}", gene_id, transcript_combos)
     ea_df = pd.DataFrame(columns=ea_df_cols)
     jct_df = pd.DataFrame(columns=jct_df_cols)
@@ -1434,9 +1439,12 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
     # Subset data for transcripts of interest if set of pairs provided for pairwise mode
     if subset_file is not None:
         pair_subset = pd.read_csv(subset_file, low_memory=False, names=["transcript_1", "transcript_2"])
+        logger.debug(pair_subset)
         if check_subset(pair_subset, valid_f1, valid_f2):
+            logger.debug(valid_f1)
             valid_f1 = valid_f1[valid_f1["transcript_id"].isin(pair_subset['transcript_1'])].copy()
             valid_f2 = valid_f2[valid_f2["transcript_id"].isin(pair_subset['transcript_2'])].copy()
+            logger.debug(valid_f1)
         else:
             logger.error("Transcript pair subset file incorrectly formatted.")
             exit()
@@ -1502,7 +1510,8 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
             if pair_subset is None:
                 transcript_pairs = list_pairs(valid_f1, valid_f2)
             else:
-                transcript_pairs = [pair for pair in list_pairs(valid_f1, valid_f2) if pair in [tuple(row) for row in pair_subset.to_numpy()]]
+                transcript_pairs = list(pair_subset.itertuples(index=False, name=None))
+                #transcript_pairs = [pair for pair in list_pairs(valid_f1, valid_f2) if pair in [tuple(row) for row in pair_subset.to_numpy()]]
             #logger.debug(transcript_pairs)
             for pair in transcript_pairs:
                 pool.apply_async(process_pair, args=(
@@ -1624,7 +1633,8 @@ def process_gene(gene, out_fhs, ea_mode, keep_ir, data1, result_managers,
                     f2_data,
                     gene,
                     name1,
-                    name2
+                    name2,
+                    pair_subset
                 )
         except ValueError as e:
             logger.error(e)
@@ -1696,7 +1706,8 @@ def process_pair(pair, out_fhs, data1, keep_ir, result_managers,
                     f2_data,
                     data1["gene_id"][0],
                     name1,
-                    name2
+                    name2,
+                    pair_subset
                 )
         except ValueError as e:
             logger.error(e)
