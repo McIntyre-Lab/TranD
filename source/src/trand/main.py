@@ -80,7 +80,7 @@ def parse_args(print_help=False):
         type=str,
         required=False,
         help="""CSV file of transcript pairs that will be processed in pairwise mode and all other pairs will be skipped.
-        Default is to process all pairs.""",
+        File should have no header and two columns ordered by transcript_1 and transcript_2. Default is to process all pairs.""",
         default = None
     )
     parser.add_argument(
