@@ -606,7 +606,7 @@ def single_transcript_ea(gene_id, tx_name, tx_data):
     return er_out_data, ef_out_data
 
 
-def do_ea_pair(tx_data):
+def do_ea_pair(tx_data, pair_subset=None):
     """
     Event Analysis on a pair of transcripts
     """
@@ -1009,7 +1009,6 @@ def ea_pairwise(gene_id, data, pair_subset=None):
     if pair_subset is None:
         transcript_pairs = list(itertools.combinations(tx_data.keys(), 2))
     else:
-        #logger.debug("{}\n{}", list(itertools.combinations(tx_data.keys(), 2)), list(pair_subset.itertuples(index=False, name=None)))
         pair_tuples = list(pair_subset.itertuples(index=False, name=None))
         transcript_pairs = [pair for pair in list(itertools.combinations(tx_data.keys(), 2)) if pair in pair_tuples or tuple(reversed(pair)) in pair_tuples]
     logger.debug("Transcript combinations to process for {}:\n{}", gene_id, transcript_pairs)
@@ -1020,7 +1019,7 @@ def ea_pairwise(gene_id, data, pair_subset=None):
         tx_df_1 = tx_data[tx_pair[0]]
         tx_df_2 = tx_data[tx_pair[1]]
         tx_pair_data = pd.concat([tx_df_1, tx_df_2])
-        ea_data, jct_data, td_data = do_ea_pair(tx_pair_data)
+        ea_data, jct_data, td_data = do_ea_pair(tx_pair_data, pair_subset)
         ea_df = pd.concat([ea_df, ea_data], axis=0, ignore_index=True)
         jct_df = pd.concat([jct_df, jct_data], axis=0, ignore_index=True)
         td_df = pd.concat([td_df, td_data], axis=0, ignore_index=True)
@@ -1235,13 +1234,8 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                 if pair_subset is None:
                     transcript_pairs = list_pairs(data)
                 else:
-                    #logger.debug(pair_subset)
                     transcript_pairs = list(pair_subset.itertuples(index=False, name=None))
-                    #transcript_pairs = [pair for pair in list_pairs(data) if pair in [tuple(row) for row in pair_subset.to_numpy()]]
-                #logger.debug(list(list_pairs(data))[:10])
-                #logger.debug(transcript_pairs)
                 for pair in transcript_pairs:
-                    #logger.debug(pair)
                     pool.apply_async(process_pair, args=(
                             pair,
                             out_fhs,
@@ -1327,7 +1321,8 @@ def ea_pairwise_two_files(f1_data, f2_data, gene_id, name1, name2, pair_subset=N
     if pair_subset is None:
         transcript_combos = list(itertools.product(f1_transcripts, f2_transcripts))
     else:
-        transcript_combos = list(pair_subset.itertuples(index=False, name=None))
+        pair_tuples = list(pair_subset.itertuples(index=False, name=None))
+        transcript_combos = [pair for pair in list(itertools.product(f1_transcripts, f2_transcripts)) if pair in pair_tuples or tuple(reversed(pair)) in pair_tuples]
     logger.debug("Transcript combinations to process for {}: \n{}", gene_id, transcript_combos)
     ea_df = pd.DataFrame(columns=ea_df_cols)
     jct_df = pd.DataFrame(columns=jct_df_cols)
@@ -1339,7 +1334,7 @@ def ea_pairwise_two_files(f1_data, f2_data, gene_id, name1, name2, pair_subset=N
         tx_df_2_s = tx_df_2.assign(transcript_id=lambda x: x.transcript_id + '_' + name2)
         tx_pair_data = pd.concat([tx_df_1_s, tx_df_2_s])
         try:
-            ea_data, jct_data, td_data = do_ea_pair(tx_pair_data)
+            ea_data, jct_data, td_data = do_ea_pair(tx_pair_data, pair_subset)
             ea_df = pd.concat([ea_df, ea_data], axis=0, ignore_index=True)
             jct_df = pd.concat([jct_df, jct_data], axis=0, ignore_index=True)
             td_df = pd.concat([td_df, td_data], axis=0, ignore_index=True)
@@ -1354,7 +1349,8 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
     Pairwise transcript event analysis (TranD) on two GTF files.
     """
     logger.debug("Input files: {}", infiles)
-    if out_pairs != 'all':
+    # Check for subset input pair file
+    if out_pairs != 'all' and subset_file is None:
         # Do not create full transcript distance output
         del(outfiles['td_fh'])
     else:
@@ -1415,10 +1411,13 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
         out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
         out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
     logger.debug("Output files: {}".format(outfiles))
-    if out_pairs == 'all':
+    if out_pairs == 'all' and subset_file is None:
         out_fhs['td_fh'].write_text(",".join(MD.get_md_cols(name1, name2)) + '\n')
-    else:
+    elif subset_file is None:
         out_fhs['md_fh'].write_text(",".join(MD.get_md_cols(name1, name2)) + '\n')
+    else:
+        logger.info("Subset file provided, no minimum distances will be calculated and no pairwise plots will be generated.")
+        out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
     f1_gene_names = set(in_f1['gene_id'])
     f2_gene_names = set(in_f2['gene_id'])
     # Record transcripts that are only in one file for review
@@ -1439,12 +1438,9 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
     # Subset data for transcripts of interest if set of pairs provided for pairwise mode
     if subset_file is not None:
         pair_subset = pd.read_csv(subset_file, low_memory=False, names=["transcript_1", "transcript_2"])
-        logger.debug(pair_subset)
         if check_subset(pair_subset, valid_f1, valid_f2):
-            logger.debug(valid_f1)
             valid_f1 = valid_f1[valid_f1["transcript_id"].isin(pair_subset['transcript_1'])].copy()
             valid_f2 = valid_f2[valid_f2["transcript_id"].isin(pair_subset['transcript_2'])].copy()
-            logger.debug(valid_f1)
         else:
             logger.error("Transcript pair subset file incorrectly formatted.")
             exit()
@@ -1484,16 +1480,21 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
             if not skip_interm:
                 write_output(ea_data, out_fhs, 'ea_fh')
                 write_output(jct_data, out_fhs, 'jc_fh')
-            # Identify minimum pairs using transcript distances
-            md_data = MD.identify_min_pair(td_data, out_pairs, name1, name2)
-            if out_pairs != 'all':
-                write_output(md_data, out_fhs, 'md_fh')
+
+            if pair_subset is None:
+                # Identify minimum pairs using transcript distances
+                md_data = MD.identify_min_pair(td_data, out_pairs, name1, name2)
+                if out_pairs != 'all':
+                    write_output(md_data, out_fhs, 'md_fh')
+                else:
+                    write_output(md_data, out_fhs, 'td_fh')
+                # Generate 2 GTF pairwise plots
+                if not skip_plots:
+                    P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1=name1,
+                                               name2=name2, prefix=output_prefix)
             else:
-                write_output(md_data, out_fhs, 'td_fh')
-            # Generate 2 GTF pairwise plots
-            if not skip_plots:
-                P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1=name1,
-                                           name2=name2, prefix=output_prefix)
+                write_output(td_data, out_fhs, 'td_fh')
+
         # Parallel processing
         else:
             # Create shared lists that can be accessed by multiple processes
@@ -1511,8 +1512,6 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
                 transcript_pairs = list_pairs(valid_f1, valid_f2)
             else:
                 transcript_pairs = list(pair_subset.itertuples(index=False, name=None))
-                #transcript_pairs = [pair for pair in list_pairs(valid_f1, valid_f2) if pair in [tuple(row) for row in pair_subset.to_numpy()]]
-            #logger.debug(transcript_pairs)
             for pair in transcript_pairs:
                 pool.apply_async(process_pair, args=(
                         pair,
@@ -1533,16 +1532,19 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
             if not skip_interm:
                 write_output(ea_cat, out_fhs, 'ea_fh')
                 write_output(jct_cat, out_fhs, 'jc_fh')
-            # Identify minimum pairs using transcript distances
-            md_data = MD.identify_min_pair(td_cat, out_pairs, name1, name2)
-            if out_pairs != 'all':
-                write_output(md_data, out_fhs, 'md_fh')
+            if pair_subset is None:
+                # Identify minimum pairs using transcript distances
+                md_data = MD.identify_min_pair(td_cat, out_pairs, name1, name2)
+                if out_pairs != 'all':
+                    write_output(md_data, out_fhs, 'md_fh')
+                else:
+                    write_output(md_data, out_fhs, 'td_fh')
+                # Generate 2 GTF pairwise plots
+                if not skip_plots:
+                    P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1=name1,
+                                               name2=name2, prefix=output_prefix)
             else:
-                write_output(md_data, out_fhs, 'td_fh')
-            # Generate 2 GTF pairwise plots
-            if not skip_plots:
-                P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1=name1,
-                                           name2=name2, prefix=output_prefix)
+                write_output(td_data, out_fhs, 'td_fh')
 
 def nCr(n, r):
     if n == 1:
@@ -1599,7 +1601,6 @@ def loop_over_genes(gene_list, out_fhs, ea_mode, keep_ir, data1, result_managers
     NOTE: This function should only be used for single CPU processing
     """
     for gene in gene_list:
-        #logger.debug(gene)
         result_managers = process_gene(
                 gene, out_fhs, ea_mode, keep_ir, data1, result_managers,
                 pair_subset, data2, name1, name2)
@@ -1718,7 +1719,6 @@ def process_pair(pair, out_fhs, data1, keep_ir, result_managers,
 
     # (2) name1 and name2 not present, do 1 GTF analysis
     else:
-        #logger.debug(data1)
         pair_df = data1[
             (data1['transcript_id'] == pair[0])
             |(data1['transcript_id'] == pair[1])]
