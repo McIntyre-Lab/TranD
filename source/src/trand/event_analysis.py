@@ -1506,12 +1506,12 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
             # Parallelize by transcript pair rather than gene if running pairwise mode
             # Generate multiprocess Pool with specified number of cpus
             #     to loop through pairs and calculate distances
-            # Create process pool
-            pool = Pool(cpu_cores)
             if pair_subset is None:
                 transcript_pairs = list_pairs(valid_f1, valid_f2)
             else:
                 transcript_pairs = list(pair_subset.itertuples(index=False, name=None))
+            # Create process pool
+            pool = Pool(cpu_cores)
             for pair in transcript_pairs:
                 pool.apply_async(process_pair, args=(
                         pair,
@@ -1544,7 +1544,7 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
                     P2GP.plot_two_gtf_pairwise(outdir, md_data, f1_odds, f2_odds, name1=name1,
                                                name2=name2, prefix=output_prefix)
             else:
-                write_output(td_data, out_fhs, 'td_fh')
+                write_output(td_cat, out_fhs, 'td_fh')
 
 def nCr(n, r):
     if n == 1:
@@ -1705,7 +1705,7 @@ def process_pair(pair, out_fhs, data1, keep_ir, result_managers,
             ea_data, jct_data, td_data = ea_pairwise_two_files(
                     f1_data,
                     f2_data,
-                    data1["gene_id"][0],
+                    data1["gene_id"].unique()[0],
                     name1,
                     name2,
                     pair_subset
