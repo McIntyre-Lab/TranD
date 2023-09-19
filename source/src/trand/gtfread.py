@@ -1,91 +1,31 @@
-#! /usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# vim:fenc=utf-8
-#
-# Copyright © 2021 Oleksandr Moskalenko <om@rc.ufl.edu>
-#
-# Distributed under terms of the MIT license.
-
 """
-Read and write files
+Created on Thu Jul 20 11:15:16 2023
+
+@author: k.bankole
 """
 
-import csv
-from numpy import nan
 import pandas as pd
-from loguru import logger
-from pathlib import Path
-import os
 import time
-
-def prepare_outdir(out_path, force):
-    outdir = Path(out_path)
-    logger.debug("Output directory: {}", str(outdir))
-    if outdir.exists():
-        if not force:
-            exit("Not overwriting existing output directory without -f|--force. Exiting.")
-    else:
-        outdir.mkdir(parents=True, exist_ok=True)
+import numpy as np
+from collections import Counter
 
 
-def open_output_files(outdir, outfiles):
-    """Open all necessary output files and return filehandles"""
-    out_fhs = {}
-    try:
-        for outfile in outfiles:
-            fh = Path(outdir) / outfiles[outfile]
-            
-            if outfile != 'og_fh':
-                    open(fh, 'w')
-            else:
-                    if os.path.exists(fh):
-                            os.remove(fh)
-                            
-                            
-                    
-            out_fhs[outfile] = fh
-    except SystemError as e:
-        logger.error("Cannot open one or more output file for writing: {}", e)
-    return out_fhs
-
-
-def write_output(data, out_fhs, fh_name):
-    """Write results of event analysis to output files."""
-    data.to_csv(out_fhs[fh_name], mode='a', header=False, index=False)
-
-
-def get_gtf_attribute(transcript_id, gene_id):
-    return f'transcript_id "{transcript_id}"; gene_id "{gene_id}";'
-
-def write_txt(txtLst, out_fhs, fh_name):
-        """Write two column text output """
-        with out_fhs[fh_name].open("a") as f:
-                for line in txtLst:
-                        f.write("{:<20} {:<20}\n".format(str(line[0]), str(line[1])))
-                        # f.write((txtLst[0] + "{:<5} *2 " txtlst[1]).format(*row))
-        
-def write_gtf(data, out_fhs, fh_name):
-    """Write output gtf files."""
-    if len(data) == 0:
-        return
-    else:
-        data.loc[:, 'source'] = "TranD"
-        data.loc[:, 'feature'] = "exon"
-        data.loc[:, 'score'] = "."
-        data.loc[:, 'frame'] = "."
-        data.loc[:, 'attribute'] = data.apply(lambda x: get_gtf_attribute(x['transcript_id'],
-                                              x['gene_id']), axis=1)
-        output_column_names = ['seqname', 'source', 'feature', 'start', 'end', 'score', 'strand',
-                               'frame', 'attribute']
-        data = data.reindex(columns=output_column_names)
-        data.to_csv(out_fhs[fh_name], sep="\t", mode='a', index=False, header=False,
-                    doublequote=False, quoting=csv.QUOTE_NONE)
-
-
-def read_exon_data_from_file(infile):
-        print ("Reading GTF...")
+if __name__ == '__main__':
+        print ("Loading...")
 
         omegatic = time.perf_counter()
+        
+        longfile = "/nfshome/k.bankole/Desktop/1GTFtest/GCF_000090745.1_AnoCar2.0_genomic.gtf"
+        shortfile = "/nfshome/k.bankole/Desktop/1GTFtest/testgtf.gtf"
+        
+        long = True
+        
+        if long:
+                data = pd.read_csv(longfile, sep='\t', comment='#', header=None, low_memory=False)
+        else:
+                data = pd.read_csv(shortfile, sep='\t', comment='#', header=None, low_memory=False)
 
         
         all_gtf_columns = ['seqname', 'source', 'feature', 'start', 'end', 'score', 'strand', 'frame',
@@ -93,9 +33,8 @@ def read_exon_data_from_file(infile):
         
         drop_columns = ['source', 'feature', 'score', 'frame', 'comments']
 
-        data = pd.read_csv(infile, sep='\t', comment='#', header=None, low_memory=False)
         file_cols = data.columns
-        
+
         if len(file_cols) < len(all_gtf_columns):
             gtf_cols = all_gtf_columns[:len(file_cols)]
         data.columns = gtf_cols
@@ -156,23 +95,25 @@ def read_exon_data_from_file(infile):
                         'gene_id':geneIDLst,
                         'transcript_id':xscriptIDLst
                 })
-                
-        logger.debug("Exon data rows: {}", newData.shape[0])
+        
+        a = newData.groupby('gene_id')['transcript_id']
+        
+        print("Exon data rows: {}".format(newData.shape[0]))
         
         missing_value_num = newData.isnull().sum().sum()
         if missing_value_num > 0:
-                logger.warning("Total number of missing values: {}", missing_value_num)
+                print("Total number of missing values: {}", missing_value_num)
         else:
-                logger.info("No missing values in data")
+                print("No missing values in data")
         
         gene_id_missing_value_num = newData['gene_id'].isnull().sum()
         
         transcript_id_missing_value_num = newData['transcript_id'].isnull().sum()
         
         if gene_id_missing_value_num > 0:
-                logger.warning("Missing gene_id value number: {}", gene_id_missing_value_num)
+                print("Missing gene_id value number: {}", gene_id_missing_value_num)
         if transcript_id_missing_value_num > 0:
-                logger.warning("Missing transcript_id value number: {}", transcript_id_missing_value_num)
+                print("Missing transcript_id value number: {}", transcript_id_missing_value_num)
         
                 
         newData['start'] = pd.to_numeric(newData['start'], downcast="unsigned")
@@ -180,6 +121,4 @@ def read_exon_data_from_file(infile):
         
         toc = time.perf_counter()       
         
-        print(f"GTF Read complete,  took {toc-omegatic:0.4f} seconds.")
-        return newData
-
+        print(f"Complete,  took {toc-omegatic:0.4f} seconds.")

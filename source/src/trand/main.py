@@ -22,6 +22,7 @@ from pybedtools import cleanup
 from trand.io import prepare_outdir
 from trand.event_analysis import process_single_file
 from trand.event_analysis import process_two_files
+import time
 
 # CONFIGURATION
 # Output file selections
@@ -273,6 +274,9 @@ def setup_logging(debug, verbose, logfile, force):
 
 def cli():
     """CLI interface for the 'trand' executable"""
+        
+    # omegatic = time.perf_counter()
+    
     args = parse_args()
     if not args.outdir:
         args.outdir = str(Path.cwd())
@@ -326,3 +330,7 @@ def cli():
         finally:
             # Only for bedtools. Remove when bedtools are refactored out.
             cleanup()
+            
+    # toc = time.perf_counter()
+    # print(f"Complete, absolutely everything took {toc-omegatic:0.4f} seconds.")
+
