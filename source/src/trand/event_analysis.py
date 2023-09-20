@@ -1276,7 +1276,6 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                                 keep_ir,
                                 data,
                                 result_managers,
-                                pair_subset
                             ))
                     else:
                         pool.apply_async(process_gene, args=(
@@ -1286,6 +1285,7 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                                 keep_ir,
                                 data,
                                 result_managers,
+                                pair_subset
                             ))
                 pool.close()
                 pool.join()
@@ -1688,7 +1688,7 @@ def process_gene(gene, out_fhs, ea_mode, keep_ir, data1, result_managers,
                 ea_data, jct_data, td_data, og_data = ea_pairwise(
                         gene,
                         gene_df,
-                        pair_subset
+                        pair_subset = pair_subset
                     )
                 # Append output to lists
                 result_managers["ea_list"].append(ea_data)
@@ -1746,7 +1746,7 @@ def process_pair(pair, out_fhs, data1, keep_ir, result_managers,
 #         if len(transcript_pairs) < 1:
 #                  print (list(tx_data.keys())[0])
 #                  print (list(tx_data.values()['gene_id'])[0])
-        ea_data, jct_data, td_data, og_lst = ea_pairwise(data1["gene_id"][0], pair_df, pair_subset)
+        ea_data, jct_data, td_data, og_lst = ea_pairwise(data1["gene_id"][0], pair_df, pair_subset=pair_subset)
 
         # Append output to lists
         result_managers["ea_list"].append(ea_data)
