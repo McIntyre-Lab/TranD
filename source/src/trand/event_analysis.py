@@ -1220,7 +1220,7 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                 if not skip_plots:
                     P1GP.plot_one_gtf_pairwise(outdir, td_data, prefix=output_prefix)
 
-                write_txt(og_data, out_fhs, 'og_fh')
+#                write_txt(og_data, out_fhs, 'og_fh')
 
         # Parallel processing
         else:
@@ -1473,8 +1473,8 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
         # Serial processing
         if cpu_cores == 1:
             # Set up results lists (no managers needed since on 1 cpu)
-            result_managers = {"ea_list":[],  "jct_list":[], "ir_list":[], "td_list":[]}
-            ea_data, jct_data, td_data = loop_over_genes(
+            result_managers = {"ea_list":[],  "jct_list":[], "ir_list":[], "td_list":[], "og_list":[]}
+            ea_data, jct_data, td_data, og_data = loop_over_genes(
                     gene_list,
                     out_fhs,
                     "pairwise",
@@ -1606,14 +1606,9 @@ def loop_over_genes(gene_list, out_fhs, ea_mode, keep_ir, data1, result_managers
     NOTE: This function should only be used for single CPU processing
     """
     for gene in gene_list:
-        if ea_mode == "gene":
-            result_managers = process_gene(
-                    gene, out_fhs, ea_mode, keep_ir, data1, result_managers,
-                    data2, name1, name2)
-        else:
-            result_managers = process_gene(
-                    gene, out_fhs, ea_mode, keep_ir, data1, result_managers,
-                    data2, name1, name2)
+        result_managers = process_gene(
+                gene, out_fhs, ea_mode, keep_ir, data1, result_managers,
+                pair_subset, data2, name1, name2)
     if ea_mode == "gene":
         er_data_cat = pd.concat(result_managers["er_list"], ignore_index=True)
         ef_data_cat = pd.concat(result_managers["ef_list"], ignore_index=True)
@@ -1694,7 +1689,9 @@ def process_gene(gene, out_fhs, ea_mode, keep_ir, data1, result_managers,
                 result_managers["ea_list"].append(ea_data)
                 result_managers["jct_list"].append(jct_data)
                 result_managers["td_list"].append(td_data)
-                result_managers["og_list"] = result_managers["og_list"] + og_data
+                result_managers["og_list"].append(td_data)
+
+#                result_managers["og_list"] = result_managers["og_list"] + og_data
 
             except ValueError as e:
                 logger.error(e)
@@ -1763,4 +1760,3 @@ def process_pair(pair, out_fhs, data1, keep_ir, result_managers,
         og_data_cat = result_managers["og_list"]
 
         return [ea_data_cat, jct_data_cat, td_data_cat, og_data_cat]
-
