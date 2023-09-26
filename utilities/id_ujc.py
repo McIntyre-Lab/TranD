@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Updated on Fri May 29 13:34:55 2023
+Updated on Tue Sep 26 13:34:55 2023
 
 @author: k.bankole
 """
@@ -13,7 +13,8 @@ transcripts into UJCs.
 
 Created from a previous utility in TranD named consolidation
 
-Version 9: Change the ujc_id to be a representative transcript.
+Version 10: Fixed the weird removal of certain transcripts
+        Removed count_ujc and count_reads -> combined them into this script
 
 """
 
@@ -21,7 +22,7 @@ import argparse
 import time
 import pandas as pd
 import os
-import pickle
+# import pickle
 import trand.io
 from dataclasses import dataclass
 
@@ -79,7 +80,9 @@ def getOptions():
                                          "file (--gtf), an optional prefix for the ujc_ids (--transcript-prefix), an output directory (--outdir) "
                                          "and a prefix for the output files (--prefix). "
                                          "Allows the option to skip the output of the GTF file with representative transcript models."
-                                         "(--skip-gtf).")
+                                         "(--skip-gtf)."
+                                         "Allows the option to output another key file with the number of transcripts per"
+                                         "UJC counted (--count-ujc).")
         
         ## INPUT
         parser.add_argument(
@@ -108,6 +111,15 @@ def getOptions():
                 help="Use this argument to remove the output of a GTF with "
                 "representative transcript models for each UJC."
                         "Defaults to outputting the GTF."
+        )
+        
+        parser.add_argument(
+                "-c",
+                "--count-ujc",
+                dest="outCount",
+                action="store_true",
+                help="Use this argument to output a key file that counts"
+                "the number of transcripts per UJC. Defaults to no output."
         )
         
         ## OUTPUT
@@ -291,7 +303,10 @@ def createUJCDf(ujcDct, trPrefix):
                         newInfo = [info[0], info[1], info[2], info[3], info[4], info[5], info[6]]
                         monoExonDct.update({xscript: newInfo})
                 
-        
+        # print ("multi0: {}".format(len(set(multiExonDct.keys()))))
+        # print ("mono0: {}".format(len(set(monoExonDct.keys()))))
+
+                                                
         if len (monoExonDct) > 0:
                 monoXscriptDf = pd.DataFrame(monoExonDct,
                                                 index = pd.Index(["junction_string",
@@ -300,15 +315,17 @@ def createUJCDf(ujcDct, trPrefix):
                                                                   "seqname",
                                                                   "start", "end", "strand"])
                                                 ).T.sort_values(by=["gene_id", "start", "end"])
-                                                
+                
+                
                 monoXscriptDf['tmpStart'] = monoXscriptDf['start']
                 monoXscriptDf['tmpEnd'] = monoXscriptDf['end']
+                                
                 
                 appendedRowLst = []
                 for row in monoXscriptDf.to_dict('records'):
                         if appendedRowLst:
                                 lastRow = appendedRowLst[-1]
-                                        
+                                
                                 if lastRow['gene_id'] == row['gene_id']:
                                         if lastRow['tmpEnd'] > row['tmpStart']:
                                                 
@@ -320,49 +337,66 @@ def createUJCDf(ujcDct, trPrefix):
                                                                         loopRow['tmpEnd'] = row['tmpEnd']
                                                 else:
                                                         row['tmpEnd'] = lastRow['tmpEnd']
-                                                        
+                                                
+                                                appendedRowLst.append(row)
+                                        else:
                                                 appendedRowLst.append(row)
                                 else:
                                         appendedRowLst.append(row)
                         else:
                                 appendedRowLst.append(row)
-                                
+                
+                
+                count = 0
                 for row in appendedRowLst:
                         jString = ("monoexon_"
-                           + str(row['tmpStart']) + "_"
-                           + str(row['tmpEnd']))
+                           + str(row['start']) + "_"
+                           + str(row['end']))
                         
                         row['junction_string'] = jString
+                        count += 1
                 
                 newMonoDf = pd.DataFrame(appendedRowLst)
                 
                 monoUJC = newMonoDf.sort_values(by=['start', 'end'])
                 monoUJC.drop(columns=['tmpStart','tmpEnd'])
+                
                 monoUJC = monoUJC.groupby(["gene_id", "junction_string"]).agg({
                         "seqname":"first",
                         "start":"min",
                         "end":"max",
                         "strand":"first",
-                        "transcript_id": lambda x: '|'.join(x)}).reset_index()                
+                        "transcript_id": lambda x: '|'.join(x)}).reset_index()
+                
+                
+                # print ("mono 2: {}".format(len(set(monoUJC['transcript_id']))))
         else:
                 monoExonDct = None
         
+        
         if len(multiExonDct) > 0:
+                
+                # print ("multi waaa: {}".format(len(set(multiExonDct.keys()))))
+                
                 multiUJC = pd.DataFrame(multiExonDct, index=pd.Index(["junction_string", 
                                                                     "transcript_id", 
                                                                     "gene_id", 
                                                                     "seqname", 
-                                                                    "start", "end", "strand"])
-                                        ).T.groupby(["gene_id","junction_string"]).agg({
+                                                                    "start", "end", "strand"])).T
+                
+                multiUJC = multiUJC.groupby(["gene_id","junction_string"]).agg({
                         "seqname": "first",
                         "start": "min",
                         "end": "max",
                         "strand": "first",
                         "transcript_id": lambda x: "|".join(x)}).reset_index()
-                                
+     
+                # print ("multi 2: {}".format(len(set(multiUJC['transcript_id']))))
+
         else:
                 multiExonDct = None
-                
+        
+        
         if monoExonDct and multiExonDct:
                 allUJC = pd.concat([monoUJC, multiUJC], ignore_index=True)
         elif monoExonDct:
@@ -370,24 +404,21 @@ def createUJCDf(ujcDct, trPrefix):
                 del(monoUJC)
         else:
                 allUJC = multiUJC.copy()
-                del(multiUJC)
-                
-                
+                del(multiUJC)        
+        
         sort_order = {"gene_id": "asc", "start": "asc", "transcript_id": "asc"}
         allUJC = allUJC.sort_values(by=list(sort_order.keys()), ascending=[True if val=="asc" else False for val in sort_order.values()])
                 
         allUJC["split"] = allUJC["transcript_id"].str.split('|').apply(sorted)
-        
+   
         if trPrefix:
                 allUJC["ujc_id"] = trPrefix + "_" + allUJC["split"].str[0]
         
         else:
                 allUJC["ujc_id"] = allUJC["split"].str[0]
-
-        
-        allUJC.drop(columns="split")
-                
+                        
         return allUJC
+                
 
 def createExonOutput(ujcDf, ujcDct):
         """
@@ -499,32 +530,47 @@ def createOutput(ujcDf, ujcDct):
         ujcIDLst = []
         geneLst = []
         junctionLst = []
+                
+        ujcDf = ujcDf.explode('split')
         
         for row in ujcDf.to_dict('records'):
-                xscripts = row['transcript_id'].split('|')
                 
-                
-                if len(xscripts) > 1:                        
-                        ujcID = row['ujc_id']
-                        geneID = row['gene_id']
-                        junctionStr = row['junction_string']
+                xscript = row['split']
+                ujcID = row['ujc_id']
+                geneID = row['gene_id']
+                junctionStr = row['junction_string']
 
-                        for xscript in xscripts:
-                                xscriptLst.append(xscript)
-                                ujcIDLst.append(ujcID)
-                                geneLst.append(geneID)
-                                junctionLst.append(junctionStr)
-                else:
-                        xscript = xscripts[0]
-                        ujcID = row['ujc_id']
-                        geneID = row['gene_id']
-                        junctionStr = row['junction_string']
+                
+                xscriptLst.append(xscript)
+                ujcIDLst.append(ujcID)
+                geneLst.append(geneID)
+                junctionLst.append(junctionStr)
+                
+                
+                # xscripts = row['transcript_id'].split('|')
+                
+                
+                # if len(xscripts) > 1:                        
+                #         ujcID = row['ujc_id']
+                #         geneID = row['gene_id']
+                #         junctionStr = row['junction_string']
+
+                #         for xscript in xscripts:
+                #                 xscriptLst.append(xscript)
+                #                 ujcIDLst.append(ujcID)
+                #                 geneLst.append(geneID)
+                #                 junctionLst.append(junctionStr)
+                # else:
+                #         xscript = xscripts[0]
+                #         ujcID = row['ujc_id']
+                #         geneID = row['gene_id']
+                #         junctionStr = row['junction_string']
 
                         
-                        xscriptLst.append(xscript)
-                        ujcIDLst.append(ujcID)
-                        geneLst.append(geneID)
-                        junctionLst.append(junctionStr)
+                #         xscriptLst.append(xscript)
+                #         ujcIDLst.append(ujcID)
+                #         geneLst.append(geneID)
+                #         junctionLst.append(junctionStr)
 
 
         outDf = pd.DataFrame(
@@ -536,6 +582,49 @@ def createOutput(ujcDf, ujcDct):
                 })
         
         return outDf
+
+def createCountOutput(ujcDf):
+        """
+
+        Parameters
+        ----------
+        ujcDf : DATAFRAME
+                Dataframe with information on the UJCs, with their ids, transcripts, etc.
+        
+        Returns
+        -------
+        outDf : DATAFRAME
+                A dataframe that is the list of UJCs and the number of transcripts
+                within that UJC.
+
+        """
+        ujcIDLst = []
+        numXscriptLst = []
+        geneIDLst = []
+        jStringLst = []
+        
+        for row in ujcDf.to_dict('records'):
+                ujcID = row['ujc_id']
+                jString = row['junction_string']
+                geneID = row['gene_id']
+                
+                numXscripts = len(row["split"])
+                
+                ujcIDLst.append(ujcID)
+                numXscriptLst.append(numXscripts)
+                jStringLst.append(jString)
+                geneIDLst.append(geneID)
+        
+        outDf = pd.DataFrame(
+                {
+                        'gene_id':geneIDLst,
+                        'ujc_id':ujcIDLst,
+                        'num_xscripts':numXscriptLst,
+                        'junction_string':jStringLst
+                })
+        
+        return outDf
+
 
 def main():
         
@@ -565,11 +654,12 @@ def main():
         tic = time.perf_counter()
         
         ujcDct = extractJunction(exonData)
-                
+        
+        
         toc = time.perf_counter()
         print (f"Complete! Operation took {toc-tic:0.4f} seconds. Creating UJC DataFrame...")
         tic = time.perf_counter()
-        
+                
         ujcDf = createUJCDf(ujcDct=ujcDct, trPrefix=args.trPrefix)
         
         # if (os.path.exists(prefix + '_allUJC.pickle') and os.path.getsize(prefix + '_allUJC.pickle') > 0):
@@ -587,13 +677,15 @@ def main():
         outDf = createOutput(ujcDf=ujcDf, ujcDct=ujcDct)
         
         outputPath = args.outdir + "/" + args.prefix + "_UJC_ID.csv"
-
+        
         try:
                 outDf.to_csv(outputPath, index=False)
         except OSError:
                 raise OSError("Output directory must already exist.")
         
         if args.outGTF:
+                
+                print ("Writing GTF...")
                 
                 gtfDf = createExonOutput(ujcDf=ujcDf, ujcDct=ujcDct)
                 
@@ -605,8 +697,19 @@ def main():
                         os.remove(gtfOutPath)
                 
                 trand.io.write_gtf(data=gtfDf, out_fhs={"gtf":gtfOutPath}, fh_name="gtf")
+        
+        if args.outCount:
                 
-
+                print ("Counting transcripts per UJC...")
+                
+                countDf = createCountOutput(ujcDf=ujcDf)
+                countOutPath = args.outdir + "/" + args.prefix + "_UJC_count.csv"
+                
+                try:
+                        countDf.to_csv(countOutPath, index=False)
+                except OSError:
+                        raise OSError("Output directory must already exist.")
+        
         toc = time.perf_counter()
         print(f"Complete! Operation took {toc-omegatic:0.4f} total seconds.")
         
@@ -614,7 +717,6 @@ def main():
 if __name__ == '__main__':
         global args
         args = getOptions()
-        
         main()
         
         
