@@ -180,7 +180,7 @@ def checkStrandAndChromosome(exonData):
                           "removing.".format(gene))
                     
             exonData = exonData[~exonData["gene_id"].isin(badChr)]
-            
+         
         return exonData
 
 
@@ -212,7 +212,15 @@ def extractJunction(exonData):
         # First, instead of grouping, then sorting
         # Sort by transcript -> sort by start. the whole dataframe 
         sortedDf = exonDf.sort_values(by=['transcript_id', 'start']).reset_index(drop=True)
-                        
+        
+        count = 0
+        for row in exonDf.to_dict('records'):
+                xscript = row['transcript_id']
+                if xscript == "FBtr0300485":
+                        print (row)
+                        count += 1;
+        print ("num e: " + str(count))
+        
         ujcDct = {}
         # Value Legend:
                 # 0 = exons
@@ -372,8 +380,7 @@ def createUJCDf(ujcDct, trPrefix):
                 # print ("mono 2: {}".format(len(set(monoUJC['transcript_id']))))
         else:
                 monoExonDct = None
-        
-        
+                
         if len(multiExonDct) > 0:
                 
                 # print ("multi waaa: {}".format(len(set(multiExonDct.keys()))))
@@ -396,7 +403,6 @@ def createUJCDf(ujcDct, trPrefix):
         else:
                 multiExonDct = None
         
-        
         if monoExonDct and multiExonDct:
                 allUJC = pd.concat([monoUJC, multiUJC], ignore_index=True)
         elif monoExonDct:
@@ -416,7 +422,9 @@ def createUJCDf(ujcDct, trPrefix):
         
         else:
                 allUJC["ujc_id"] = allUJC["split"].str[0]
-                        
+        
+        
+
         return allUJC
                 
 
@@ -461,9 +469,7 @@ def createExonOutput(ujcDf, ujcDct):
                 
                 exons = ujcDct[xscript][0]
                 flagMono =  ujcDct[xscript][7] == None
-                
 
-                
                 if flagMono:
                         seqnameLst.append(seqname)
                         startLst.append(firstStart)
@@ -471,30 +477,14 @@ def createExonOutput(ujcDf, ujcDct):
                         ujcIDLst.append(ujcID)
                         strandLst.append(strand)
                         geneIDLst.append(geneID)
-                else:
-                        startValues, endValues = zip(*sorted(exons))
-                        
-                        seqnameLst.append(seqname)
-                        startLst.append(firstStart)
-                        endLst.append(endValues[0])
-                        ujcIDLst.append(ujcID)
-                        strandLst.append(strand)
-                        geneIDLst.append(geneID)
-                        
-                        for idx in range(1, len(exons)-2):
-                              seqnameLst.append(seqname)
-                              startLst.append(startValues[idx])
-                              endLst.append(endValues[idx])
-                              ujcIDLst.append(ujcID)
-                              strandLst.append(strand)
-                              geneIDLst.append(geneID)      
-                        
-                        seqnameLst.append(seqname)
-                        startLst.append(startValues[len(exons)-1])
-                        endLst.append(lastEnd)
-                        ujcIDLst.append(ujcID)
-                        strandLst.append(strand)
-                        geneIDLst.append(geneID)
+                else:   
+                        for exon in exons:
+                                seqnameLst.append(seqname)
+                                startLst.append(exon[0])
+                                endLst.append(exon[1])
+                                ujcIDLst.append(ujcID)
+                                strandLst.append(strand)
+                                geneIDLst.append(geneID)
                 
         exonDf = pd.DataFrame(
                 {
@@ -505,7 +495,7 @@ def createExonOutput(ujcDf, ujcDct):
                         'transcript_id':ujcIDLst,
                         'gene_id':geneIDLst
                 })
-                
+
         return exonDf
 
 def createOutput(ujcDf, ujcDct):
@@ -648,14 +638,13 @@ def main():
         #                 pickle.dump(exonData, f)
         
         exonData = trand.io.read_exon_data_from_file(infile=args.inGTF)
-        
+                
         toc = time.perf_counter()
         print(f"GTF Read complete! Took {toc-omegatic:0.4f} seconds. Extracting junctions...")
         tic = time.perf_counter()
         
         ujcDct = extractJunction(exonData)
-        
-        
+   
         toc = time.perf_counter()
         print (f"Complete! Operation took {toc-tic:0.4f} seconds. Creating UJC DataFrame...")
         tic = time.perf_counter()

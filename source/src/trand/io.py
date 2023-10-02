@@ -147,6 +147,20 @@ def write_gtf(data, out_fhs, fh_name):
 #     return data
 
 def read_exon_data_from_file(infile):
+        """
+        Create a pandas dataframe with exon records from a gtf file
+        Raw gtf data:
+        seqname source  feature  start end  score strand frame attributes
+        2L FlyBase 5UTR  7529  7679 . +  . gene_symbol "CG11023"; transcript_id "FBtr...
+        2L FlyBase exon  7529  8116 . +  . gene_symbol "CG11023"; transcript_id "FBtr...
+
+        Exon Fragment Data for Event Analysis:
+        seqname start end   strand gene_id      transcript_id
+        2L      7529  8116  +      FBgn0031208  FBtr0300689
+        2L      8193  9484  +      FBgn0031208  FBtr0300689
+        2L      9839  11344 -      FBgn0002121  FBtr0078169
+        """
+        
         print ("Reading GTF...")
 
         omegatic = time.perf_counter()
