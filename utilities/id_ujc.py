@@ -213,13 +213,10 @@ def extractJunction(exonData):
         # Sort by transcript -> sort by start. the whole dataframe 
         sortedDf = exonDf.sort_values(by=['transcript_id', 'start']).reset_index(drop=True)
         
-        count = 0
-        for row in exonDf.to_dict('records'):
+        for row in sortedDf.to_dict('records'):
                 xscript = row['transcript_id']
-                if xscript == "FBtr0300485":
+                if xscript == "FBtr0300485" or xscript == "FBtr0306337":
                         print (row)
-                        count += 1;
-        print ("num e: " + str(count))
         
         ujcDct = {}
         # Value Legend:
@@ -477,8 +474,15 @@ def createExonOutput(ujcDf, ujcDct):
                         ujcIDLst.append(ujcID)
                         strandLst.append(strand)
                         geneIDLst.append(geneID)
-                else:   
-                        for exon in exons:
+                else:
+                        seqnameLst.append(seqname)
+                        startLst.append(firstStart)
+                        endLst.append(exons[0][1])
+                        ujcIDLst.append(ujcID)
+                        strandLst.append(strand)
+                        geneIDLst.append(geneID)
+                        
+                        for exon in exons[1:-1]:
                                 seqnameLst.append(seqname)
                                 startLst.append(exon[0])
                                 endLst.append(exon[1])
@@ -486,6 +490,13 @@ def createExonOutput(ujcDf, ujcDct):
                                 strandLst.append(strand)
                                 geneIDLst.append(geneID)
                 
+                        seqnameLst.append(seqname)
+                        startLst.append(exons[-1][0])
+                        endLst.append(lastEnd)
+                        ujcIDLst.append(ujcID)
+                        strandLst.append(strand)
+                        geneIDLst.append(geneID)
+                        
         exonDf = pd.DataFrame(
                 {
                         'seqname':seqnameLst,
@@ -495,6 +506,10 @@ def createExonOutput(ujcDf, ujcDct):
                         'transcript_id':ujcIDLst,
                         'gene_id':geneIDLst
                 })
+        
+        for row in exonDf.to_dict('records'):
+                if row['transcript_id'] == 'FBtr0300485':
+                        print (row)
 
         return exonDf
 
