@@ -33,7 +33,7 @@ python ${SCRIPTS}/id_ujc.py \
 
 
 python ${SCRIPTS}/id_ujc.py \
--g ${GTF1} \
+-g ${GTF2} \
 -o ${OUTD} \
 -p ${NAME2}
 
