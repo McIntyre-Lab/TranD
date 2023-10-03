@@ -70,7 +70,7 @@ echo "Running pair classification..."
 # Pair Classification
 python ${SCRIPTS}/pair_classfication.py \
 -d ${TD_OUT}/${NAME1}_vs_${NAME2}_minimum_pairwise_distance.csv \
--s ${NT_THRESHOLD}
+-s ${NT_THRESHOLD} \
 -o ${OUTD}/${NAME1}_${NAME2}_pair_classification.csv
 
 # Pairwise Distance for Genes with 1 GTF (only done if the files are not empty)
