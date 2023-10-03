@@ -213,11 +213,6 @@ def extractJunction(exonData):
         # Sort by transcript -> sort by start. the whole dataframe 
         sortedDf = exonDf.sort_values(by=['transcript_id', 'start']).reset_index(drop=True)
         
-        for row in sortedDf.to_dict('records'):
-                xscript = row['transcript_id']
-                if xscript == "FBtr0300485" or xscript == "FBtr0306337":
-                        print (row)
-        
         ujcDct = {}
         # Value Legend:
                 # 0 = exons
@@ -506,10 +501,6 @@ def createExonOutput(ujcDf, ujcDct):
                         'transcript_id':ujcIDLst,
                         'gene_id':geneIDLst
                 })
-        
-        for row in exonDf.to_dict('records'):
-                if row['transcript_id'] == 'FBtr0300485':
-                        print (row)
 
         return exonDf
 
