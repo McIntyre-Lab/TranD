@@ -68,7 +68,7 @@ TD_OUT=${OUTD}/TranD_2GTF_output
 
 echo "Running pair classification..."
 # Pair Classification
-python ${SCRIPTS}/pair_classfication.py \
+python ${SCRIPTS}/pair_classification.py \
 -d ${TD_OUT}/${NAME1}_vs_${NAME2}_minimum_pairwise_distance.csv \
 -s ${NT_THRESHOLD} \
 -o ${OUTD}/${NAME1}_${NAME2}_pair_classification.csv
