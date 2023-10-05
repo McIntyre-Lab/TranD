@@ -10,10 +10,10 @@ import matplotlib.pyplot as plt
 from loguru import logger
 
 # Import plot functions
-from . import plot_functions as PF
+from trand import plot_functions as PF
 
 # Import transcriptome summary plot functions
-from . import plot_transcriptome as PT
+from trand import plot_transcriptome as PT
 
 
 def plot_one_gtf_gene(er_data, ef_data, ir_data, uniqex_data, outdir, prefix):
