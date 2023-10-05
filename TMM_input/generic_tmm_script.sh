@@ -109,7 +109,7 @@ echo "Running ID_ERG..."
 # Run ID_ERG
 
 python ${SCRIPTS}/id_ERG.py \
--i ${TD_OUT}/${NAME1}_vs_${NAME2}_minimum_pairwise_distance.csv \
+-i ${TD_OUT}/${NAME1}_vs_${NAME2}_minimum_pairwise_transcript_distance.csv \
 -g \
 -p ${NAME1}_vs_${NAME2} \
 -o ${OUTD}/ERG/2GTF \
@@ -119,7 +119,7 @@ python ${SCRIPTS}/id_ERG.py \
 if [ -s "${OUTD}/TranD_2GTF_output/${NAME1}_vs_${NAME2}_gtf1_only.gtf" ]; then
 
 	python ${SCRIPTS}/id_ERG.py \
-	-i ${OUTD}/TranD_GTF1_only_output/pairwise_distance.csv \
+	-i ${OUTD}/TranD_GTF1_only_output/pairwise_transcript_distance.csv \
 	-g \
 	-p ${NAME1}_vs_${NAME2}_gtf1_only \
 	-o ${OUTD}/ERG/GTF1_only \
@@ -134,7 +134,7 @@ fi
 if [ -s "${OUTD}/TranD_2GTF_output/${NAME1}_vs_${NAME2}_gtf2_only.gtf" ]; then
 
 	python ${SCRIPTS}/id_ERG.py \
-	-i ${OUTD}/TranD_GTF2_only_output/pairwise_distance.csv \
+	-i ${OUTD}/TranD_GTF2_only_output/pairwise_transcript_distance.csv \
 	-g \
 	-p ${NAME1}_vs_${NAME2}_gtf2_only \
 	-o ${OUTD}/ERG/GTF2_only \
