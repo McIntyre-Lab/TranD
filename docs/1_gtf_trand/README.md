@@ -3,13 +3,17 @@
 
 ![TranD_schematic_A](TranD_schematic_A_white_bg.png)
 
-With a single GTF as input, _TranD_ can be used to generate a splice-match consolidated transcriptome annotation, calculate and summarize complexity metrics, summarize structural elements of the transcriptome annotation, and summarize transcriptome-wide alternative splicing.
+With a single GTF as input, _TranD_ can be used to calculate and summarize complexity metrics, summarize structural elements of the transcriptome annotation, and summarize transcriptome-wide alternative splicing.
 
 <br>
 
 ## Splice-Match Consolidation
 
 To focus on the comparison of structural variation in transcript splicing, transcriptome anntoations can be splice-match consolidated (i.e., transcripts with identical splice junctions are consolidated to one uniquely spliced representative transcript that spans the exon space of the contributing transcripts).
+
+**NOTE: This functionality has been converted into the utility id_ujc.py. More information on how to use this utility can be found on the [Utility Description](https://github.com/McIntyre-Lab/TranD/wiki/Utility-Descriptions-(with-Examples)) page.**
+
+
 
 <br>
 
@@ -22,19 +26,14 @@ The following complexity metrics are calculated and summarized (minimum, Q1, med
 <br>
 
 ## Gene Mode
-Running TranD with a single GTF input in __gene__ mode (_-e gene_) produces a figure for summarizing the structural elements of the annotation.
+Running TranD with a single GTF input in __gene__ mode (`-e gene`) produces a figure for summarizing the structural elements of the annotation.
 
-See examples:
-
-* [_C. elegans_ WBcel235 Reference Transcriptome Annotation TranD Gene](celegans_WBcel235_ref_trand_gene)
-* [_Z. mays_ Mo17 YAN Reference Transcriptome Annotation TranD Gene](maize_mo17_YAN_ref_trand_gene)
-* [_C. elegans_ WBcel235 Splice-Match Consolidated Reference Transcriptome Annotation TranD Gene](celegans_WBcel235_splice_match_consol_ref_trand_gene)
-* [_Z. mays_ Mo17 YAN Splice-Match Consolidated Reference Transcriptome Annotation TranD Gene](maize_mo17_YAN_splice_match_consol_ref_trand_gene)
+See examples in the [User Guide](https://github.com/McIntyre-Lab/TranD/wiki/User-Guide) and [Precomputed Files](https://github.com/McIntyre-Lab/TranD/wiki/Precomputed-Files).
 
 <br>
 
 ## Pairwise Mode
-Running TranD with one GTF input in __pairwise__ mode (_-e pairwise_, default) produces a figure for summarizing the combinations of different alternative splicing events (see below) within multi-transcript genes of the given annotation.
+Running TranD with one GTF input in __pairwise__ mode (`-e pairwise`, default mode) produces a figure for summarizing the combinations of different alternative splicing events (see below) within multi-transcript genes of the given annotation.
 
 <br>
 
@@ -42,12 +41,7 @@ Running TranD with one GTF input in __pairwise__ mode (_-e pairwise_, default) p
 
 <br>
 
-See examples:
-
-* [_C. elegans_ WBcel235 Reference Transcriptome Annotation TranD Pairwise](celegans_WBcel235_ref_trand_pairwise)
-* [_Z. mays_ Mo17 YAN Reference Transcriptome Annotation TranD Pairwise](maize_mo17_YAN_ref_trand_pairwise)
-* [_C. elegans_ WBcel235 Splice-Match Consolidated Reference Transcriptome Annotation TranD Pairwise](celegans_WBcel235_splice_match_consol_ref_trand_pairwise)
-* [_Z. mays_ Mo17 YAN Splice-Match Consolidated Reference Transcriptome Annotation TranD Pairwise](maize_mo17_YAN_splice_match_consol_ref_trand_pairwise)
+See examples in the [User Guide](https://github.com/McIntyre-Lab/TranD/wiki/User-Guide) and [Precomputed Files](https://github.com/McIntyre-Lab/TranD/wiki/Precomputed-Files).
 
 <br>
 
