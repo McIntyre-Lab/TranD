@@ -5,6 +5,8 @@
 
 With a single GTF as input, _TranD_ can be used to calculate and summarize complexity metrics, summarize structural elements of the transcriptome annotation, and summarize transcriptome-wide alternative splicing.
 
+This README gives basic details on the output and function of _TranD_, for more information on how to run it (including a small example), please see the [User Guide](https://github.com/McIntyre-Lab/TranD/wiki/User-Guide).
+
 <br>
 
 ## Splice-Match Consolidation
