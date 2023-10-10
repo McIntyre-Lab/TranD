@@ -41,7 +41,7 @@ Running TranD with one GTF input in __pairwise__ mode (`-e pairwise`, default mo
 
 <br>
 
-See examples in the [User Guide](https://github.com/McIntyre-Lab/TranD/wiki/User-Guide) and [Precomputed Files](https://github.com/McIntyre-Lab/TranD/wiki/Precomputed-Files).
+See examples in the [User Guide](https://github.com/McIntyre-Lab/TranD/wiki/Utility-Descriptions-(with-Examples)#id_ujcpy) and [Precomputed Files](https://github.com/McIntyre-Lab/TranD/wiki/Precomputed-Files).
 
 <br>
 
