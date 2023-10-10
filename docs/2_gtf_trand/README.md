@@ -4,10 +4,12 @@
 
 With two GTF files as input, _TranD_ can be used to calculate and summarize complexity metrics of each GTF file and compare transcript structures across annotations with summarizing visualizations.
 
+This README gives basic details on the output and function of _TranD_, for more information on how to run it (including a small example), please see the [User Guide](https://github.com/McIntyre-Lab/TranD/wiki/User-Guide#comparison-of-two-transcriptomes).
+
 <br>
 
 ## Complexity
-The following complexity metrics are calculated and summarized (minimum, Q1, median, Q3, maximum, mean, and standard deviation) for the single GTF input:
+The following complexity metrics are calculated and summarized (minimum, Q1, median, Q3, maximum, mean, and standard deviation) for the **each**  GTF input:
 * Transcripts per gene
 * Unique exons (exons with unique coordinates) per gene
 * Exons per transcripts
@@ -15,15 +17,9 @@ The following complexity metrics are calculated and summarized (minimum, Q1, med
 <br>
 
 ## Pairwise Transcriptome Comparison
-Running TranD with two GTF files in __pairwise__ mode (_-e pairwise_, default) produces various plots summarizing the gene and transcript level comparisons of the two annotations.
+Running TranD with two GTF files produces various plots summarizing the gene and transcript level comparisons of the two annotations.
 
-See examples:
-* [_C. elegans_ L1 FLAIR vs. IsoSeq3](celegans_L1_FLAIR_vs_IsoSeq3)
-* [_C. elegans_ L1 vs. adult FLAIR](celegans_L1_vs_adult_FLAIR)
-* [_Z. mays_ B73 root FLAIR vs. IsoSeq3](maize_B73_root_FLAIR_vs_IsoSeq3)
-* [_Z. mays_ B73 root vs. endosperm FLAIR](maize_B73_root_vs_B73_endosperm_FLAIR)
-* [_D. melanogaster_ FlyBase r6.17 reference vs. _D. simulans_ FlyBase r2.02 reference (mapped to _D. melanogaster_ genome)](dmel617_vs_dsim202_on_dmel)
-* [_D. melanogaster_ FlyBase r6.17 reference vs. _D. simulans_ FlyBase r2.02 reference (mapped to _D. simulans_ genome)](dmel617_vs_dsim202_on_dsim)
+See examples in the [User Guide](https://github.com/McIntyre-Lab/TranD/wiki/User-Guide#comparison-of-two-transcriptomes) and [Precomputed Files](https://github.com/McIntyre-Lab/TranD/wiki/Precomputed-Files#two-gtf-trand).
 
 <br>
 
@@ -32,13 +28,17 @@ For each gene shared between the two GTF files (require same _gene_id_ value), t
 
 <br>
 
-Additionally, pairs are evaluated to determine the minimum pair for each transcript. The [minimum distance variables](../minimum_distance_column_descriptions.xlsx) associated with minimum pairs are written to the same CSV output file. Reciprocal minimum pairs, or pairs of transcripts between the GTF files that are identified as the minimums of each other, are labeled and from these categories, gene-level classifications are also assigned.
+Additionally, pairs can be evaluated to determine the minimum pair for each transcript (please the information on `-p` in the [User Guide](https://github.com/McIntyre-Lab/TranD/wiki/User-Guide#input-2)). The [minimum distance variables](../minimum_distance_column_descriptions.xlsx) associated with minimum pairs are written to the same CSV output file. Reciprocal minimum pairs, or pairs of transcripts between the GTF files that are identified as the minimums of each other, are labeled and from these categories, gene-level classifications are also assigned.
 
 <br>
+
+The definition of a "minimum" pair is described below:
 
 ![min_pair_selection](../min_pair_selection.png)
 
 <br>
+
+The definition of a "reciprocal minimum" pair is described below:
 
 ![recip_min_pair_categories](../recip_min_pair_categories.png)
 
