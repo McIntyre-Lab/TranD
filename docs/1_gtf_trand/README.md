@@ -13,7 +13,7 @@ This README gives basic details on the output and function of _TranD_, for more 
 
 To focus on the comparison of structural variation in transcript splicing, transcriptome anntoations can be splice-match consolidated (i.e., transcripts with identical splice junctions are consolidated to one uniquely spliced representative transcript that spans the exon space of the contributing transcripts).
 
-**NOTE: This functionality has been converted into the utility id_ujc.py. More information on how to use this utility can be found on the [Utility Description](https://github.com/McIntyre-Lab/TranD/wiki/Utility-Descriptions-(with-Examples)) page.**
+**NOTE: This functionality has been converted into the utility id_ujc.py. More information on how to use this utility can be found on the [Utility Description](https://github.com/McIntyre-Lab/TranD/wiki/Utility-Descriptions-(with-Examples)#id_ujcpy) page.**
 
 
 
