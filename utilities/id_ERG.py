@@ -21,7 +21,7 @@ import os
 import time
 import statistics as stats
 import trand.io
-import pickle
+# import pickle
 
 
 class ERG:
@@ -1295,6 +1295,7 @@ def main():
 
         
         # Create XSCRIPT dictionary and ERG list
+                
         mstrXscriptDct, erInfoDf = gleanInputDf(inDf=inputDf, includeIR=includeIR, gtfOne=gtfOne, gtfTwo=gtfTwo)        
         
         toc = time.perf_counter()       

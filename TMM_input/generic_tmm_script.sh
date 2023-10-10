@@ -33,7 +33,7 @@ python ${SCRIPTS}/id_ujc.py \
 
 
 python ${SCRIPTS}/id_ujc.py \
--g ${GTF1} \
+-g ${GTF2} \
 -o ${OUTD} \
 -p ${NAME2}
 
@@ -68,9 +68,9 @@ TD_OUT=${OUTD}/TranD_2GTF_output
 
 echo "Running pair classification..."
 # Pair Classification
-python ${SCRIPTS}/pair_classfication.py \
--d ${TD_OUT}/${NAME1}_vs_${NAME2}_minimum_pairwise_distance.csv \
--s ${NT_THRESHOLD}
+python ${SCRIPTS}/pair_classification.py \
+-d ${TD_OUT}/${NAME1}_vs_${NAME2}_minimum_pairwise_transcript_distance.csv \
+-s ${NT_THRESHOLD} \
 -o ${OUTD}/${NAME1}_${NAME2}_pair_classification.csv
 
 # Pairwise Distance for Genes with 1 GTF (only done if the files are not empty)
@@ -109,7 +109,7 @@ echo "Running ID_ERG..."
 # Run ID_ERG
 
 python ${SCRIPTS}/id_ERG.py \
--i ${TD_OUT}/${NAME1}_vs_${NAME2}_minimum_pairwise_distance.csv \
+-i ${TD_OUT}/${NAME1}_vs_${NAME2}_minimum_pairwise_transcript_distance.csv \
 -g \
 -p ${NAME1}_vs_${NAME2} \
 -o ${OUTD}/ERG/2GTF \
@@ -119,7 +119,7 @@ python ${SCRIPTS}/id_ERG.py \
 if [ -s "${OUTD}/TranD_2GTF_output/${NAME1}_vs_${NAME2}_gtf1_only.gtf" ]; then
 
 	python ${SCRIPTS}/id_ERG.py \
-	-i ${OUTD}/TranD_GTF1_only_output/pairwise_distance.csv \
+	-i ${OUTD}/TranD_GTF1_only_output/pairwise_transcript_distance.csv \
 	-g \
 	-p ${NAME1}_vs_${NAME2}_gtf1_only \
 	-o ${OUTD}/ERG/GTF1_only \
@@ -134,7 +134,7 @@ fi
 if [ -s "${OUTD}/TranD_2GTF_output/${NAME1}_vs_${NAME2}_gtf2_only.gtf" ]; then
 
 	python ${SCRIPTS}/id_ERG.py \
-	-i ${OUTD}/TranD_GTF2_only_output/pairwise_distance.csv \
+	-i ${OUTD}/TranD_GTF2_only_output/pairwise_transcript_distance.csv \
 	-g \
 	-p ${NAME1}_vs_${NAME2}_gtf2_only \
 	-o ${OUTD}/ERG/GTF2_only \

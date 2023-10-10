@@ -9,7 +9,7 @@ Created on Sat Jun 12 16:13:11 2021
 import matplotlib.pyplot as plt
 
 # Import plot functions
-from . import plot_functions as PF
+from trand import plot_functions as PF
 
 
 def plot_one_gtf_pairwise(outdir, td_data, prefix):
