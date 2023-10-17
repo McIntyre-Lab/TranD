@@ -153,31 +153,20 @@ ERG_GTF2=${OUTD}/ERG/GTF2_only
 echo "Concatenating ERG fie
 # Create Union ERG Files
 
-cat ${ERG_2GTF}/${NAME1}_vs_${NAME2}_erg_gtf.gtf \
-    ${ERG_GTF1}/${NAME1}_vs_${NAME2}_gtf1_only_erg_gtf.gtf \
-    ${ERG_GTF2}/${NAME1}_vs_${NAME2}_gtf2_only_erg_gtf.gtf \
-    2>/dev/null \ # Allows for concatenation even if one file does not exist
-    > ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_erg_gtf.gtf
+cat ${ERG_2GTF}/${NAME1}_vs_${NAME2}_erg_gtf.gtf > ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_erg_gtf.gtf
+${ERG_GTF1}/${NAME1}_vs_${NAME2}_gtf1_only_erg_gtf.gtf >> ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_erg_gtf.gtf
+${ERG_GTF2}/${NAME1}_vs_${NAME2}_gtf2_only_erg_gtf.gtf >> ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_erg_gtf.gtf
 
+cat ${ERG_2GTF}/${NAME1}_vs_${NAME2}_xscript_output.csv > ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_xscript_output.csv
+tail +2 ${ERG_GTF1}/${NAME1}_vs_${NAME2}_gtf1_only_xscript_output.csv >> ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_xscript_output.csv
+tail +2 ${ERG_GTF2}/${NAME1}_vs_${NAME2}_gtf2_only_xscript_output.csv >> ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_xscript_output.csv
 
-cat ${ERG_2GTF}/${NAME1}_vs_${NAME2}_xscript_output.csv \
-    <(tail +2 ${ERG_GTF1}/${NAME1}_vs_${NAME2}_gtf1_only_xscript_output.csv) \
-    <(tail +2 ${ERG_GTF1}/${NAME1}_vs_${NAME2}_gtf2_only_xscript_output.csv) \
-    2>/dev/null \ # Allows for concatenation even if one file does not exist
-    > ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_xscript_output.csv
+cat ${ERG_2GTF}/${NAME1}_vs_${NAME2}_gene_output.csv > ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_gene_output.csv
+tail -n +2 ${ERG_GTF1}/${NAME1}_vs_${NAME2}_gtf1_only_gene_output.csv >> ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_gene_output.csv
+tail -n +2 ${ERG_GTF2}/${NAME1}_vs_${NAME2}_gtf2_only_gene_output.csv >> ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_gene_output.csv
 
-
-cat ${ERG_2GTF}/${NAME1}_vs_${NAME2}_gene_output.csv \
-    <(tail +2 ${ERG_GTF1}/${NAME1}_vs_${NAME2}_gtf1_only_gene_output.csv) \
-    <(tail +2 ${ERG_GTF1}/${NAME1}_vs_${NAME2}_gtf2_only_gene_output.csv) \
-    2>/dev/null \ # Allows for concatenation even if one file does not exist
-    > ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_gene_output.csv
-
-
-cat ${ERG_2GTF}/${NAME1}_vs_${NAME2}_erg_output.csv \
-    <(tail +2 ${ERG_GTF1}/${NAME1}_vs_${NAME2}_gtf1_only_erg_output.csv) \
-    <(tail +2 ${ERG_GTF1}/${NAME1}_vs_${NAME2}_gtf2_only_erg_output.csv) \
-    2>/dev/null \ # Allows for concatenation even if one file does not exist
-    > ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_erg_output.csv
+cat ${ERG_2GTF}/${NAME1}_vs_${NAME2}_erg_output.csv > ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_erg_output.csv
+tail -n +2 ${ERG_GTF1}/${NAME1}_vs_${NAME2}_gtf1_only_erg_output.csv >> ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_erg_output.csv
+tail -n +2 ${ERG_GTF2}/${NAME1}_vs_${NAME2}_gtf2_only_erg_output.csv >> ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_erg_output.csv
 
 echo "Transcript Model Map Complete!"
