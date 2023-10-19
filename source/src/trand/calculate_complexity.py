@@ -103,6 +103,9 @@ def calculate_complexity(outdir, gtf_df, skip_plots, prefix=None):
         counts.to_csv(
             "{}/transcriptome_complexity_counts.csv".format(outdir), index=False
         )
+        geneDF.to_csv(
+            "{}/gene_level_complexity_counts.csv".format(outdir), index=False
+        )
         return geneDF[["gene_id", "num_uniq_exon"]]
     #        plot_complexity_violin(geneDF,transcriptDF,outdir,legendOut)
     #        plt.savefig("{}/complexity_plots_violin.png".format(outdir),dpi=600,format="png")
@@ -122,5 +125,9 @@ def calculate_complexity(outdir, gtf_df, skip_plots, prefix=None):
             plt.clf()
         counts.to_csv(
             "{}/{}_transcriptome_complexity_counts.csv".format(outdir, prefix),
+            index=False,
+        )
+        geneDF.to_csv(
+            "{}/{}_gene_level_complexity_counts.csv".format(outdir, prefix),
             index=False,
         )
