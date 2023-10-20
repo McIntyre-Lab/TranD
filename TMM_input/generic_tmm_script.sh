@@ -150,7 +150,7 @@ ERG_2GTF=${OUTD}/ERG/2GTF
 ERG_GTF1=${OUTD}/ERG/GTF1_only
 ERG_GTF2=${OUTD}/ERG/GTF2_only
 
-echo "Concatenating ERG fie
+echo "Concatenating ERG files"
 # Create Union ERG Files
 
 cat ${ERG_2GTF}/${NAME1}_vs_${NAME2}_erg_gtf.gtf > ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_erg_gtf.gtf
