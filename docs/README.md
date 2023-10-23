@@ -1,6 +1,6 @@
 # _TranD_
 
-[User Guide](https://github.com/McIntyre-Lab/TranD/wiki/User-Guide): Information on how to install and run TranD, with runtime estimates. 
+If you are new to TranD, please see the [User Guide](https://github.com/McIntyre-Lab/TranD/wiki/User-Guide) for information on how to install and run TranD, with runtime estimates. 
 
 Follow links for examples and documentation of the following:
 
