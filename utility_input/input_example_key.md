@@ -10,3 +10,7 @@
 - **subset_gtf_include_list.txt:** The include list used in the example for [subset_gtf.py](https://github.com/McIntyre-Lab/TranD/wiki/Utility-Descriptions-(with-Examples)#subset_gtfpy).
 
 - **subset_pd_include_list1.txt** and **subset_pd_include_list2.txt:** The include list used in the example for [subset_trand_pairwise_transcript_distance.csv](https://github.com/McIntyre-Lab/TranD/wiki/Utility-Descriptions-(with-Examples)#subset_trand_pairwise_transcript_distancepy).
+
+-**mel2mel_minimap2.gtf**: An example mapped genome to be put through gffcompare for the correct_gffcompare utility. Taken from the [Drosophila Reference Comparison](https://github.com/McIntyre-Lab/TranD/wiki/Drosophila-Species-Comparison-(D.-melanogaster-vs.-D.-simulans)) Process.
+
+-**mel2mel.annotated.gtf**: Output from GFFCompare using the above file.
