@@ -1,5 +1,7 @@
 # _TranD_
 
+[User Guide](https://github.com/McIntyre-Lab/TranD/wiki/User-Guide): Information on how to install and run TranD, with runtime estimates. 
+
 Follow links for examples and documentation of the following:
 
 * [Process raw long reads into a GTF file](https://github.com/McIntyre-Lab/TranD/wiki/Suggested-Best-Practices-for-Long-Reads)
