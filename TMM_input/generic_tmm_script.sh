@@ -152,10 +152,10 @@ ERG_GTF2=${OUTD}/ERG/GTF2_only
 
 echo "Concatenating ERG files"
 # Create Union ERG Files
-
+# BE SURE TO REMOVE THE GTF1/2 ONLY LINES IF THEY DID NOT EXIST
 cat ${ERG_2GTF}/${NAME1}_vs_${NAME2}_erg_gtf.gtf > ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_erg_gtf.gtf
-${ERG_GTF1}/${NAME1}_vs_${NAME2}_gtf1_only_erg_gtf.gtf >> ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_erg_gtf.gtf
-${ERG_GTF2}/${NAME1}_vs_${NAME2}_gtf2_only_erg_gtf.gtf >> ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_erg_gtf.gtf
+cat ${ERG_GTF1}/${NAME1}_vs_${NAME2}_gtf1_only_erg_gtf.gtf >> ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_erg_gtf.gtf
+cat ${ERG_GTF2}/${NAME1}_vs_${NAME2}_gtf2_only_erg_gtf.gtf >> ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_erg_gtf.gtf
 
 cat ${ERG_2GTF}/${NAME1}_vs_${NAME2}_xscript_output.csv > ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_xscript_output.csv
 tail +2 ${ERG_GTF1}/${NAME1}_vs_${NAME2}_gtf1_only_xscript_output.csv >> ${OUTD}/ERG/${NAME1}_vs_${NAME2}_union_xscript_output.csv
