@@ -202,8 +202,8 @@ def main():
             "NRM",
         ]
     distDf2["pair_classification"] = np.select(compConditions, compChoices, "oops")
-
-    outDf = distDf2[["gene_id", "transcript_1", "transcript_2", "flag_FSM", "flag_RMP", "flag_ERS_noIR", "pair_classification"]]
+    ## amm added flag_ERS_wIR to output file
+    outDf = distDf2[["gene_id", "transcript_1", "transcript_2", "flag_FSM", "flag_RMP", "flag_ERS_noIR", "flag_ERS_wIR", "pair_classification"]]
 
     # Output transcript map file
     outDf.to_csv(args.outFile, index=False)
