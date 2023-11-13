@@ -1,5 +1,7 @@
 # TranD: Transcript Distances
 
+**Below is a basic description of the functionality of TranD. New users, please check the [Wiki](https://github.com/McIntyre-Lab/TranD/wiki). The [User Guide](https://github.com/McIntyre-Lab/TranD/wiki/User-Guide) contains more detailed information on how to run and install TranD.**
+
 TranD is a collection of tools to facilitate metrics of structural variation for whole genome
 transcript annotation files (GTF) that pinpoint structural variation to the nucleotide level.
 
