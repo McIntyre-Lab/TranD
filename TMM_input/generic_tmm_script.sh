@@ -45,7 +45,7 @@ cat ${OUTD}/${NAME1}_UJC.gtf \
     > ${OUTD}/${NAME1}_${NAME2}_UJC.gtf
 
 python ${SCRIPTS}/id_ujc.py \
--g ${NAME1}_${NAME2}_UJC.gtf \
+-g ${OUTD}/${NAME1}_${NAME2}_UJC.gtf \
 -o ${OUTD} \
 -p ${NAME1}_${NAME2}_union
 
