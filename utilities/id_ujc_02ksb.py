@@ -380,11 +380,12 @@ def extractJunction(exonData):
                         numJxn = 0
                 else:
                         jxnLst = []
-                        jxnLst.append("{}_{}".format(info[3],info[6]))
                         for jxn in jxns:
                                 jxnLst.append("{}:{}".format(jxn[0],jxn[1]))
-                        jxnStr = "_".join(jxnLst)
+                        jxnStr = "|".join(jxnLst)
                         
+                        jxnStr = "{}_{}_".format(info[3],info[6]) + jxnStr
+
                         numJxn = len(jxns)
                         
                 info.append(jxnStr)
@@ -545,11 +546,15 @@ def createUJCIndex(ujcDct):
                 'jxnString',
                 'end']]
         
-        
         print ("Number of UJCs: {}".format(len(ujcIndexDf['jxnHash'])))
-                
+        
         if not ujcIndexDf['jxnHash'].is_unique:
-                print("WARNING: POSSIBLE JXNHASH COLLISION!")
+                print ("Wow! A rare jxnHash collision: two jxnStrings have resulted in the exact same hash for these genes and transcripts: ")
+                print ("geneID","transcriptID")
+                
+                duplicateDf = ujcIndexDf[ujcIndexDf.duplicated(subset='jxnHash',keep=False) | ujcIndexDf.duplicated(subset='jxnHash',keep='first')]
+                for row in duplicateDf.to_dict('records'):
+                        print(row['geneID'],row['transcriptID'])
         
         
         xscriptKeyDf = ujcIndexDf.copy(deep=True)
@@ -559,7 +564,10 @@ def createUJCIndex(ujcDct):
         
         xscriptKeyDf = xscriptKeyDf.explode('transcriptID')
 
-        return ujcIndexDf, xscriptKeyDf
+        ujcOutDf = ujcIndexDf[['geneID','jxnHash','chr','strand','start','end']]
+        ujcOutDf.columns =[['geneID','jxnHash','chr','strand','donorStart','acceptorEnd']]
+        
+        return ujcIndexDf, ujcOutDf, xscriptKeyDf
 
 def createExonOutput(ujcDf, ujcDct):
         """
@@ -664,21 +672,18 @@ def createCountOutput(ujcDf):
         jxnHashLst = []
         numXscriptLst = []
         geneIDLst = []
-        jStringLst = []
         
         for row in ujcDf.to_dict('records'):
                 
                 row['split'] = row['transcriptID'].split('!')
                 
                 jxnHash = row['jxnHash']
-                jString = row['jxnString']
                 geneID = row['geneID']
                 
                 numXscripts = len(row["split"])
                 
                 jxnHashLst.append(jxnHash)
                 numXscriptLst.append(numXscripts)
-                jStringLst.append(jString)
                 geneIDLst.append(geneID)
         
         countDf = pd.DataFrame(
@@ -686,7 +691,6 @@ def createCountOutput(ujcDf):
                         'geneID':geneIDLst,
                         'jxnHash':jxnHashLst,
                         'numTranscripts':numXscriptLst,
-                        'jxnString':jStringLst
                 })
         
         return countDf
@@ -705,12 +709,11 @@ def main():
         print ("Loading...")
         alphatic = time.perf_counter()
                 
-        # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update/test_dm650.gtf"
-        # prefix = "new_dm650_test"
+        # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update/subset_dm650.gtf"
+        # prefix = "small_dm650_test"
         # outdir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update"
         # includeGTF = True
         # includeCnt = True
-        
         
         inGTF = args.inGTF
         prefix = args.prefix
@@ -730,17 +733,17 @@ def main():
         print (f"Complete! Operation took {toc-tic:0.4f} seconds. Creating UJC DataFrame...")
         tic = time.perf_counter()
         
-        ujcDf, xscriptDf = createUJCIndex(ujcDct=ujcDct)
+        ujcDf, idDf, xscriptDf = createUJCIndex(ujcDct=ujcDct)
         
         toc = time.perf_counter()
         print (f"Complete! Operation took {toc-tic:0.4f} seconds. Writing files...")
         tic = time.perf_counter()
                 
-        ujcOutPath = outdir + "/" + prefix + "_ujc_id.csv"
+        idOutPath = outdir + "/" + prefix + "_ujc_id.csv"
         xscriptOutPath = outdir + "/" + prefix + "_ujc_xscript_index.csv"
         
         try:
-                ujcDf.to_csv(ujcOutPath, index=False)
+                idDf.to_csv(idOutPath, index=False)
                 xscriptDf.to_csv(xscriptOutPath, index=False)
         except OSError:
                 raise OSError("Output directory must already exist.")
