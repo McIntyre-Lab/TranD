@@ -680,18 +680,18 @@ def main():
         alphatic = time.perf_counter()
         
         # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/dmel-all-r6.50.gtf"
-        # prefix = "dm650_ref"
-        inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update/subset_dm650.gtf"
-        prefix = "small_dm650_test"
-        outdir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update"
-        includeGTF = True
-        includeCnt = True
+#        # prefix = "dm650_ref"
+#        inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update/subset_dm650.gtf"
+#        prefix = "small_dm650_test"
+#        outdir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update"
+#        includeGTF = True
+#        includeCnt = True
         
-        # inGTF = args.inGTF
-        # prefix = args.prefix
-        # outdir = args.outdir
-        # includeCnt = args.includeCnt
-        # includeGTF = args.includeGTF
+        inGTF = args.inGTF
+        prefix = args.prefix
+        outdir = args.outdir
+        includeCnt = args.includeCnt
+        includeGTF = args.includeGTF
         
         exonData = read_exon_data_from_file(infile=inGTF)
                 
