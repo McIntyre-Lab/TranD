@@ -28,6 +28,8 @@ import csv
 # import pickle
 import hashlib
 
+import copy
+
 import sys
 import os
 
@@ -316,6 +318,9 @@ def extractJunction(exonData):
         print ("Number of transcripts: ", end="")
         print (len(exonDf['transcript_id'].unique()))
         
+        print ("Number of genes: ", end="")
+        print (len(exonDf['gene_id'].unique()))
+        
         # First, instead of grouping, then sorting
         # Sort by transcript -> sort by start. the whole dataframe 
         sortedDf = exonDf.sort_values(by=['transcript_id', 'start']).reset_index(drop=True)
@@ -445,14 +450,14 @@ def createUJCIndex(ujcDct):
                         if appendedRowLst:
                                 lastRow = appendedRowLst[-1]
                                 
-                                if lastRow['chr'] == row['chr'] and lastRow['strand'] == row['strand']:
+                                if lastRow['chr'] == row['chr'] and lastRow['strand'] == row['strand'] and lastRow['geneID'] == row['geneID']:
                                         if lastRow['tmpEnd'] > row['tmpStart']:
                                                 
                                                 row['tmpStart'] = lastRow['tmpStart']
                                                 
                                                 if (lastRow['tmpEnd'] < row['tmpEnd']):
                                                         for loopRow in appendedRowLst:
-                                                                if loopRow['chr'] == row['chr'] and loopRow['strand'] == row['strand']:
+                                                                if loopRow['chr'] == row['chr'] and loopRow['strand'] == row['strand'] and lastRow['geneID'] == row['geneID']:
                                                                         loopRow['tmpEnd'] = row['tmpEnd']
                                                 else:
                                                         row['tmpEnd'] = lastRow['tmpEnd']
@@ -479,21 +484,24 @@ def createUJCIndex(ujcDct):
                 monoUJC = newMonoDf.sort_values(by=['start', 'end'])
                 monoUJC.drop(columns=['tmpStart','tmpEnd'])
                 
+                monoUJC['pair'] = list(zip(monoUJC['geneID'],monoUJC['transcriptID']))
+                
                 monoUJC = monoUJC.groupby(["jxnString"]).agg({
-                        "geneID":"first",
+                        "geneID": set,
                         "chr":"first",
                         "start":"min",
                         "end":"max",
                         "strand":"first",
                         "numJxn":"max",
-                        "transcriptID": lambda x: '!'.join(x)}).reset_index()
+                        "transcriptID": set,
+                        "pair":set}).reset_index()
                     
         else:
                 monoExonDct = None
                 
         if len(multiExonDct) > 0:
                 
-                multiUJC = pd.DataFrame(
+                multiXscriptDf = pd.DataFrame(
                         multiExonDct, 
                         index = pd.Index(["exons",
                                           "transcriptID",
@@ -505,69 +513,58 @@ def createUJCIndex(ujcDct):
                                           "source",
                                           "jxnString",
                                           "numJxn"])
-                        ).T.sort_values(by=["geneID", "start", "end"])
+                        ).T.sort_values(by=["jxnString", "start", "end"])
                 
+                multiXscriptDf['pair'] = list(zip(multiXscriptDf['geneID'],multiXscriptDf['transcriptID']))
                 
-                multiUJC = multiUJC.groupby(["jxnString"]).agg({
-                        "geneID":"first",
+                multiUJC = multiXscriptDf.groupby(["jxnString"]).agg({
+                        "geneID":set,
                         "chr":"first",
                         "start":"min",
                         "end":"max",
                         "strand":"first",
                         "numJxn":"max",
-                        "transcriptID": lambda x: '!'.join(x)}).reset_index()
+                        "transcriptID":set,
+                        "pair":set}).reset_index()
                      
         else:
                 multiExonDct = None
         
         if monoExonDct and multiExonDct:
-                ujcIndexDf = pd.concat([monoUJC, multiUJC], ignore_index=True)
+                ujcSummaryDf = pd.concat([monoUJC, multiUJC], ignore_index=True)
         elif monoExonDct:
-                ujcIndexDf = monoUJC.copy()
+                ujcSummaryDf = monoUJC.copy()
                 del(monoUJC)
         else:
-                ujcIndexDf = multiUJC.copy()
+                ujcSummaryDf = multiUJC.copy()
                 del(multiUJC)        
-        
-        sort_order = {"geneID": "asc", "start": "asc", "transcriptID": "asc"}
-        ujcIndexDf = ujcIndexDf.sort_values(by=list(sort_order.keys()), ascending=[True if val=="asc" else False for val in sort_order.values()])
-        
-        ujcIndexDf['jxnHash'] = ujcIndexDf['jxnString'].apply(
+
+        ujcSummaryDf['jxnHash'] = ujcSummaryDf['jxnString'].apply(
                 lambda x: hashlib.sha256(x.encode('utf-8')).hexdigest()[:32])
         
-        ujcIndexDf = ujcIndexDf[[
-                'geneID',
-                'jxnHash',
-                'transcriptID',
-                'numJxn',
-                'chr',
-                'strand',
-                'start',
-                'jxnString',
-                'end']]
-        
-        print ("Number of UJCs: {}".format(len(ujcIndexDf['jxnHash'])))
-        
-        if not ujcIndexDf['jxnHash'].is_unique:
+        print ("Number of UJCs: {}".format(len(ujcSummaryDf['jxnHash'])))
+
+        if not ujcSummaryDf['jxnHash'].is_unique:
                 print ("Wow! A rare jxnHash collision: two jxnStrings have resulted in the exact same hash for these genes and transcripts: ")
                 print ("geneID","transcriptID")
                 
-                duplicateDf = ujcIndexDf[ujcIndexDf.duplicated(subset='jxnHash',keep=False) | ujcIndexDf.duplicated(subset='jxnHash',keep='first')]
+                duplicateDf = ujcSummaryDf[ujcSummaryDf.duplicated(subset='jxnHash',keep=False) | ujcSummaryDf.duplicated(subset='jxnHash',keep='first')]
                 for row in duplicateDf.to_dict('records'):
                         print(row['geneID'],row['transcriptID'])
         
+        ujcSummaryDf['flagMultiGene'] = ujcSummaryDf['geneID'].apply(lambda x: 1 if len(x) > 1 else 0)
+        ujcSummaryDf = ujcSummaryDf.sort_values(by=['chr','strand','start'], ascending=True)
         
-        xscriptKeyDf = ujcIndexDf.copy(deep=True)
-        xscriptKeyDf = xscriptKeyDf[['geneID','transcriptID','jxnHash','jxnString']]
+        ujcOutDf = ujcSummaryDf[['jxnHash','flagMultiGene','numJxn','chr','strand','start','end']]
+        ujcOutDf.columns = [['jxnHash', 'flagMultiGene','numJxn','chr','strand','donorStart','acceptorEnd']]
         
-        xscriptKeyDf['transcriptID'] = xscriptKeyDf['transcriptID'].apply(lambda x: x.split('!'))
+        xscriptIndexDf = ujcSummaryDf.copy(deep=True)
+        xscriptIndexDf = xscriptIndexDf[['pair','jxnHash','jxnString']]
+        xscriptIndexDf = xscriptIndexDf.explode('pair')
+        xscriptIndexDf[['geneID','transcriptID']] = pd.DataFrame(xscriptIndexDf['pair'].to_list(), index=xscriptIndexDf.index)
+        xscriptIndexDf = xscriptIndexDf.drop_duplicates()[['geneID', 'transcriptID', 'jxnHash', 'jxnString']]
         
-        xscriptKeyDf = xscriptKeyDf.explode('transcriptID')
-
-        ujcOutDf = ujcIndexDf[['geneID','jxnHash','chr','strand','start','end']]
-        ujcOutDf.columns =[['geneID','jxnHash','chr','strand','donorStart','acceptorEnd']]
-        
-        return ujcIndexDf, ujcOutDf, xscriptKeyDf
+        return ujcSummaryDf, ujcOutDf, xscriptIndexDf
 
 def createExonOutput(ujcDf, ujcDct):
         """
@@ -588,6 +585,19 @@ def createExonOutput(ujcDf, ujcDct):
                 A dataframe in the proper format to be written as a GTF file.
 
         """
+        
+        workingDf = ujcDf.explode('pair')[['pair','chr','strand','jxnHash','start','end','numJxn']] 
+        workingDf[['geneID','transcriptID']] = pd.DataFrame(workingDf['pair'].to_list(), index=workingDf.index)
+        workingDf.drop('pair', axis=1,inplace=True)        
+        
+        workingDf = workingDf.groupby(['jxnHash','geneID']).agg({
+                        "chr":"first",
+                        "start":"min",
+                        "end":"max",
+                        "strand":"first",
+                        "transcriptID":set,
+                        "numJxn":"max"}).reset_index()
+                
         seqnameLst = []
         startLst = []
         endLst = []
@@ -596,7 +606,7 @@ def createExonOutput(ujcDf, ujcDct):
         geneIDLst = []
         
         # tested -> ujcDf contains accurate start and end        
-        for row in ujcDf.to_dict('records'):
+        for row in workingDf.to_dict('records'):
                 
                 seqname = row['chr']
                 strand = row['strand']
@@ -607,10 +617,11 @@ def createExonOutput(ujcDf, ujcDct):
                 lastEnd = row['end']
                 
                 # tested and proved all xscripts under same UJC have same junctions and internal exons
-                xscript = row['transcriptID'].split('!')[0]
+                
+                xscript = next(iter(row['transcriptID']))
                 
                 exons = ujcDct[xscript][0]
-                flagMono = 'monoexon' in row['jxnString']
+                flagMono = row['numJxn'] < 1
 
                 if flagMono:
                         seqnameLst.append(seqname)
@@ -654,47 +665,6 @@ def createExonOutput(ujcDf, ujcDct):
 
         return outExonDf
 
-def createCountOutput(ujcDf):
-        """
-
-        Parameters
-        ----------
-        ujcDf : DATAFRAME
-                Dataframe with information on the UJCs, with their ids, transcripts, etc.
-        
-        Returns
-        -------
-        outDf : DATAFRAME
-                A dataframe that is the list of UJCs and the number of transcripts
-                within that UJC.
-
-        """
-        jxnHashLst = []
-        numXscriptLst = []
-        geneIDLst = []
-        
-        for row in ujcDf.to_dict('records'):
-                
-                row['split'] = row['transcriptID'].split('!')
-                
-                jxnHash = row['jxnHash']
-                geneID = row['geneID']
-                
-                numXscripts = len(row["split"])
-                
-                jxnHashLst.append(jxnHash)
-                numXscriptLst.append(numXscripts)
-                geneIDLst.append(geneID)
-        
-        countDf = pd.DataFrame(
-                {
-                        'geneID':geneIDLst,
-                        'jxnHash':jxnHashLst,
-                        'numTranscripts':numXscriptLst,
-                })
-        
-        return countDf
-
 
 def main():
         
@@ -708,18 +678,20 @@ def main():
         """
         print ("Loading...")
         alphatic = time.perf_counter()
-                
-        # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update/subset_dm650.gtf"
-        # prefix = "small_dm650_test"
-        # outdir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update"
-        # includeGTF = True
-        # includeCnt = True
         
-        inGTF = args.inGTF
-        prefix = args.prefix
-        outdir = args.outdir
-        includeCnt = args.includeCnt
-        includeGTF = args.includeGTF
+        # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/dmel-all-r6.50.gtf"
+        # prefix = "dm650_ref"
+        inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update/subset_dm650.gtf"
+        prefix = "small_dm650_test"
+        outdir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update"
+        includeGTF = True
+        includeCnt = True
+        
+        # inGTF = args.inGTF
+        # prefix = args.prefix
+        # outdir = args.outdir
+        # includeCnt = args.includeCnt
+        # includeGTF = args.includeGTF
         
         exonData = read_exon_data_from_file(infile=inGTF)
                 
@@ -733,7 +705,7 @@ def main():
         print (f"Complete! Operation took {toc-tic:0.4f} seconds. Creating UJC DataFrame...")
         tic = time.perf_counter()
         
-        ujcDf, idDf, xscriptDf = createUJCIndex(ujcDct=ujcDct)
+        ujcDf, idDf, indexDf = createUJCIndex(ujcDct=ujcDct)
         
         toc = time.perf_counter()
         print (f"Complete! Operation took {toc-tic:0.4f} seconds. Writing files...")
@@ -744,7 +716,7 @@ def main():
         
         try:
                 idDf.to_csv(idOutPath, index=False)
-                xscriptDf.to_csv(xscriptOutPath, index=False)
+                indexDf.to_csv(xscriptOutPath, index=False)
         except OSError:
                 raise OSError("Output directory must already exist.")
         
@@ -763,7 +735,9 @@ def main():
         if includeCnt:
                 
                 print ("Counting transcripts per UJC...")
-                countDf = createCountOutput(ujcDf=ujcDf)
+                
+                countDf = indexDf.groupby(['geneID','jxnHash']).count()['transcriptID'].reset_index()
+                countDf.columns= ['geneID','jxnHash','numTranscripts']
                 countOutPath = outdir + "/" + prefix + "_ujc_count.csv"
                 
                 try:
