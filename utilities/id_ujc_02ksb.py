@@ -15,9 +15,8 @@ Created from a previous utility in TranD named consolidation
 
 TranD version of the utility is referred to as 1.xx in versioning.
 
-Version 2.1: Updated to change the ujc_identifier to a hash based on the jxnString.
-                Added more columns, streamlined the output, added an output file.
-
+Version 2.2: Changed the jxnHash back to 64 characters to prevent collisions.
+                Added a flag_multiTranscript to the ujc_id file (more than one transcript in a UJC group).
 """
 
 import argparse
@@ -540,7 +539,7 @@ def createUJCIndex(ujcDct):
                 del(multiUJC)        
 
         ujcSummaryDf['jxnHash'] = ujcSummaryDf['jxnString'].apply(
-                lambda x: hashlib.sha256(x.encode('utf-8')).hexdigest()[:32])
+                lambda x: hashlib.sha256(x.encode('utf-8')).hexdigest())
         
         print ("Number of UJCs: {}".format(len(ujcSummaryDf['jxnHash'])))
 
@@ -553,10 +552,12 @@ def createUJCIndex(ujcDct):
                         print(row['geneID'],row['transcriptID'])
         
         ujcSummaryDf['flagMultiGene'] = ujcSummaryDf['geneID'].apply(lambda x: 1 if len(x) > 1 else 0)
+        ujcSummaryDf['flagMultiXscript'] = ujcSummaryDf['pair'].apply(lambda pair: 1 if len(set([tup[0] for tup in pair])) < len([tup[0] for tup in pair]) else 0)
+        
         ujcSummaryDf = ujcSummaryDf.sort_values(by=['chr','strand','start'], ascending=True)
         
-        ujcOutDf = ujcSummaryDf[['jxnHash','flagMultiGene','numJxn','chr','strand','start','end']]
-        ujcOutDf.columns = [['jxnHash', 'flagMultiGene','numJxn','chr','strand','donorStart','acceptorEnd']]
+        ujcOutDf = ujcSummaryDf[['jxnHash','flagMultiGene', 'flagMultiXscript','numJxn','chr','strand','start','end']]
+        ujcOutDf.columns = [['jxnHash', 'flagMultiXscript','flagMultiGene','numJxn','chr','strand','donorStart','acceptorEnd']]
         
         xscriptIndexDf = ujcSummaryDf.copy(deep=True)
         xscriptIndexDf = xscriptIndexDf[['pair','jxnHash','jxnString']]
@@ -588,15 +589,16 @@ def createExonOutput(ujcDf, ujcDct):
         
         workingDf = ujcDf.explode('pair')[['pair','chr','strand','jxnHash','start','end','numJxn']] 
         workingDf[['geneID','transcriptID']] = pd.DataFrame(workingDf['pair'].to_list(), index=workingDf.index)
-        workingDf.drop('pair', axis=1,inplace=True)        
+        workingDf.drop('pair', axis=1,inplace=True)
         
-        workingDf = workingDf.groupby(['jxnHash','geneID']).agg({
+        workingDf = workingDf.groupby(['jxnHash']).agg({
                         "chr":"first",
                         "start":"min",
                         "end":"max",
                         "strand":"first",
                         "transcriptID":set,
                         "numJxn":"max"}).reset_index()
+        
                 
         seqnameLst = []
         startLst = []
@@ -611,7 +613,7 @@ def createExonOutput(ujcDf, ujcDct):
                 seqname = row['chr']
                 strand = row['strand']
                 jxnHash = row['jxnHash']
-                geneID = row['geneID']
+                geneID = row['jxnHash']
                 
                 firstStart = row['start']
                 lastEnd = row['end']
@@ -651,8 +653,8 @@ def createExonOutput(ujcDf, ujcDct):
                         endLst.append(lastEnd)
                         hashLst.append(jxnHash)
                         strandLst.append(strand)
-                        geneIDLst.append(geneID)
-                        
+                        geneIDLst.append(geneID)        
+        
         outExonDf = pd.DataFrame(
                 {
                         'seqname':seqnameLst,
@@ -662,7 +664,7 @@ def createExonOutput(ujcDf, ujcDct):
                         'transcript_id':hashLst,
                         'gene_id':geneIDLst
                 })
-
+        
         return outExonDf
 
 
@@ -680,12 +682,12 @@ def main():
         alphatic = time.perf_counter()
         
         # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/dmel-all-r6.50.gtf"
-#        # prefix = "dm650_ref"
-#        inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update/subset_dm650.gtf"
-#        prefix = "small_dm650_test"
-#        outdir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update"
-#        includeGTF = True
-#        includeCnt = True
+        # prefix = "dm650_ref"
+        # # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update/subset_dm650.gtf"
+        # # prefix = "small_dm650_test"
+        # outdir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update"
+        # includeGTF = True
+        # includeCnt = True
         
         inGTF = args.inGTF
         prefix = args.prefix
