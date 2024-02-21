@@ -556,9 +556,9 @@ def createUJCIndex(ujcDct):
         
         ujcSummaryDf = ujcSummaryDf.sort_values(by=['chr','strand','start'], ascending=True)
         
-        ujcOutDf = ujcSummaryDf[['jxnHash','flagMultiGene', 'flagMultiXscript','numJxn','chr','strand','start','end']]
-        ujcOutDf.columns = [['jxnHash', 'flagMultiXscript','flagMultiGene','numJxn','chr','strand','donorStart','acceptorEnd']]
-        
+        ujcOutDf = ujcSummaryDf[['jxnHash', 'flagMultiXscript', 'flagMultiGene', 'numJxn','chr','strand','start','end']]
+        ujcOutDf = ujcOutDf.rename(columns={'start':'donorStart','end':'acceptorEnd'})
+                
         xscriptIndexDf = ujcSummaryDf.copy(deep=True)
         xscriptIndexDf = xscriptIndexDf[['pair','jxnHash','jxnString']]
         xscriptIndexDf = xscriptIndexDf.explode('pair')
@@ -681,7 +681,7 @@ def main():
         print ("Loading...")
         alphatic = time.perf_counter()
         
-        # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/dmel-all-r6.50.gtf"
+        # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/dmel650_2_dmel6_corrected_associated_gene.gtf"
         # prefix = "dm650_ref"
         # # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update/subset_dm650.gtf"
         # # prefix = "small_dm650_test"
