@@ -41,15 +41,15 @@ def getOptions():
 def main():
         # Parse command line arguments
         
-        genomeName = "dmel6"
-        # inMergeFlags = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/jxnHash_merges/all_2_dmel6_jxnHash_merge_flags.csv"
-        inFolder = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/recip_mapping_all_species"
-        outGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/create_genome_uniq_ujc/dmel6_all_uniq_ujc.gtf"        
+        # genomeName = "dmel6"
+        # # inMergeFlags = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/jxnHash_merges/all_2_dmel6_jxnHash_merge_flags.csv"
+        # inFolder = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/recip_mapping_all_species"
+        # outGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/create_genome_uniq_ujc/dmel6_all_uniq_ujc.gtf"        
 
-        # genomeName = args.genomeName
-        # inMergeFlags = args.inMergeFlags
-        # inFolder = args.inFolder
-        # outGTF = args.outGTF
+        genomeName = args.genomeName
+        inMergeFlags = args.inMergeFlags
+        inFolder = args.inFolder
+        outGTF = args.outGTF
         
         # Create dct {ujc gtf name:GTF DF}
         indexDfDct = dict()

@@ -58,11 +58,11 @@ def getOptions():
         return args
 
 def main():
-        # inGeneKey = args.inGeneKey
-        # inRefAnno = args.inRefAnno
-        # inUnmapGTF = args.inUnmapGTF
-        # outDir = args.outDir
-        # filePrefix = args.filePrefix
+        inGeneKey = args.inGeneKey
+        inRefAnno = args.inRefAnno
+        inUnmapGTF = args.inUnmapGTF
+        outDir = args.outDir
+        filePrefix = args.filePrefix
         
         # species = "san"
         # species = "yak"
