@@ -47,7 +47,6 @@ def main():
         # outGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/create_genome_uniq_ujc/dmel6_all_uniq_ujc.gtf"        
 
         genomeName = args.genomeName
-        inMergeFlags = args.inMergeFlags
         inFolder = args.inFolder
         outGTF = args.outGTF
         
