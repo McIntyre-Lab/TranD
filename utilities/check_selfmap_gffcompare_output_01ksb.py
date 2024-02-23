@@ -58,52 +58,57 @@ def getOptions():
         return args
 
 def main():
-        inGeneKey = args.inGeneKey
-        inRefAnno = args.inRefAnno
-        inUnmapGTF = args.inUnmapGTF
-        outDir = args.outDir
-        filePrefix = args.filePrefix
+        # inGeneKey = args.inGeneKey
+        # inRefAnno = args.inRefAnno
+        # inUnmapGTF = args.inUnmapGTF
+        # outDir = args.outDir
+        # filePrefix = args.filePrefix
         
-        # species = "ser"
-        # species = "sim"
-        # species = "yak"
         # species = "san"
+        # species = "yak"
+        # species = "sim"
+        # species = "ser"
         # species = "mel"
 
         # if species == "mel":        
         #         inGeneKey = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/dmel650_2_dmel6_gene_key.csv"
         #         inRefAnno = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/dmel-all-r6.50.gtf"
-        #         inUJCIndex = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/dmel650_2_dmel6_ujc_xscript_index.csv"
         #         inUnmapGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/dmel650_2_dmel6_unmapped.gtf"
-        
+        #         outDir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_gffcompare_summary"
+        #         filePrefix="dmel650_2_dmel6"
+                
         # elif species == "san":
                 
         #         inGeneKey = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dsan_Prin_1.1/dsan11_2_dsan1_gene_key.csv"
         #         inRefAnno = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dsan_Prin_1.1/GCF_016746245.2/genomic_gtf_no_gene_features.gtf"
-        #         inUJCIndex = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dsan_Prin_1.1/dsan11_2_dsan1_ujc_xscript_index.csv"
         #         inUnmapGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dsan_Prin_1.1/dsan11_2_dsan1_unmapped.gtf"
-
+        #         outDir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_gffcompare_summary"
+        #         filePrefix="dsan11_2_dsan1"
+                
         # elif species == "ser":
                 
         #         inGeneKey = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dser1.1/dser11_2_dser1_gene_key.csv"
         #         inRefAnno = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dser1.1/GCF_002093755.2/genomic_gtf_no_gene_features.gtf"
-        #         inUJCIndex = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dser1.1/dser11_2_dser1_ujc_xscript_index.csv"
         #         inUnmapGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dser1.1/dser11_2_dser1_unmapped.gtf"
+        #         outDir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_gffcompare_summary"
+        #         filePrefix="dser11_2_dser1"
 
         # elif species == "yak":
                 
         #         inGeneKey = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dyak_rogers/dyak105_2_dyak1_gene_key.csv"
         #         inRefAnno = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dyak_rogers/Final.DyakMerged_tab_corrected.gtf"
-        #         inUJCIndex = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dyak_rogers/dyak105_2_dyak1_ujc_xscript_index.csv"
         #         inUnmapGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dyak_rogers/dyak105_2_dyak1_unmapped.gtf"
-                
+        #         outDir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_gffcompare_summary"
+        #         filePrefix="dyak105_2_dyak1"
+
         # elif species == "sim":
                 
         #         inGeneKey = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dsim_WXD1_ASM438218v1/dsimWXD_2_dsimW_gene_key.csv"
         #         inRefAnno = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/dsWXD_union/dsWXD_union_UJC.gtf"
-        #         inUJCIndex = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dsim_WXD1_ASM438218v1/dsimWXD_2_dsimW_ujc_xscript_index.csv"
         #         inUnmapGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dsim_WXD1_ASM438218v1/dsimWXD_2_dsimW_unmapped.gtf"
-        
+        #         outDir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_gffcompare_summary"
+        #         filePrefix="dsimWXD_2_dsimW"
+
         # Read in the two GTFs
         refGTFDf = trand.io.read_exon_data_from_file(inRefAnno)
         
@@ -117,9 +122,7 @@ def main():
         print ("There are " + str(unmapGTFDF['transcript_id'].nunique()) + " unmapped transcripts when self-mapping.")
         
         print ("-> " + str(refGTFDf['transcript_id'].nunique() - unmapGTFDF['transcript_id'].nunique()) + " successfully mapped back onto the genome.")
-                
-        totalMappedTr = (refGTFDf['transcript_id'].nunique() - unmapGTFDF['transcript_id'].nunique())
-        
+
         # Flag Unmapped Transcripts in Reference
         unmapMergeDf = pd.merge(refGTFDf, unmapGTFDF, how='outer', indicator='merge_check')
         
@@ -230,7 +233,8 @@ def main():
         removeFile = '{}/{}_remove_these_transcripts_from_corrected_gtf.txt'.format(outDir, filePrefix)
         with open(removeFile, 'w+') as f:
                 removeList = noExonRow  
-                f.write("\n".join(removeList))     
+                len("\n".join(removeList).split("\n"))
+                f.write("\n".join(removeList))
 
 if __name__ == '__main__':
         # # Parse command line arguments
