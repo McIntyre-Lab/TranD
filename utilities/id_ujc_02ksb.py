@@ -15,7 +15,8 @@ Created from a previous utility in TranD named consolidation
 
 TranD version of the utility is referred to as 1.xx in versioning.
 
-Version 2.3: Output file prefix is now just input file name.
+Version 2.3: Output file prefix is now just input file name; junction string now only contains an 
+                underscore connecting all junction positions.
 """
 
 import argparse
@@ -378,14 +379,14 @@ def extractJunction(exonData):
                 jxns = list(zip(endValues[:-1], startValues[1:]))
                 
                 if jxns == []:
-                        jxnStr = "{}_{}_monoexon_{}:{}".format(info[3],info[6],info[4],info[5])
+                        jxnStr = "{}_{}_monoexon_{}_{}".format(info[3],info[6],info[4],info[5])
                         
                         numJxn = 0
                 else:
                         jxnLst = []
                         for jxn in jxns:
-                                jxnLst.append("{}:{}".format(jxn[0],jxn[1]))
-                        jxnStr = "|".join(jxnLst)
+                                jxnLst.append("{}_{}".format(jxn[0],jxn[1]))
+                        jxnStr = "_".join(jxnLst)
                         
                         jxnStr = "{}_{}_".format(info[3],info[6]) + jxnStr
 
@@ -680,16 +681,16 @@ def main():
         print ("Loading...")
         alphatic = time.perf_counter()
              
-        inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/dmel650_2_dmel6_corrected_associated_gene.gtf"        
-        # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update/subset_dm650.gtf"
+        # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/dmel650_2_dmel6_corrected_associated_gene.gtf"        
+        inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update/subset_dm650.gtf"
         outdir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update"
         includeGTF = True
         includeCnt = True
   
-        inGTF = args.inGTF
-        outdir = args.outdir
-        includeCnt = args.includeCnt
-        includeGTF = args.includeGTF
+        # inGTF = args.inGTF
+        # outdir = args.outdir
+        # includeCnt = args.includeCnt
+        # includeGTF = args.includeGTF
               
         exonData = read_exon_data_from_file(infile=inGTF)
         prefix = os.path.basename(inGTF).split('.')[0]
