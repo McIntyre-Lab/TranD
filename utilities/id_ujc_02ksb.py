@@ -15,8 +15,7 @@ Created from a previous utility in TranD named consolidation
 
 TranD version of the utility is referred to as 1.xx in versioning.
 
-Version 2.2: Changed the jxnHash back to 64 characters to prevent collisions.
-                Added a flag_multiTranscript to the ujc_id file (more than one transcript in a UJC group).
+Version 2.3: Output file prefix is now just input file name.
 """
 
 import argparse
@@ -197,8 +196,8 @@ def getOptions():
                                          "file unique on transcript that more directly links a read/transcript to its "
                                          "jxnHash and jxnString. 3. A GTF file with representative transcript models "
                                          "for each group. The jxnHash will be the \'transcript_id\' for the group. "
-                                         "Input: a GTF file (--gtf), an output directory (--outdir) and a prefix for the "
-                                         "output files (--prefix). Allows the option to skip the output of the GTF file "
+                                         "Input: a GTF file (--gtf), and an output directory (--outdir). Output files will begin with "
+                                         "the name of the input file. Allows the option to skip the output of the GTF file "
                                          "with representative transcript models. (--skip-gtf). Allows the option to output "
                                          "another key file with the number of transcripts per jxnHash counted (--count-ujc).")
         
@@ -239,13 +238,13 @@ def getOptions():
                 help="Location of output directory, must already exist."
         )
         
-        parser.add_argument(
-                "-p",
-                "--prefix",
-                dest="prefix",
-                required=True,
-                help="Required prefix for the output file(s). Example: prefix_UJC_ID.csv"
-        )
+        # parser.add_argument(
+        #         "-p",
+        #         "--prefix",
+        #         dest="prefix",
+        #         required=True,
+        #         help="Required prefix for the output file(s). Example: prefix_UJC_ID.csv"
+        # )
         
         args = parser.parse_args()
         return args
@@ -680,23 +679,21 @@ def main():
         """
         print ("Loading...")
         alphatic = time.perf_counter()
-        
-        # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/dmel650_2_dmel6_corrected_associated_gene.gtf"
-        # prefix = "dm650_ref"
-        # # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update/subset_dm650.gtf"
-        # # prefix = "small_dm650_test"
-        # outdir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update"
-        # includeGTF = True
-        # includeCnt = True
-        
+             
+        inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/dmel650_2_dmel6_corrected_associated_gene.gtf"        
+        # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update/subset_dm650.gtf"
+        outdir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update"
+        includeGTF = True
+        includeCnt = True
+  
         inGTF = args.inGTF
-        prefix = args.prefix
         outdir = args.outdir
         includeCnt = args.includeCnt
         includeGTF = args.includeGTF
-        
+              
         exonData = read_exon_data_from_file(infile=inGTF)
-                
+        prefix = os.path.basename(inGTF).split('.')[0]
+        
         toc = time.perf_counter()
         print(f"GTF Read complete! Took {toc-alphatic:0.4f} seconds. Extracting junctions...")
         tic = time.perf_counter()
