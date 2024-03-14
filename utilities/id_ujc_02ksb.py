@@ -682,15 +682,15 @@ def main():
         alphatic = time.perf_counter()
              
         # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/dmel650_2_dmel6_corrected_associated_gene.gtf"        
-        inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update/subset_dm650.gtf"
-        outdir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update"
-        includeGTF = True
-        includeCnt = True
+        # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update/subset_dm650.gtf"
+        # outdir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update"
+        # includeGTF = True
+        # includeCnt = True
   
-        # inGTF = args.inGTF
-        # outdir = args.outdir
-        # includeCnt = args.includeCnt
-        # includeGTF = args.includeGTF
+        inGTF = args.inGTF
+        outdir = args.outdir
+        includeCnt = args.includeCnt
+        includeGTF = args.includeGTF
               
         exonData = read_exon_data_from_file(infile=inGTF)
         prefix = os.path.basename(inGTF).split('.')[0]
