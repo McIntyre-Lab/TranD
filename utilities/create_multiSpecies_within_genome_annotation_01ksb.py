@@ -55,7 +55,7 @@ def main():
 
         allHashSet = set()
         # Grab all files mapped to specified genome name
-        for file in glob.glob(inFolder + "/*2_" + genomeName + "_ujc.gtf"):
+        for file in glob.glob(inFolder + "/*2_" + genomeName + "*_ujc.gtf"):
                 
                 fileName = os.path.basename(file)
                 annoName = fileName.split('2')[0].rstrip('_')
