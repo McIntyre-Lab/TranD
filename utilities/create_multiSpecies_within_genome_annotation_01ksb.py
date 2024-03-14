@@ -57,25 +57,24 @@ def main():
     allHashSet = set()
 
     for file in glob.glob(inFolder + '/*_2_{}_roz_ujc.gtf'.format(genomeName)) + glob.glob(inFolder + '/*_2_{}_ujc_roz.gtf'.format(genomeName)):
-        print(file)
 
         fileName = os.path.basename(file)
+        print("Reading file: {}".format(fileName))
 
         annoName = fileName.split('2')[0].rstrip('_')
         inDf = trand.io.read_exon_data_from_file(file)
-
-        print(len(allHashSet))
+        # print(len(allHashSet))
 
         indexDfDct[annoName] = inDf
         allHashSet.update(set(inDf['transcript_id'].unique().tolist()))
-        print(len(allHashSet))
+        # print(len(allHashSet))
 
     print("Total Number of Unique UJCs across all annotations: {}".format(
         len(allHashSet)))
 
     test = set()
     for annoName, df in list(indexDfDct.items()):
-        print(annoName)
+        # print(annoName)
         test.update(set(df['transcript_id'].unique().tolist()))
 
     len(set(test))
