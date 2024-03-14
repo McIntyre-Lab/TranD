@@ -41,32 +41,49 @@ def getOptions():
 def main():
         # Parse command line arguments
         
-        # genomeName = "dmel6"
-        # # inMergeFlags = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/jxnHash_merges/all_2_dmel6_jxnHash_merge_flags.csv"
-        # inFolder = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/recip_mapping_all_species"
-        # outGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/create_genome_uniq_ujc/dmel6_all_uniq_ujc.gtf"        
+        genomeName = "dmel6"
+        inFolder = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/mapped_ujc_id_ujc_output"
+        outGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc_roz.gtf"
+
 
         genomeName = args.genomeName
         inFolder = args.inFolder
         outGTF = args.outGTF
-        
+                
         # Create dct {ujc gtf name:GTF DF}
         indexDfDct = dict()
 
         allHashSet = set()
         # Grab all files mapped to specified genome name
-        for file in glob.glob(inFolder + "/*2_" + genomeName + "*_ujc.gtf"):
-                
+        pattern = inFolder + "/*_2_" + genomeName + "_ujc_roz.gtf"
+        pattern += '|'
+        pattern += inFolder + "/*_2_" + genomeName + "_roz_ujc.gtf"
+        
+        for file in glob.glob(pattern):
+                print (file)    
+            
                 fileName = os.path.basename(file)
+                
                 annoName = fileName.split('2')[0].rstrip('_')
                 inDf = trand.io.read_exon_data_from_file(file)
                 
-                allHashSet.update(set(inDf['transcript_id'].unique().tolist()))
-
+                print(len(allHashSet))
+                
                 indexDfDct[annoName] = inDf
+                allHashSet.update(set(inDf['transcript_id'].unique().tolist()))
+                print(len(allHashSet))
+
+        
         
         print ("Total Number of Unique UJCs across all annotations: {}".format(len(allHashSet)))
-
+        
+        test = set()
+        for annoName, df in list(indexDfDct.items()):
+            print(annoName)
+            test.update(set(df['transcript_id'].unique().tolist()))
+        
+        len(set(test))
+        
         annoName = list(indexDfDct.keys())[0]
         concatDf = indexDfDct[annoName].copy(deep=True)
         
