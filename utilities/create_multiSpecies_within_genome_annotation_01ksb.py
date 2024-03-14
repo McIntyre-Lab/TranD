@@ -33,7 +33,7 @@ def getOptions():
                             dest="outGTF", 
                             required=True, 
                             help="Path and name of GTF to output to (ex: "
-                                    "/path/to/output/genome_all_uniq_ujc.gtf")        
+                                    "/path/to/output/fiveSpecies_2_dmel6_ujc.gtf")        
         
         args = parser.parse_args()
         return args
@@ -63,7 +63,6 @@ def main():
                 
                 allHashSet.update(set(inDf['transcript_id'].unique().tolist()))
 
-                
                 indexDfDct[annoName] = inDf
         
         print ("Total Number of Unique UJCs across all annotations: {}".format(len(allHashSet)))
@@ -75,7 +74,6 @@ def main():
                 concatDf = pd.concat([concatDf, df]).drop_duplicates().reset_index(drop=True)
         
         print("Total Number of Unique UJCs in output: {}".format(concatDf['transcript_id'].nunique()))
-        
         
         # Could use some extra verification but... seems like this is good?
         
