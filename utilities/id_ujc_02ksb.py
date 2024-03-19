@@ -493,7 +493,7 @@ def createUJCIndex(ujcDct):
                         "strand":"first",
                         "numJxn":"max",
                         "transcriptID": set,
-                        "pair":set}).reset_index()
+                        "pair":lambda x: list(set(x))}).reset_index()
                     
         else:
                 monoExonDct = None
@@ -524,7 +524,7 @@ def createUJCIndex(ujcDct):
                         "strand":"first",
                         "numJxn":"max",
                         "transcriptID":set,
-                        "pair":set}).reset_index()
+                        "pair":lambda x: list(set(x))}).reset_index()
                      
         else:
                 multiExonDct = None
@@ -562,7 +562,7 @@ def createUJCIndex(ujcDct):
         xscriptIndexDf = ujcSummaryDf.copy(deep=True)
         xscriptIndexDf = xscriptIndexDf[['pair','jxnHash','jxnString']]
         xscriptIndexDf = xscriptIndexDf.explode('pair')
-        xscriptIndexDf[['geneID','transcriptID']] = pd.DataFrame(xscriptIndexDf['pair'].to_list(), index=xscriptIndexDf.index)
+        xscriptIndexDf[['geneID', 'transcriptID']] = xscriptIndexDf['pair'].apply(pd.Series)
         xscriptIndexDf = xscriptIndexDf.drop_duplicates()[['geneID', 'transcriptID', 'jxnHash', 'jxnString']]
         
         return ujcSummaryDf, ujcOutDf, xscriptIndexDf
