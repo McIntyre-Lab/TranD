@@ -56,7 +56,7 @@ def main():
     indexDfDct = dict()
     allHashSet = set()
 
-    for file in glob.glob(inFolder + '/*_2_{}_roz_ujc.gtf'.format(genomeName)) + glob.glob(inFolder + '/*_2_{}_ujc_roz.gtf'.format(genomeName)):
+    for file in glob.glob(inFolder + '/*_2_{}_noGeneID_ujc.gtf'.format(genomeName)) + glob.glob(inFolder + '/*_2_{}_ujc_roz.gtf'.format(genomeName)):
 
         fileName = os.path.basename(file)
         print("Reading file: {}".format(fileName))
@@ -72,12 +72,12 @@ def main():
     print("Total Number of Unique UJCs across all annotations: {}".format(
         len(allHashSet)))
 
-    test = set()
-    for annoName, df in list(indexDfDct.items()):
-        # print(annoName)
-        test.update(set(df['transcript_id'].unique().tolist()))
+    # test = set()
+    # for annoName, df in list(indexDfDct.items()):
+    #     # print(annoName)
+    #     test.update(set(df['transcript_id'].unique().tolist()))
 
-    len(set(test))
+    # len(set(test))
 
     annoName = list(indexDfDct.keys())[0]
     concatDf = indexDfDct[annoName].copy(deep=True)
