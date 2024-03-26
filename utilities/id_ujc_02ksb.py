@@ -206,7 +206,7 @@ def extractJunction(exonData):
                 start = row['start']
                 end = row['end']
                 
-                source = row['source']
+                source = ""
                 
                 if xscript in ujcDct.keys():
                         info = ujcDct[xscript]
@@ -389,42 +389,42 @@ def createUJCIndex(ujcDct):
                 multiExonDct = None
         
         if monoExonDct and multiExonDct:
-                ujcSummaryDf = pd.concat([monoUJC, multiUJC], ignore_index=True)
+                ujcDscrptnDf = pd.concat([monoUJC, multiUJC], ignore_index=True)
         elif monoExonDct:
-                ujcSummaryDf = monoUJC.copy()
+                ujcDscrptnDf = monoUJC.copy()
                 del(monoUJC)
         else:
-                ujcSummaryDf = multiUJC.copy()
+                ujcDscrptnDf = multiUJC.copy()
                 del(multiUJC)        
 
-        ujcSummaryDf['jxnHash'] = ujcSummaryDf['jxnString'].apply(
+        ujcDscrptnDf['jxnHash'] = ujcDscrptnDf['jxnString'].apply(
                 lambda x: hashlib.sha256(x.encode('utf-8')).hexdigest())
         
-        print ("Number of UJCs: {}".format(len(ujcSummaryDf['jxnHash'])))
+        print ("Number of UJCs: {}".format(len(ujcDscrptnDf['jxnHash'])))
 
-        if not ujcSummaryDf['jxnHash'].is_unique:
+        if not ujcDscrptnDf['jxnHash'].is_unique:
                 print ("Wow! A rare jxnHash collision: two jxnStrings have resulted in the exact same hash for these genes and transcripts: ")
                 print ("geneID","transcriptID")
                 
-                duplicateDf = ujcSummaryDf[ujcSummaryDf.duplicated(subset='jxnHash',keep=False) | ujcSummaryDf.duplicated(subset='jxnHash',keep='first')]
+                duplicateDf = ujcDscrptnDf[ujcDscrptnDf.duplicated(subset='jxnHash',keep=False) | ujcDscrptnDf.duplicated(subset='jxnHash',keep='first')]
                 for row in duplicateDf.to_dict('records'):
                         print(row['geneID'],row['transcriptID'])
         
-        ujcSummaryDf['flagMultiGene'] = ujcSummaryDf['geneID'].apply(lambda x: 1 if len(x) > 1 else 0)
-        ujcSummaryDf['flagMultiXscript'] = ujcSummaryDf['pair'].apply(lambda pair: 1 if len(set([tup[0] for tup in pair])) < len([tup[0] for tup in pair]) else 0)
+        ujcDscrptnDf['flagMultiGene'] = ujcDscrptnDf['geneID'].apply(lambda x: 1 if len(x) > 1 else 0)
+        ujcDscrptnDf['flagMultiXscript'] = ujcDscrptnDf['pair'].apply(lambda pair: 1 if len(set([tup[0] for tup in pair])) < len([tup[0] for tup in pair]) else 0)
         
-        ujcSummaryDf = ujcSummaryDf.sort_values(by=['chr','strand','start'], ascending=True)
+        ujcDscrptnDf = ujcDscrptnDf.sort_values(by=['chr','strand','start'], ascending=True)
         
-        ujcOutDf = ujcSummaryDf[['jxnHash', 'flagMultiXscript', 'flagMultiGene', 'numJxn','chr','strand','start','end']]
+        ujcOutDf = ujcDscrptnDf[['jxnHash', 'flagMultiXscript', 'flagMultiGene', 'numJxn','chr','strand','start','end','jxnString']]
         ujcOutDf = ujcOutDf.rename(columns={'start':'donorStart','end':'acceptorEnd'})
                 
-        xscriptIndexDf = ujcSummaryDf.copy(deep=True)
-        xscriptIndexDf = xscriptIndexDf[['pair','jxnHash','jxnString']]
-        xscriptIndexDf = xscriptIndexDf.explode('pair')
-        xscriptIndexDf[['geneID', 'transcriptID']] = xscriptIndexDf['pair'].apply(pd.Series)
-        xscriptIndexDf = xscriptIndexDf.drop_duplicates()[['geneID', 'transcriptID', 'jxnHash', 'jxnString']]
+        xscriptLinkDf = ujcDscrptnDf.copy(deep=True)
+        xscriptLinkDf = xscriptLinkDf[['pair','jxnHash','jxnString']]
+        xscriptLinkDf = xscriptLinkDf.explode('pair')
+        xscriptLinkDf[['geneID', 'transcriptID']] = xscriptLinkDf['pair'].apply(pd.Series)
+        xscriptLinkDf = xscriptLinkDf.drop_duplicates()[['transcriptID', 'geneID', 'jxnHash', 'jxnString']]
         
-        return ujcSummaryDf, ujcOutDf, xscriptIndexDf
+        return ujcDscrptnDf, ujcOutDf, xscriptLinkDf
 
 def createExonOutput(ujcDf, ujcDct):
         """
@@ -542,7 +542,7 @@ def main():
         print ("Loading...")
         alphatic = time.perf_counter()
              
-        # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/dmel650_2_dmel6_corrected_associated_gene.gtf"        
+        # # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/dmel650_2_dmel6_corrected_associated_gene.gtf"        
         # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update/subset_dm650.gtf"
         # outdir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update"
         # includeGTF = True
@@ -566,18 +566,18 @@ def main():
         print (f"Complete! Operation took {toc-tic:0.4f} seconds. Creating UJC DataFrame...")
         tic = time.perf_counter()
         
-        ujcDf, idDf, indexDf = createUJCIndex(ujcDct=ujcDct)
+        ujcDf, dscDf, linkDf = createUJCIndex(ujcDct=ujcDct)
         
         toc = time.perf_counter()
         print (f"Complete! Operation took {toc-tic:0.4f} seconds. Writing files...")
         tic = time.perf_counter()
                 
-        idOutPath = outdir + "/" + prefix + "_ujc_id.csv"
-        xscriptOutPath = outdir + "/" + prefix + "_ujc_xscript_index.csv"
+        dscOutPath = outdir + "/" + prefix + "_ujc_dscrptn.csv"
+        linkOutPath = outdir + "/" + prefix + "_ujc_xscript_link.csv"
         
         try:
-                idDf.to_csv(idOutPath, index=False)
-                indexDf.to_csv(xscriptOutPath, index=False)
+                dscDf.to_csv(dscOutPath, index=False)
+                linkDf.to_csv(linkOutPath, index=False)
         except OSError:
                 raise OSError("Output directory must already exist.")
         
@@ -597,8 +597,8 @@ def main():
                 
                 print ("Counting transcripts per UJC...")
                 
-                countDf = indexDf.groupby(['geneID','jxnHash']).count()['transcriptID'].reset_index()
-                countDf.columns= ['geneID','jxnHash','numTranscripts']
+                countDf = linkDf.groupby(['jxnHash']).count()['transcriptID'].reset_index()
+                countDf.columns= ['jxnHash','numTranscripts']
                 countOutPath = outdir + "/" + prefix + "_ujc_count.csv"
                 
                 try:
