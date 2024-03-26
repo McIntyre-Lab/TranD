@@ -524,6 +524,8 @@ def createExonOutput(ujcDf, ujcDct):
                         'gene_id':geneIDLst
                 })
         
+        outExonDf = outExonDf.sort_values(by=['seqname','transcript_id','start'])
+        
         return outExonDf
 
 

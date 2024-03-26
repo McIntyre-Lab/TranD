@@ -125,8 +125,7 @@ def main():
     
     numColumns = ['start','end']
     outExonDf[numColumns] = outExonDf[numColumns].astype(int)
-    
-    outExonDf = outExonDf.sort_values(by=['start','seqname'])
+    outExonDf = outExonDf.sort_values(by=['seqname','transcript_id','start'])
     
     print ("Number of output unique jxnHash: {}".format(outExonDf['transcript_id'].nunique()))
     
