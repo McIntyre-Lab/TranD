@@ -37,7 +37,7 @@ def getOptions():
 def main():
     
     # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc.gtf"
-    outDir = "/nfshome/k.bankole/Desktop"
+    # outDir = "/nfshome/k.bankole/Desktop"
     
     inGTF = args.inGTF
     outDir = args.outDir
@@ -58,6 +58,7 @@ def main():
     print ("Number of genes with more than one transcript (should match number of genes in TranD output): {}".format(len(uniqGeneSet) - len(oneXscriptSet)))
     
     # Output both lists
+    
     
     outGeneDf = pd.DataFrame(geneDf['gene_id'])
     outGeneDf = outGeneDf.rename({'gene_id':'geneID'})

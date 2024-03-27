@@ -16,43 +16,34 @@ def getOptions():
     parser = argparse.ArgumentParser(description="")
     
     # Input data
-    # parser.add_argument("-g",
-    #                     "--input-gtf",
-    #                     dest="inGTF", 
-    #                     required=True,
-    #                     help="GTF to find genes with one transcript")
-    
+    parser.add_argument("-ud",
+                        "--ujc-dsc",
+                        dest="ujcDsc", 
+                        required=True,
+                        help="Path to catted UJC dsc file (created using cat_and_count_ujc_dsc_01ksb.py)")
+        
     # Output data
-    parser.add_argument("-", "--", dest="", required=True, help="")
+    parser.add_argument("-o",
+                        "--output-gtf",
+                        dest="outGTF", 
+                        required=True,
+                        help="Path and filename for output GTF")
+    
     
     args = parser.parse_args()
     return args
 
 def main():
     
-    
-    indexFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_conv_ujc_out_to_gtf/head50_dmel650_2_dmel6_ujc_xscript_index.csv"
-    idFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_conv_ujc_out_to_gtf/head50_dmel650_2_dmel6_ujc_id.csv"
-    gtfOutPath = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_conv_ujc_out_to_gtf/test.gtf"
+    # dscFile = "/nfshome/k.bankole/Desktop/test_dsc/out_ujc_dsc.csv"
+    # gtfOutPath = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_conv_ujc_out_to_gtf/test.gtf"
 
-    indexDf = pd.read_csv(indexFile, low_memory=False)
-    idDf = pd.read_csv(idFile, low_memory=False)
+    dscFile = args.ujcDsc
+    gtfOutPath = args.outGTF
     
-    groupDf = indexDf.groupby('jxnHash').agg({'jxnString':set})
+    dscDf = pd.read_csv(dscFile, low_memory=False)
     
-    # Check collisions
-    a = groupDf[groupDf['jxnString'].apply(lambda x: len(x) > 1)]
-    if len(a) > 1:
-        print ("Collision!!!")
-    
-    
-    groupDf['jxnString'] = groupDf['jxnString'].apply(lambda x: str(list(x)[0]))
-    # Need jxnHash, jxnString, and start end
-    # Helpful: chr, strand, source
-    
-    mergeDf = pd.merge(idDf, groupDf, on='jxnHash', how='outer',indicator='merge_check')
-    
-    infoDf = mergeDf[['jxnHash','chr','strand','donorStart','acceptorEnd','jxnString']].copy(deep=True)
+    infoDf = dscDf[['jxnHash','chr','strand','donorStart','acceptorEnd','jxnString']].copy(deep=True)
     
     print ("Number of input jxnHash: {}".format(len(infoDf['jxnHash'])))
     print ("Number of input unique jxnHash: {}".format(infoDf['jxnHash'].nunique()))
@@ -62,7 +53,7 @@ def main():
     endLst = []
     hashLst = []
     strandLst = []
-    geneIDLst = []
+    geneIDLst = []    
     
     for row in infoDf.to_dict('records'):
             seqname = row['chr']
@@ -86,7 +77,7 @@ def main():
                 
             else:
                 
-                jxnLst = jxnString.split("_")[2:]
+                jxnLst = jxnString.split(seqname + '_')[1].split(strand + '_')[1].split('_')
                 
                 seqnameLst.append(seqname)
                 startLst.append(firstStart)
@@ -109,8 +100,6 @@ def main():
                 hashLst.append(jxnHash)
                 strandLst.append(strand)
                 geneIDLst.append(geneID)
-    
-    
 
     
     outExonDf = pd.DataFrame(
@@ -130,7 +119,7 @@ def main():
     print ("Number of output unique jxnHash: {}".format(outExonDf['transcript_id'].nunique()))
     
     
-    # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc.gtf"
+    trand.io.write_gtf(data=outExonDf, out_fhs={"gtf":gtfOutPath}, fh_name="gtf")
     
     
     
