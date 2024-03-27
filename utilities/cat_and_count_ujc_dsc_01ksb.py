@@ -40,7 +40,7 @@ def getOptions():
     return args
 
 def main():
-    print ("Loading...")
+    print ("Loading...",flush=True)
     alphatic = time.perf_counter()
     
     # desiFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/design_files/sample_bc_design_w_origDataPath_04amm.csv"
@@ -72,7 +72,7 @@ def main():
     
     
     print()
-    print("Reading desired files...")
+    print("Reading desired files...",flush=True)
     dscDfDct = dict()
     allHashLst = []
     
@@ -92,7 +92,7 @@ def main():
         dscDfDct[sampleID] = reorderDf
     
     toc = time.perf_counter()
-    print(f"Complete! Took {toc-tic:0.4f} seconds.")
+    print(f"Complete! Took {toc-tic:0.4f} seconds.",flush=True)
     tic = time.perf_counter()
     
     print("Total number of jxnHash across all samples:", len(allHashLst))
@@ -101,7 +101,7 @@ def main():
     
     
     print()
-    print("Checking duplicated rows...")
+    print("Checking duplicated rows...",flush=True)
     # VERIFIED THAT NOT ALL DUPLICATE JXNHASHES WILL LEAD TO A FULL DUPLICATE ROW 
     # (variation in the start and end of the transcript cause this). It's actually really cool.
     # There are some M/F transcripts from the same rep that only have a slight variation in their
@@ -119,7 +119,7 @@ def main():
     print ("Differences in the above two numbers are caused by UJCs with variation at the 3' or 5' end. aka: Duplicate rows = exact same transcript across multiple samples, Duplicate jxnHash = same UJC across multiple samples")
     
     print()
-    print("Creating output file...")
+    print("Creating output file...",flush=True)
     # Group UJCs, keep earliest start and latest end 
     groupDf = concatDf.groupby('jxnHash').agg({
             'jxnString':'first',
@@ -137,11 +137,11 @@ def main():
     groupDf.to_csv(outFile,index=False)
     
     omegatoc = time.perf_counter()
-    print(f"Complete! Took {omegatoc-tic:0.4f} seconds.")
+    print(f"Complete! Took {omegatoc-tic:0.4f} seconds.",flush=True)
     
     
     print()
-    print(f"Entire operation took {omegatoc-alphatic:0.4f} seconds!")
+    print(f"Entire operation took {omegatoc-alphatic:0.4f} seconds!",flush=True)
 
     
 if __name__ == '__main__':
