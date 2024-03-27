@@ -83,7 +83,7 @@ def main():
         
         reorderDf = inDf[['jxnHash','jxnString','donorStart','acceptorEnd','chr','strand','sampleID']]
         
-        print(sampleID + " counts:")
+        print(sampleID + " counts:",flush=True)
         
         print("Number of total rows: {}".format(len(reorderDf['jxnHash'])))
         print("Number of unique jxnHash: {}".format(reorderDf['jxnHash'].nunique()))
