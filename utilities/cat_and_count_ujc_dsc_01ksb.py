@@ -25,7 +25,7 @@ def getOptions():
     
     parser.add_argument("-gn",
                         "--genome-name", 
-                        dest="genome", 
+                        dest="genomeName", 
                         required=True,
                         help="Name of genome the samples were aligned to")
     
