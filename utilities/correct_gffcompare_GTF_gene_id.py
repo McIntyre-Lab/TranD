@@ -206,6 +206,8 @@ def main():
             droppedRowDf = xcrptDF[~xcrptDF.index.isin(dropDupeDf.index)]
             droppedRowDf.to_csv(args.binTS,index=False)
             
+            print("Number of removed trans-spliced transcripts: ", droppedRowDf['transcript_id'].nunique())
+            
             xcrptDF = dropDupeDf.copy(deep=True).reset_index(drop=True)
         else:
             exit()
