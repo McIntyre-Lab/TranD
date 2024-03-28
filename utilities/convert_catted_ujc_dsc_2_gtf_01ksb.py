@@ -36,6 +36,7 @@ def getOptions():
 def main():
     
     # # dscFile = "/nfshome/k.bankole/Desktop/test_dsc/out_ujc_dsc.csv"
+    # dscFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/mel_2_dmel6_uniq_jxnHash.csv"
     # dscFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/test.csv"
     # gtfOutPath = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_conv_ujc_out_to_gtf/test.gtf"
 
@@ -49,7 +50,7 @@ def main():
     infoDf['jxnString'] = "chromosome" + infoDf['jxnString']
     
     print ("Number of input jxnHash: {}".format(len(infoDf['jxnHash'])))
-    print ("Number of input unique jxnHash: {}".format(infoDf['jxnHash'].nunique()))
+    print ("Number of input unique jxnHash: {}".format(infoDf['jxnHash'].nunique()),flush=True)
 
     seqnameLst = []
     startLst = []
@@ -113,13 +114,20 @@ def main():
                     'strand':strandLst,
                     'transcript_id':hashLst,
                     'gene_id':geneIDLst
-            })
+    })
     
     numColumns = ['start','end']
     outExonDf[numColumns] = outExonDf[numColumns].astype(int)
-    outExonDf = outExonDf.sort_values(by=['seqname','transcript_id','start'])
-    result = outExonDf[outExonDf['end'] < outExonDf['start']]
+    outExonDf = outExonDf.sort_values(by=['seqname','transcript_id','start']).reset_index(drop=True)
+    invalidRowDf = outExonDf[outExonDf['end'] < outExonDf['start']]
+
+    if len(invalidRowDf) > 1:
+        print("NOTE: There are rows where the start of the exon is greater than the end:")
+        print(invalidRowDf)
+    else:
+        print("No invalid rows (invalid = start > end)!",flush=True)
     
+    print("Duplicate rows in the GTF: ", any(outExonDf.duplicated()))
     print ("Number of output unique jxnHash: {}".format(outExonDf['transcript_id'].nunique()))
     
     trand.io.write_gtf(data=outExonDf, out_fhs={"gtf":gtfOutPath}, fh_name="gtf")

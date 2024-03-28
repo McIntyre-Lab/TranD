@@ -43,10 +43,10 @@ def main():
     print ("Loading...",flush=True)
     alphatic = time.perf_counter()
     
-    # desiFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/design_files/sample_bc_design_w_origDataPath_04amm.csv"
-    # inDir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/ujc_from_read_aln"
-    # outFile = "/nfshome/k.bankole/Desktop/test_dsc/out_ujc_dsc.csv"
-    # genomeName = "dmel6"
+    desiFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/design_files/sample_bc_design_w_origDataPath_04amm.csv"
+    inDir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/ujc_from_read_aln"
+    outFile = "/nfshome/k.bankole/Desktop/test_dsc/out_ujc_dsc.csv"
+    genomeName = "dmel6"
     
     desiFile = args.desiFile
     inDir = args.inDir
@@ -54,7 +54,11 @@ def main():
     genomeName = args.genomeName
     
     print ("Reading design file...")
-    dsnDf = pd.read_csv(desiFile)    
+    dsnDf = pd.read_csv(desiFile)   
+    
+    # Subsetting the design file for testing purposese only
+    # dsnDf = dsnDf[dsnDf['sample'].apply(lambda x: 'mel' in x)]
+   
     dsnDf['sampleID'] = dsnDf['sample'] + "_TR" + dsnDf['TechRep'].astype(str)
     dscFileDct = {sampleID:"{}/{}_2_{}_ujc_dscrptn.csv".format(inDir, sampleID, genomeName) for sampleID in dsnDf['sampleID']}
     
@@ -71,6 +75,9 @@ def main():
     dscDfDct = dict()
     allHashLst = []
     
+    # for index, (sampleID, file) in enumerate(dscFileDct.items()):
+    #     if index > 10:
+    #         break
     for sampleID, file in dscFileDct.items():
         inDf = pd.read_csv(file, low_memory=False)
         
@@ -128,8 +135,12 @@ def main():
     groupDf['flag_multiSample'] = groupDf['sampleID'].apply(lambda x: len(x) > 1)
     groupDf.drop(columns='sampleID',inplace=True)
     
+    # any(groupDf.duplicated())
+    
     print("Number of unique jxnHash in output (duplicates removed):", groupDf['jxnHash'].nunique())
     groupDf.to_csv(outFile,index=False)
+    
+    
     
     omegatoc = time.perf_counter()
     print(f"Complete! Took {omegatoc-tic:0.4f} seconds.",flush=True)
