@@ -35,7 +35,8 @@ def getOptions():
 
 def main():
     
-    # dscFile = "/nfshome/k.bankole/Desktop/test_dsc/out_ujc_dsc.csv"
+    # # dscFile = "/nfshome/k.bankole/Desktop/test_dsc/out_ujc_dsc.csv"
+    # dscFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/test.csv"
     # gtfOutPath = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_conv_ujc_out_to_gtf/test.gtf"
 
     dscFile = args.ujcDsc
@@ -44,6 +45,8 @@ def main():
     dscDf = pd.read_csv(dscFile, low_memory=False)
     
     infoDf = dscDf[['jxnHash','chr','strand','donorStart','acceptorEnd','jxnString']].copy(deep=True)
+    infoDf['chr'] = "chromosome" + infoDf['chr']
+    infoDf['jxnString'] = "chromosome" + infoDf['jxnString']
     
     print ("Number of input jxnHash: {}".format(len(infoDf['jxnHash'])))
     print ("Number of input unique jxnHash: {}".format(infoDf['jxnHash'].nunique()))
@@ -115,9 +118,9 @@ def main():
     numColumns = ['start','end']
     outExonDf[numColumns] = outExonDf[numColumns].astype(int)
     outExonDf = outExonDf.sort_values(by=['seqname','transcript_id','start'])
+    result = outExonDf[outExonDf['end'] < outExonDf['start']]
     
     print ("Number of output unique jxnHash: {}".format(outExonDf['transcript_id'].nunique()))
-    
     
     trand.io.write_gtf(data=outExonDf, out_fhs={"gtf":gtfOutPath}, fh_name="gtf")
     

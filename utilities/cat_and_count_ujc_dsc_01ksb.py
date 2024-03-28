@@ -58,14 +58,9 @@ def main():
     dsnDf['sampleID'] = dsnDf['sample'] + "_TR" + dsnDf['TechRep'].astype(str)
     dscFileDct = {sampleID:"{}/{}_2_{}_ujc_dscrptn.csv".format(inDir, sampleID, genomeName) for sampleID in dsnDf['sampleID']}
     
-    
-    
-    
     toc = time.perf_counter()
     print(f"Complete! Took {toc-alphatic:0.4f} seconds.")
     tic = time.perf_counter()
-    
-    
     
     print("Total number of samples for input design file: ")
     print(len(dscFileDct))
