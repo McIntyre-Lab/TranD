@@ -6,6 +6,12 @@ import numpy as np
 import csv
 import sys
 
+"""
+
+3/27: KSB updated so that it does not quit upon trans-spliced genes, just removes them from the xcrptDF (GFFCompare annotated GTF) and bins them in separate output.
+        - requires -b paramater to do above
+
+"""
 
 def getOptions():
     # Parse command line arguments
@@ -82,14 +88,31 @@ def getOptions():
             "associated with the transcript_id in the output GTF file."
         )
     )
+    
+    parser.add_argument(
+        "--bin-TS",
+        dest="binTS",
+        required=False,
+        default=False,
+        help=("Add a path for binned trans-spliced transcripts. will store trans-spliced transcripts separately, rather than stopping"
+              " the whole script (default behavior)."))
 
     args = parser.parse_args()
     return args
 
 def main():
 
+    # inAnnot = "~/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/yak_2_dyak2_uniq_jxnHash_roz.annotated.gtf"
+    # inAnnot = "~/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/test.gtf"
+    # keepOrigGene = False
+    # useGeneName = False
+    
+    inAnnot = args.inAnnot
+    keepOrigGene = args.keepOrigGene
+    useGeneName = args.inName
+    
     # Get gffcompare annotation output 
-    annotDF = pd.read_csv(args.inAnnot,names=['chr','source','feature','start','end','score',
+    annotDF = pd.read_csv(inAnnot,names=['chr','source','feature','start','end','score',
                                         'strand','frame','attribute'], sep="\t",low_memory=False)
     print("Total lines in gffcompare output = "+str(len(annotDF)))
     print("Total transcripts in gffcompare output = "+str(len(annotDF[annotDF["feature"]=="transcript"])))
@@ -124,8 +147,8 @@ def main():
                 classCode = item.split('class_code')[-1].strip().strip('\"')
         if transcript_id is np.nan:
             print("WARNING: transcript_id not found in {}".format(xcrptDF[i]))
-        keepOrigGene = args.inKeep
-        useGeneName = args.inName
+            
+
         if ref_gene_id is np.nan:
             if not useGeneName:
                 if not keepOrigGene:
@@ -171,11 +194,21 @@ def main():
     # Check for unique pairs of gene and transcript
     # Duplicate values could be due to trans-spliced inputs
     if xcrptDF["transcript_id"].duplicated().any():
+        
         print("!!!ERROR: Duplicate gene_id:transcript_id pairs in annotation file"
               "...can be due to trans-spliced inputs.\n"
               "\tThe following are the rows with duplicated gene-transcript:\n{}".format(
                   xcrptDF[xcrptDF["transcript_id"].duplicated(keep=False)].to_string()))
-        exit()
+        
+        if args.binTS:
+            print("STOPATNSBGSIOA[")
+            dropDupeDf = xcrptDF.drop_duplicates(subset=['transcript_id'], keep=False)
+            droppedRowDf = xcrptDF[~xcrptDF.index.isin(dropDupeDf.index)]
+            droppedRowDf.to_csv(args.binTS,index=False)
+            
+            xcrptDF = dropDupeDf.copy(deep=True).reset_index(drop=True)
+        else:
+            exit()
 
     # Get gene_id and transcript_id values from attributes column
     for i in gtf.index:
