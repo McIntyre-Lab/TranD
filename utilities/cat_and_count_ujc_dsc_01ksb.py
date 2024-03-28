@@ -29,6 +29,13 @@ def getOptions():
                         required=True,
                         help="Name of genome the samples were aligned to")
     
+    
+    parser.add_argument("-t",
+                        "--tech-rep", 
+                        dest="techRep", 
+                        required=True,
+                        default="TechRep",
+                        help="Name of the tech rep column in the design file. default: TechRep")
     # Output data
     parser.add_argument("-o", 
                         "--output-file", 
@@ -43,15 +50,17 @@ def main():
     print ("Loading...",flush=True)
     alphatic = time.perf_counter()
     
-    desiFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/design_files/sample_bc_design_w_origDataPath_04amm.csv"
-    inDir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/ujc_from_read_aln"
-    outFile = "/nfshome/k.bankole/Desktop/test_dsc/out_ujc_dsc.csv"
-    genomeName = "dmel6"
+    # desiFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/design_files/sample_bc_design_w_origDataPath_04amm.csv"
+    # inDir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/ujc_from_read_aln"
+    # outFile = "/nfshome/k.bankole/Desktop/test_dsc/out_ujc_dsc.csv"
+    # genomeName = "dmel6"
+    # techRep = "TechRep"
     
     desiFile = args.desiFile
     inDir = args.inDir
     outFile = args.outFile
     genomeName = args.genomeName
+    techRep = args.techRep
     
     print ("Reading design file...")
     dsnDf = pd.read_csv(desiFile)   
@@ -59,7 +68,7 @@ def main():
     # Subsetting the design file for testing purposese only
     # dsnDf = dsnDf[dsnDf['sample'].apply(lambda x: 'mel' in x)]
    
-    dsnDf['sampleID'] = dsnDf['sample'] + "_TR" + dsnDf['TechRep'].astype(str)
+    dsnDf['sampleID'] = dsnDf['sample'] + "_TR" + dsnDf[techRep].astype(str)
     dscFileDct = {sampleID:"{}/{}_2_{}_ujc_dscrptn.csv".format(inDir, sampleID, genomeName) for sampleID in dsnDf['sampleID']}
     
     toc = time.perf_counter()
