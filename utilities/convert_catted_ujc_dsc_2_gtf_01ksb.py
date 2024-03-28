@@ -9,6 +9,7 @@ Created on Tue Mar 26 12:31:29 2024
 import argparse
 import pandas as pd
 import trand.io
+import os
 
 
 def getOptions():
@@ -37,7 +38,7 @@ def main():
     
     # # dscFile = "/nfshome/k.bankole/Desktop/test_dsc/out_ujc_dsc.csv"
     # dscFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/mel_2_dmel6_uniq_jxnHash.csv"
-    # dscFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/test.csv"
+    # # dscFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/test.csv"
     # gtfOutPath = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_conv_ujc_out_to_gtf/test.gtf"
 
     dscFile = args.ujcDsc
@@ -46,8 +47,8 @@ def main():
     dscDf = pd.read_csv(dscFile, low_memory=False)
     
     infoDf = dscDf[['jxnHash','chr','strand','donorStart','acceptorEnd','jxnString']].copy(deep=True)
-    infoDf['chr'] = "chromosome" + infoDf['chr']
-    infoDf['jxnString'] = "chromosome" + infoDf['jxnString']
+    infoDf['chr'] = infoDf['chr']
+    infoDf['jxnString'] = infoDf['jxnString']
     
     print ("Number of input jxnHash: {}".format(len(infoDf['jxnHash'])))
     print ("Number of input unique jxnHash: {}".format(infoDf['jxnHash'].nunique()),flush=True)
@@ -81,25 +82,25 @@ def main():
                 
             else:
                 
-                jxnLst = jxnString.split(seqname + '_')[1].split(strand + '_')[1].split('_')
+                jxnLst = jxnString.split(strand + '_')[1].split('_')
                 
                 seqnameLst.append(seqname)
                 startLst.append(firstStart)
-                endLst.append(jxnLst[0])
+                endLst.append(int(jxnLst[0]))
                 hashLst.append(jxnHash)
                 strandLst.append(strand)
                 geneIDLst.append(geneID)
                 
-                for i in range(1, len(jxnLst) -1):                
+                for i in range(1, len(jxnLst)-1, 2):                
                     seqnameLst.append(seqname)
-                    startLst.append(jxnLst[i])
-                    endLst.append(jxnLst[i+1])
+                    startLst.append(int(jxnLst[i]))
+                    endLst.append(int(jxnLst[i+1]))
                     hashLst.append(jxnHash)
                     strandLst.append(strand)
                     geneIDLst.append(geneID)
                 
                 seqnameLst.append(seqname)
-                startLst.append(jxnLst[-1])
+                startLst.append(int(jxnLst[-1]))
                 endLst.append(lastEnd)
                 hashLst.append(jxnHash)
                 strandLst.append(strand)
@@ -129,6 +130,10 @@ def main():
     
     print("Duplicate rows in the GTF: ", any(outExonDf.duplicated()))
     print ("Number of output unique jxnHash: {}".format(outExonDf['transcript_id'].nunique()))
+
+
+    if os.path.isfile(gtfOutPath):
+            os.remove(gtfOutPath)
     
     trand.io.write_gtf(data=outExonDf, out_fhs={"gtf":gtfOutPath}, fh_name="gtf")
     
