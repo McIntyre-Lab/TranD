@@ -102,14 +102,18 @@ def getOptions():
 
 def main():
 
-    # inAnnot = "~/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/yak_2_dyak2_uniq_jxnHash_roz.annotated.gtf"
-    # inAnnot = "~/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/test.gtf"
+    # inAnnot = "~/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/test/test.annotated.gtf"
+    # # inAnnot = "~/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/test/test.gtf"
     # keepOrigGene = False
     # useGeneName = False
+    # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/yak_2_dyak2_uniq_jxnHash_noGeneID.gtf"
+    # binTS = True
     
     inAnnot = args.inAnnot
     keepOrigGene = args.inKeep
     useGeneName = args.inName
+    inGTF = args.inGTF
+    binTS = args.binTS
     
     # Get gffcompare annotation output 
     annotDF = pd.read_csv(inAnnot,names=['chr','source','feature','start','end','score',
@@ -123,12 +127,27 @@ def main():
     # If ref_gene_id attribute present (from gffcompare v12.2), assign as gene_id
     # else if xloc attribute present, assign as gene_id (if requested)
     # else not properly formatted
-    xcrptDF = annotDF[annotDF["feature"]=="transcript"].reset_index()
-    for i in xcrptDF.index:
-        raw_attrs = xcrptDF.at[i, 'attribute']
-        attr_list = [x.strip() for x in raw_attrs.strip().split(';')]
+    # Updated to be faster. Verified it has the same behavior as previously.
+    
+    xcrptDF = annotDF[annotDF["feature"]=="transcript"].reset_index(drop=True)
+    
+    chrLst = []
+    sourceLst = []
+    featureLst = []
+    startLst = []
+    endLst = []
+    scoreLst = []
+    strandLst = []
+    frameLst = []
+    attributeLst = []
+    geneIDLst = []
+    xscriptIDLst = []
+    
+    for row in xcrptDF.to_dict('records'):
+        rawAttr = row['attribute']
+        attrLst = [x.strip() for x in rawAttr.strip().split(';')] 
         ## previous gffcompare versions do not have "ref_gene"
-        exp_attrs = [x for x in attr_list if 'transcript_id' in x or 'gene_id' in x or 'xloc' in x or "gene_name" in x or "class_code" in x]
+        exp_attrs = [x for x in attrLst if 'transcript_id' in x or 'gene_id' in x or 'xloc' in x or "gene_name" in x or "class_code" in x]
         transcript_id, orig_gene_id, ref_gene_id, ref_gene_name, gene_name, xloc, classCode = np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
         for item in exp_attrs:
             if 'transcript_id' in item:
@@ -146,14 +165,13 @@ def main():
             elif 'class_code' in item:
                 classCode = item.split('class_code')[-1].strip().strip('\"')
         if transcript_id is np.nan:
-            print("WARNING: transcript_id not found in {}".format(xcrptDF[i]))
-            
-
+            print("WARNING: transcript_id not found in {}".format(row))
+        
         if ref_gene_id is np.nan:
             if not useGeneName:
                 if not keepOrigGene:
                     if xloc is np.nan:
-                        print("WARNING: no attribute for gene_id assignment (ref_gene_id or xloc) found in {}".format(xcrptDF[i]))
+                        print("WARNING: no attribute for gene_id assignment (ref_gene_id or xloc) found in {}".format(row))
                     else:
                         gene_id = xloc
                 else:
@@ -163,7 +181,7 @@ def main():
                     if ref_gene_name is np.nan and gene_name is np.nan:
                         if not keepOrigGene:
                             if xloc is np.nan:
-                                print("WARNING: no attribute for gene_id assignment (ref_gene_id or xloc) found in {}".format(xcrptDF[i]))
+                                print("WARNING: no attribute for gene_id assignment (ref_gene_id or xloc) found in {}".format(row))
                             else:
                                 gene_id = xloc
                         else:
@@ -173,23 +191,120 @@ def main():
                             gene_id = gene_name
                         else:
                             gene_id = ref_gene_name
-                else:
-                    if not keepOrigGene:
-                        if xloc is np.nan:
-                            print("WARNING: no attribute for gene_id assignment (ref_gene_id or xloc) found in {}".format(xcrptDF[i]))
-                        else:
-                            gene_id = xloc
-                    else:
-                        gene_id = orig_gene_id
         else:
             gene_id = ref_gene_id
-        xcrptDF.at[i, 'gene_id'] = str(gene_id)
-        xcrptDF.at[i, 'transcript_id'] = str(transcript_id)
+            
+        
+        chrLst.append(row['chr'])
+        sourceLst.append(row['source'])
+        featureLst.append(row['feature'])
+        startLst.append(row['start'])
+        endLst.append(row['end'])
+        scoreLst.append(row['score'])
+        strandLst.append(row['strand'])
+        frameLst.append(row['frame'])
+        attributeLst.append(row['attribute'])
+        
+        geneIDLst.append(gene_id)
+        xscriptIDLst.append(transcript_id)
+        
+    xcrptDF = pd.DataFrame({
+        'chr': chrLst,
+        'source': sourceLst,
+        'feature': featureLst,
+        'start': startLst,
+        'end': endLst,
+        'score': scoreLst,
+        'strand': strandLst,
+        'frame': frameLst,
+        'attribute': attributeLst,
+        'gene_id': geneIDLst,
+        'transcript_id': xscriptIDLst
+    })
 
     # Get GTF file and count total lines
-    gtf = pd.read_csv(args.inGTF,names=['chr','source','feature','start','end','score',
+    gtfDf = pd.read_csv(inGTF,names=['chr','source','feature','start','end','score',
                                         'strand','frame','attribute'], sep="\t",low_memory=False,comment="#")
-    print("Total lines in original GTF= "+str(len(gtf)))
+    print("Total lines in original GTF= "+str(len(gtfDf)))
+    
+    
+    # Get gene_id and transcript_id values from attributes column
+    # An updated method that is much faster . Verified it has the same behavior as the old method.
+    
+    seqnameLst = []
+    sourceLst = []
+    featureLst = []
+    startLst = []
+    endLst = []
+    scoreLst = []
+    strandLst = []
+    frameLst = []
+    attributeLst = []
+    geneIDLst = []
+    gIdxLst = []
+    xscriptIDLst = []
+    tIdxLst = []
+    
+    for row in gtfDf.to_dict('records'):
+            rawAttr = row['attribute']
+            attrLst = [x.strip() for x in rawAttr.strip().split(';')]
+            gnTrAttr = [x for x in attrLst if 'transcript_id' in x or 'gene_id' in x]
+            gene_id, transcript_id = None, None
+            
+            for item in gnTrAttr:
+                    if 'gene_id' in item:
+                            gene_id = item.split('gene_id')[1].strip().strip('\"')
+                            gene_idx = gnTrAttr.index(item)
+
+                    elif 'transcript_id' in item:
+                            transcript_id = item.split('transcript_id')[-1].strip().strip('\"')
+                            transcript_idx = gnTrAttr.index(item)
+
+            if not gene_id:
+                    print("gene_id not found in '{}'", row)
+                    gene_id = None
+                    
+            if not transcript_id:
+                    print("transcript_id not found in '{}'", row)
+                    transcript_id = None
+
+            
+            seqnameLst.append(row['chr'])
+            sourceLst.append(row['source'])
+            featureLst.append(row['feature'])
+            startLst.append(row['start'])
+            endLst.append(row['end'])
+            scoreLst.append(row['score'])
+            strandLst.append(row['strand'])
+            frameLst.append(row['frame'])
+            attributeLst.append(row['attribute'])
+            
+            geneIDLst.append(gene_id)
+            gIdxLst.append(gene_idx)
+            xscriptIDLst.append(transcript_id)
+            tIdxLst.append(transcript_idx)
+
+    
+    newGTFDf = pd.DataFrame(
+            {
+                    'chr':seqnameLst,
+                    'source':sourceLst,
+                    'feature':featureLst,
+                    'start':startLst,
+                    'end':endLst,
+                    'score':scoreLst,
+                    'strand':strandLst,
+                    'frame':frameLst,
+                    'attribute':attributeLst,
+                    'gene_id':geneIDLst,
+                    'gene_idx':gIdxLst,
+                    'transcript_id':xscriptIDLst,
+                    'transcript_idx':tIdxLst
+            })
+            
+    print("Total transcripts in original GTF= "+str(newGTFDf["transcript_id"].nunique()))
+    print("Total genes in original GTF= "+str(newGTFDf["gene_id"].nunique()))
+    
 
     # Check for unique pairs of gene and transcript
     # Duplicate values could be due to trans-spliced inputs
@@ -200,43 +315,27 @@ def main():
               "\tThe following are the rows with duplicated gene-transcript:\n{}".format(
                   xcrptDF[xcrptDF["transcript_id"].duplicated(keep=False)].to_string()))
         
-        if args.binTS:
-            print("STOPATNSBGSIOA[")
+        if binTS:
             dropDupeDf = xcrptDF.drop_duplicates(subset=['transcript_id'], keep=False)
             droppedRowDf = xcrptDF[~xcrptDF.index.isin(dropDupeDf.index)]
-            droppedRowDf.to_csv(args.binTS,index=False)
             
             print("Number of removed trans-spliced transcripts: ", droppedRowDf['transcript_id'].nunique())
             
             xcrptDF = dropDupeDf.copy(deep=True).reset_index(drop=True)
+            
+            
+            # Remove dropped transcripts from the GTF as well
+            dropXscriptLst = droppedRowDf['transcript_id'].unique().tolist()
+            newGTFDf = newGTFDf[~newGTFDf['transcript_id'].isin(dropXscriptLst)]
+            
+            droppedRowDf.to_csv(binTS,index=False)
+            
         else:
             exit()
-
-    # Get gene_id and transcript_id values from attributes column
-    for i in gtf.index:
-        raw_attrs = gtf.at[i, 'attribute']
-        attr_list = [x.strip() for x in raw_attrs.strip().split(';')]
-        g_t_attrs = [x for x in attr_list if 'transcript_id' in x or 'gene_id' in x]
-        gene_id, transcript_id = np.nan, np.nan
-        for item in g_t_attrs:
-            if 'gene_id' in item:
-                gene_id = item.split('gene_id')[1].strip().strip('\"')
-                gene_idx = g_t_attrs.index(item)
-            elif 'transcript_id' in item:
-                transcript_id = item.split('transcript_id')[-1].strip().strip('\"')
-                transcript_idx = g_t_attrs.index(item)
-        if transcript_id == np.nan and gtf.at[i, 'feature'] != "gene" :
-            print("WARNING: transcript_id not found in {}".format(gtf[i]))
-        gtf.at[i, 'gene_id'] = str(gene_id)
-        gtf.at[i, 'gene_idx'] =  int(gene_idx)
-        gtf.at[i, 'transcript_id'] = str(transcript_id)
-        gtf.at[i, 'transcript_idx'] = int(transcript_idx)
-    print("Total transcripts in original GTF= "+str(gtf["transcript_id"].nunique()))
-    print("Total genes in original GTF= "+str(gtf["gene_id"].nunique()))
     
     # Merge gene_id from gffcompare output to original gtf on transcript_id
     mergeDFxcrpt = pd.merge(
-            gtf,
+            newGTFDf,
             xcrptDF[["transcript_id", "gene_id"]],
             how="left",
             on="transcript_id",
@@ -251,16 +350,54 @@ def main():
     if len(mergeDFxcrpt[mergeDFxcrpt['gene_id_cmp'].isna()]) > 0:
         sys.exit("!!! ERROR : UNEXPECTED MERGE RESULTING IN MISSING gene_id ASSOCIATION")
     
+    
+    
+    
+    # New updated faster version. Verified it has the same behavior as before
     # Create new attribute column with associated_gene as gene_id
-    for i in mergeDFxcrpt.index:
-        if mergeDFxcrpt.at[i, "gene_idx"] == 0:
-            new_attribute = "gene_id \"" + mergeDFxcrpt.at[i, "gene_id_cmp"] + "\";" + ";".join(mergeDFxcrpt.at[i, "attribute"].split(";")[1:])
-        else:
-            new_attribute = ";".join(mergeDFxcrpt.at[i, "attribute"].split(";")[0:int(mergeDFxcrpt.at[i, "gene_idx"])]) + "; gene_id \"" + mergeDFxcrpt.at[i, "gene_id_cmp"] + "\";" + ";".join(mergeDFxcrpt.at[i, "attribute"].split(";")[int(mergeDFxcrpt.at[i, "gene_idx"])+1:])
-        mergeDFxcrpt.at[i, "new_attribute"] = new_attribute
 
-    # Output GTF file with associated_gene in new attribute
-    mergeDFxcrpt[['chr','source','feature','start','end','score','strand','frame',
+    chrLst = []
+    sourceLst = []
+    featureLst = []
+    startLst = []
+    endLst = []
+    scoreLst = []
+    strandLst = []
+    frameLst = []
+    attributeLst = []
+    
+    for row in mergeDFxcrpt.to_dict('records'):
+        
+        if row['gene_idx'] == 0:
+            new_attribute = "gene_id \"" + row['gene_id_cmp'] + "\";" + ";".join(row['attribute'].split(";")[1:])
+        else:
+            new_attribute = ";".join(row['attribute'].split(";")[0:int(row['gene_idx'])]) + "; gene_id \"" + row['gene_id_cmp'] + "\";" + ";".join(row['attribute'].split(";")[int(row['gene_idx'])+1:])
+              
+        chrLst.append(row['chr'])
+        sourceLst.append(row['source'])
+        featureLst.append(row['feature'])
+        startLst.append(row['start'])
+        endLst.append(row['end'])
+        scoreLst.append(row['score'])
+        strandLst.append(row['strand'])
+        frameLst.append(row['frame'])
+        attributeLst.append(new_attribute)
+    
+    outGTFDf = pd.DataFrame({
+        'chr': chrLst,
+        'source': sourceLst,
+        'feature': featureLst,
+        'start': startLst,
+        'end': endLst,
+        'score': scoreLst,
+        'strand': strandLst,
+        'frame': frameLst,
+        'new_attribute': attributeLst
+    })
+    
+    
+    
+    outGTFDf[['chr','source','feature','start','end','score','strand','frame',
              'new_attribute']].to_csv(args.outFile,sep="\t",index=False,header=False,
              doublequote=False,quoting=csv.QUOTE_NONE)
 
