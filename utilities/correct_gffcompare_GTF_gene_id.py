@@ -108,7 +108,7 @@ def main():
     # useGeneName = False
     
     inAnnot = args.inAnnot
-    keepOrigGene = args.keepOrigGene
+    keepOrigGene = args.inKeep
     useGeneName = args.inName
     
     # Get gffcompare annotation output 
