@@ -11,6 +11,7 @@ import pandas as pd
 import numpy as np
 import sys
 import csv
+import time
 
 def getOptions():
     # Parse command line arguments
@@ -31,32 +32,42 @@ def getOptions():
 
 def main():
     # Get GTF file and count total lines
-    gtf = pd.read_csv(args.inGTF,names=['chr','source','feature','start','end','score',
-                                        'strand','frame','attribute'], dtype=str, sep="\t",low_memory=False)
 
+    # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc.gtf"
+    # inInclude = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/design_files/df_noHeader_sex_det_gene_lst_01ksb.csv"
+    # listVar = 'gene_id'
+
+    inGTF = args.inGTF
+    
     # Get list ID variable
     listVar = args.inType
+
+    inExclude = args.inExclude
+    inInclude = args.inInclude
+
+    outFile = args.outFile
     
     
-    
-    
+    gtf = pd.read_csv(inGTF,names=['chr','source','feature','start','end','score',
+                                        'strand','frame','attribute'], dtype=str, sep="\t",low_memory=False)
+
     # Check that only one list argument was provided
-    if args.inInclude is None and args.inExclude is None:
+    if inInclude is None and inExclude is None:
         print("ERROR: No list provided to subset GTF on")
         sys.exit()
-    elif args.inInclude is not None and args.inExclude is None:
+    elif inInclude is not None and inExclude is None:
         include = True
-        idDF = pd.read_csv(args.inInclude, names=[listVar])
-    elif args.inInclude is None and args.inExclude is not None:
+        idDF = pd.read_csv(inInclude, names=[listVar])
+    elif inInclude is None and inExclude is not None:
         include = False
-        idDF = pd.read_csv(args.inExclude, names=[listVar])
+        idDF = pd.read_csv(inExclude, names=[listVar])
     else:
         print("ERROR: Cannot use both inclusion and exclusion list - only provide one or the other")
         sys.exit()
-    
-    # Get gene_id and transcript_id values from attributes column
-    for i in gtf.index:
-        raw_attrs = gtf.at[i, 'attribute']
+        
+    records = gtf.to_dict('records')
+    for row in records:
+        raw_attrs = row['attribute']
         attr_list = [x.strip() for x in raw_attrs.strip().split(';')]
         g_t_attrs = [x for x in attr_list if 'transcript_id' in x or 'gene_id' in x]
         gene_id, transcript_id = np.nan, np.nan
@@ -66,13 +77,14 @@ def main():
             elif 'transcript_id' in item:
                 transcript_id = item.split('transcript_id')[-1].strip().strip('\"')
         if gene_id == np.nan:
-            print("WARNING: gene_id not found in {}".format(gtf[i]))
-        if transcript_id == np.nan and gtf.at[i, 'feature'] != "gene" :
-            print("WARNING: transcript_id not found in {}".format(gtf[i]))
-        # logger.debug("Gene: {}, Transcript: {}", gene_id, transcript_id)
-        gtf.at[i, 'gene_id'] = str(gene_id)
-        gtf.at[i, 'transcript_id'] = str(transcript_id)
-
+            print("WARNING: gene_id not found in {}".format(row))
+        if transcript_id == np.nan and row['feature'] != "gene" :
+            print("WARNING: transcript_id not found in {}".format(row))
+    
+        row['gene_id'] = str(gene_id)
+        row['transcript_id'] = str(transcript_id)
+    
+    gtf = pd.DataFrame(records)
 
     if include:
         # If list is for inclusion
@@ -85,7 +97,7 @@ def main():
         
     # Output filtered file
     filterDF[['chr','source','feature','start','end','score','strand','frame',
-             'attribute']].to_csv(args.outFile,sep="\t",index=False,header=False,
+             'attribute']].to_csv(outFile,sep="\t",index=False,header=False,
              doublequote=False,quoting=csv.QUOTE_NONE)
 
 if __name__ == '__main__':
