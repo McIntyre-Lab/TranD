@@ -33,7 +33,6 @@ def getOptions():
     parser.add_argument("-t",
                         "--tech-rep", 
                         dest="techRep", 
-                        required=True,
                         default="TechRep",
                         help="Name of the tech rep column in the design file. default: TechRep")
     # Output data
