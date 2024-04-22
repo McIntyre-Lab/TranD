@@ -8,7 +8,8 @@ import pandas as pd
 def getOptions():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="Read in GTF. Output list of unique genes (list_{name}_uniq_gene_set) and list of genes with one "
-                                     "transcript (list_{name}_genes_w_one_xscript.csv.")
+                                     "transcript (list_{name}_genes_w_one_xscript.csv. {name} defualts to name of the input GTF (use --prefix "
+                                     "to change it_.")
     
     # Input data
     parser.add_argument("-g",
@@ -24,11 +25,11 @@ def getOptions():
                         required=True,
                         help="Output directory. Must already exist.")
     
-    # parser.add_argument("-p",
-    #                     "--prefix",
-    #                     dest="outDir",
-    #                     required=True,
-    #                     help="Output directory. Must already exist.")
+    parser.add_argument("-p",
+                        "--prefix",
+                        dest="outDir",
+                        required=False,
+                        help="Output directory. Must already exist.")
     
     
     args = parser.parse_args()
@@ -42,7 +43,8 @@ def main():
     inGTF = args.inGTF
     outDir = args.outDir
     
-    prefix = os.path.basename(inGTF).split('.')[0]
+    if args.prefix is None:
+        prefix = os.path.basename(inGTF).split('.')[0]
 
     inDf = trand.io.read_exon_data_from_file(inGTF)
     
