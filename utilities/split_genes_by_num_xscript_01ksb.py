@@ -47,12 +47,12 @@ def main():
     
     # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc.gtf"
     # outDir = "/nfshome/k.bankole/Desktop"
-    # threshold = 36
+    # threshold = int(36)
     # prefix = None
     
     inGTF = args.inGTF
     outDir = args.outDir
-    threshold = args.threshold
+    threshold = int(args.threshold)
     prefix = args.prefix
     
     if prefix is None:
