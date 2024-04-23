@@ -27,9 +27,9 @@ def getOptions():
     
     parser.add_argument("-p",
                         "--prefix",
-                        dest="outDir",
+                        dest="prefix",
                         required=False,
-                        help="Output directory. Must already exist.")
+                        help="Optional output file prefix")
     
     
     args = parser.parse_args()
