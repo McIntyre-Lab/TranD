@@ -63,6 +63,13 @@ def main():
     # Group by gene, count number of transcripts per gene
     geneDf = inDf.groupby('gene_id').agg({'transcript_id':'nunique'}).reset_index()
     
+    geneDf['transcript_id'] = pd.to_numeric(geneDf['transcript_id'],errors='coerce')
+    
+    if  geneDf['transcript_id'].isna().any():
+        print("something weird happened...")
+        quit()
+        
+        
     uniqGeneSet = set(geneDf['gene_id'].to_list())
     print("Total number of unique genes: {}".format(len(uniqGeneSet)))
     
