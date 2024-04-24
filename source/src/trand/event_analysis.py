@@ -41,7 +41,7 @@ from multiprocessing import Pool, Manager
 # Import general trand functions
 from .io import write_output
 from .io import write_gtf
-from .io import write_txt
+# from .io import write_txt
 from .io import open_output_files
 from .io import read_exon_data_from_file
 from .bedtools import prep_bed_for_ea
@@ -1012,10 +1012,7 @@ def ea_pairwise(gene_id, data, pair_subset=None):
     else:
         pair_tuples = list(pair_subset.itertuples(index=False, name=None))
         transcript_pairs = [pair for pair in list(itertools.combinations(tx_data.keys(), 2)) if pair in pair_tuples or tuple(reversed(pair)) in pair_tuples]
-    og_lst = []
-    if gene_id != "":
-        if len(transcript_pairs) < 1:
-            og_lst.append([gene_id, list(tx_data.keys())[0]])
+
     logger.debug("Transcript combinations to process for {}: \n{}", gene_id, transcript_pairs)
     ea_df = pd.DataFrame(columns=ea_df_cols)
     jct_df = pd.DataFrame(columns=jct_df_cols)
@@ -1028,7 +1025,7 @@ def ea_pairwise(gene_id, data, pair_subset=None):
         ea_df = pd.concat([ea_df, ea_data], axis=0, ignore_index=True)
         jct_df = pd.concat([jct_df, jct_data], axis=0, ignore_index=True)
         td_df = pd.concat([td_df, td_data], axis=0, ignore_index=True)
-    return ea_df, jct_df, td_df, og_lst
+    return ea_df, jct_df, td_df
 
 def check_subset(pair_subset, data1, data2=None):
     if data2 is not None:
@@ -1169,8 +1166,6 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                 out_fhs['ea_fh'].write_text(",".join(ea_df_cols) + '\n')
                 out_fhs['td_fh'].write_text(",".join(TD.td_df_cols) + '\n')
 
-                write_txt([["gene_id", "transcript_id"]], out_fhs, 'og_fh')
-
             out_fhs['jc_fh'].write_text(",".join(jct_df_cols) + '\n')
         # Event analysis start
         # Serial processing
@@ -1201,8 +1196,8 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
             # Pairwise EA
             else:
                 # Set up results lists (no managers needed since on 1 cpu)
-                result_managers = {"ea_list":[],  "jct_list":[], "ir_list":[], "td_list":[], "og_list":[]}
-                ea_data, jct_data, td_data, og_data = loop_over_genes(
+                result_managers = {"ea_list":[],  "jct_list":[], "ir_list":[], "td_list":[]}
+                ea_data, jct_data, td_data = loop_over_genes(
                         list(genes.groups),
                         out_fhs,
                         "pairwise",
@@ -1220,8 +1215,6 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                 if not skip_plots:
                     P1GP.plot_one_gtf_pairwise(outdir, td_data, prefix=output_prefix)
 
-#                write_txt(og_data, out_fhs, 'og_fh')
-
         # Parallel processing
         else:
             if ea_mode == "pairwise":
@@ -1234,7 +1227,6 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                 result_managers["ea_list"] = manager1.list()
                 result_managers["jct_list"] = manager1.list()
                 result_managers["td_list"] = manager1.list()
-                result_managers["og_list"] = manager1.list()
                 # Create process pool
                 pool = Pool(cpu_cores)
                 if pair_subset is None:
@@ -1311,7 +1303,6 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                 ea_cat = pd.concat(result_managers["ea_list"], ignore_index=True)
                 jct_cat = pd.concat(result_managers["jct_list"], ignore_index=True)
                 td_cat = pd.concat(result_managers["td_list"], ignore_index=True)
-                og_cat = result_managers["og_list"]
                 # Output intermediate files
                 if not skip_interm:
                     write_output(ea_cat, out_fhs, 'ea_fh')
@@ -1320,7 +1311,6 @@ def process_single_file(infile, ea_mode, keep_ir, outdir, outfiles, cpu_cores,
                 # Output plots for 1 GTF pairwise mode
                 if not skip_plots:
                     P1GP.plot_one_gtf_pairwise(outdir, td_cat, prefix=output_prefix)
-                write_txt(og_cat, out_fhs, 'og_fh')
 
 
 
@@ -1473,8 +1463,8 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
         # Serial processing
         if cpu_cores == 1:
             # Set up results lists (no managers needed since on 1 cpu)
-            result_managers = {"ea_list":[],  "jct_list":[], "ir_list":[], "td_list":[], "og_list":[]}
-            ea_data, jct_data, td_data, og_data = loop_over_genes(
+            result_managers = {"ea_list":[],  "jct_list":[], "ir_list":[], "td_list":[]}
+            ea_data, jct_data, td_data = loop_over_genes(
                     gene_list,
                     out_fhs,
                     "pairwise",
@@ -1584,8 +1574,6 @@ def list_pairs(f1_data, f2_data=None):
         logger.debug("There are {} total transcript pairs for the given genes".format(
                 total_pairs))
 
-        # if total_pairs == 0:
-
         for gene in f1_data["gene_id"].unique():
             transcripts = f1_data[f1_data["gene_id"] == gene].groupby("transcript_id")
             transcript_groups  = transcripts.groups
@@ -1619,10 +1607,8 @@ def loop_over_genes(gene_list, out_fhs, ea_mode, keep_ir, data1, result_managers
         ea_data_cat = pd.concat(result_managers["ea_list"], ignore_index=True)
         jct_data_cat = pd.concat(result_managers["jct_list"], ignore_index=True)
         td_data_cat = pd.concat(result_managers["td_list"], ignore_index=True)
-        og_data_cat = result_managers["og_list"]
 
-        #print(result_managers["og_list"])
-        return [ea_data_cat, jct_data_cat, td_data_cat, og_data_cat]
+        return [ea_data_cat, jct_data_cat, td_data_cat]
 
 
 def process_gene(gene, out_fhs, ea_mode, keep_ir, data1, result_managers,
@@ -1680,7 +1666,7 @@ def process_gene(gene, out_fhs, ea_mode, keep_ir, data1, result_managers,
         # Pairwise EA
         else:
             try:
-                ea_data, jct_data, td_data, og_data = ea_pairwise(
+                ea_data, jct_data, td_data = ea_pairwise(
                         gene,
                         gene_df,
                         pair_subset = pair_subset
@@ -1689,9 +1675,6 @@ def process_gene(gene, out_fhs, ea_mode, keep_ir, data1, result_managers,
                 result_managers["ea_list"].append(ea_data)
                 result_managers["jct_list"].append(jct_data)
                 result_managers["td_list"].append(td_data)
-                result_managers["og_list"].append(td_data)
-
-#                result_managers["og_list"] = result_managers["og_list"] + og_data
 
             except ValueError as e:
                 logger.error(e)
@@ -1743,13 +1726,12 @@ def process_pair(pair, out_fhs, data1, keep_ir, result_managers,
 #         if len(transcript_pairs) < 1:
 #                  print (list(tx_data.keys())[0])
 #                  print (list(tx_data.values()['gene_id'])[0])
-        ea_data, jct_data, td_data, og_lst = ea_pairwise(data1["gene_id"][0], pair_df, pair_subset=pair_subset)
+        ea_data, jct_data, td_data = ea_pairwise(data1["gene_id"][0], pair_df, pair_subset=pair_subset)
 
         # Append output to lists
         result_managers["ea_list"].append(ea_data)
         result_managers["jct_list"].append(jct_data)
         result_managers["td_list"].append(td_data)
-        result_managers["og_list"] = result_managers["og_list"] + og_data
 
     # Concatenate and return outputs if result managers are lists (from single cpu)
     if type(result_managers["jct_list"]) is list:
@@ -1757,6 +1739,5 @@ def process_pair(pair, out_fhs, data1, keep_ir, result_managers,
         ea_data_cat = pd.concat(result_managers["ea_list"], ignore_index=True)
         jct_data_cat = pd.concat(result_managers["jct_list"], ignore_index=True)
         td_data_cat = pd.concat(result_managers["td_list"], ignore_index=True)
-        og_data_cat = result_managers["og_list"]
 
-        return [ea_data_cat, jct_data_cat, td_data_cat, og_data_cat]
+        return [ea_data_cat, jct_data_cat, td_data_cat]
