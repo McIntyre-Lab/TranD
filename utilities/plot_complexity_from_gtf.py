@@ -57,13 +57,13 @@ def getOptions():
                 "Defaults to GTF file name. "
         )
     )
-    parser.add_argument(
-        "-f",
-        "--force",
-        dest="force",
-        action="store_true",
-        help="Force overwrite existing output directory and files within.",
-    )
+    # parser.add_argument(
+    #     "-f",
+    #     "--force",
+    #     dest="force",
+    #     action="store_true",
+    #     help="Force overwrite existing output directory and files within.",
+    # )
     
     args = parser.parse_args()
     return args
