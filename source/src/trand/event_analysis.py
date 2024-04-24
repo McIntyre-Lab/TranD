@@ -41,7 +41,7 @@ from multiprocessing import Pool, Manager
 # Import general trand functions
 from .io import write_output
 from .io import write_gtf
-from .io import write_txt
+# from .io import write_txt
 from .io import open_output_files
 from .io import read_exon_data_from_file
 from .bedtools import prep_bed_for_ea
