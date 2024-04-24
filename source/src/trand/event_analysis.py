@@ -1463,8 +1463,8 @@ def process_two_files(infiles, outdir, outfiles, cpu_cores, out_pairs, complexit
         # Serial processing
         if cpu_cores == 1:
             # Set up results lists (no managers needed since on 1 cpu)
-            result_managers = {"ea_list":[],  "jct_list":[], "ir_list":[], "td_list":[], "og_list":[]}
-            ea_data, jct_data, td_data, og_data = loop_over_genes(
+            result_managers = {"ea_list":[],  "jct_list":[], "ir_list":[], "td_list":[]}
+            ea_data, jct_data, td_data = loop_over_genes(
                     gene_list,
                     out_fhs,
                     "pairwise",
@@ -1666,7 +1666,7 @@ def process_gene(gene, out_fhs, ea_mode, keep_ir, data1, result_managers,
         # Pairwise EA
         else:
             try:
-                ea_data, jct_data, td_data, og_data = ea_pairwise(
+                ea_data, jct_data, td_data = ea_pairwise(
                         gene,
                         gene_df,
                         pair_subset = pair_subset
