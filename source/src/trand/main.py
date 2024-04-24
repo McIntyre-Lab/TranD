@@ -39,8 +39,6 @@ common_outfiles = {
 }
 pairwise_outfiles = {"td_fh": "pairwise_transcript_distance.csv"}
 
-one_gtf_pw_outfiles = {"og_fh": "one_gene_one_transcript.txt"}
-
 gene_outfiles = {
     "er_fh": "event_analysis_er.csv",
     "ef_fh": "event_analysis_ef.csv",
@@ -295,7 +293,6 @@ def cli():
         outfiles = common_outfiles
         if args.ea_mode == "pairwise":
             outfiles.update(pairwise_outfiles)
-            outfiles.update(one_gtf_pw_outfiles)
         else:
             outfiles.update(gene_outfiles)
         try:
