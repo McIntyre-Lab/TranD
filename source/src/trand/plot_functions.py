@@ -1324,12 +1324,12 @@ def start_rtf(outFile):
 
 def get_citation():
     return (
-        r" \line \line 1. Nanni, A., Titus-McQuillan, J., Moskalenko, O., "
-        r"Pardo-Palacios, F., Liu, Z., Conesa, A., Rogers, R. L., & McIntyre, "
-        "L. M. (2021). The evolution of splicing: transcriptome complexity "
-        "and transcript distances implemented in TranD. \i bioRxiv\i0, "
-        "2021.2009.2028.462251. https://doi.org/10.1101/2021.09.28.462251. "
-        r"https://github.com/McIntyre-Lab/TranD."
+        r" \line \line 1. Nanni, A., Titus-McQuillan, J., Bankole, K. S., "
+        r"Pardo-Palacios, F., Signor, S., Vlaho, S., Moskalenko, O., "
+        r"Morse, A. M., Rogers, R. L., Conesa, A., McIntyre, L. M. (2024) "
+        r"Nucleotide-level distance metrics to quantify alternative splicing "
+        r"implemented in TranD. \i Nucleic Acids Research\i0, \b 52(5)\b0, e28."
+        r" https://doi.org/10.1093/nar/gkae056. https://github.com/McIntyre-Lab/TranD."
     )
 
 def end_rtf(outFile):
