@@ -1356,7 +1356,6 @@ def main():
         toc = time.perf_counter()       
         print(f"Complete! Operation took {toc-omegatic:0.4f} seconds")
         
-        
         # Only returns these things for quick checking during development
         return mstrXscriptDct, mstrERGLst, xscriptDf, ergDf, geneDf, erInfoDf
 
