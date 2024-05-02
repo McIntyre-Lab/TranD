@@ -31,6 +31,7 @@ def main():
     
     # eaFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_conv_EA2GTF/event_analysis_er.csv"
     # gtfOutPath = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_conv_EA2GTF/test_gtf.gtf"
+    
     eaFile = args.eaFile
     gtfOutPath = args.outGTF
     

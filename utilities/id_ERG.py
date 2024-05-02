@@ -331,8 +331,7 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
         """
         
         # if ('transcript_inGene' in inDf.columns):
-                
-        
+
         #NEW
         # Chop down input dataframe to only necessary information.
         erInfoDf = inDf[
@@ -553,7 +552,7 @@ def gleanInputDf(inDf, includeIR, gtfOne, gtfTwo):
                         
                         tmpXscript = XSCRIPT(xscript_id=xscriptStr, gene_id=geneid, num_er=numER)
                         
-                        for exon in exonChain:                                
+                        for exon in exonChain:
                                 if exon != '':
                                         seqname = exon.split(':')[0]
                                         start = int(exon.split(':')[1])
@@ -1253,8 +1252,8 @@ def main():
 
         #Grab input DF from input CSV
         print("Reading input file.... ")
+        
         inputDf = pd.read_csv (args.infile, low_memory=False)
-
         print ("Read complete! GTF Info: ")
         # Start timer to track how long the looping process takes
         omegatic = time.perf_counter()
@@ -1287,15 +1286,14 @@ def main():
         
         if (args.includeIR.upper() == 'Y'):
                 includeIR = True
-        elif (args.includeIR.lower() == 'N'):
+        elif (args.includeIR.upper() == 'N'):
                 includeIR = False
         else:
-                print ("Input Error")
+                print ("Input Error.", args.includeIR, "is not a valid IR option.")
                 quit()
 
         
         # Create XSCRIPT dictionary and ERG list
-                
         mstrXscriptDct, erInfoDf = gleanInputDf(inDf=inputDf, includeIR=includeIR, gtfOne=gtfOne, gtfTwo=gtfTwo)        
         
         toc = time.perf_counter()       
@@ -1357,6 +1355,7 @@ def main():
         # End timer to track how long the process takes
         toc = time.perf_counter()       
         print(f"Complete! Operation took {toc-omegatic:0.4f} seconds")
+        
         
         # Only returns these things for quick checking during development
         return mstrXscriptDct, mstrERGLst, xscriptDf, ergDf, geneDf, erInfoDf
