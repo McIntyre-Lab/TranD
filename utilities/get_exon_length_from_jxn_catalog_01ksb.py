@@ -23,18 +23,29 @@ def getOptions():
         """
         
         # Parse command line arguments
-        parser = argparse.ArgumentParser(description="Uses junction catalog to get lengths of exons."
-                                         "If exon-length is 0, it is the first/last exon (not included in "
-                                         "the junction catalogue.")
+        parser = argparse.ArgumentParser(description="Gets the lengths of exons from TranD's junction catalog "
+                                         "for every exon except the first and last (not possible using only junction information). "
+                                         "Outputs a CSV that lists all exons for all transcripts and their lengths. "
+                                         "If exon-length is 0, it is the first/last exon."
+                                         "Add -t to change the nt threshold for mini-exons (number of mini-exons "
+                                         "is output by print statement).")
         
         # INPUT
         parser.add_argument(
                 "-jc",
                 "--junction-catalog",
-                dest="catFile",
+                dest="catalogFile",
                 required=True,
-                help="Location of event analysis ER file from gene mode output"
-                )
+                help="Location of \'junction_catalog.csv\' file from TranD output.")
+        
+        
+        parser.add_argument(
+                "-t",
+                "--threshold",
+                dest="miniThresh",
+                default=8,
+                required=False,
+                help="Optional mini-exon nt size threshold. Default: 8")
         
         
         # OUTPUT
@@ -49,35 +60,33 @@ def getOptions():
 
 def main():
     
-    # catFile = "/nfshome/k.bankole/mclab/SHARE/McIntyre_Lab/sex_specific_splicing/trand_1GTF_geneMode_fiveSpecies_ujc/fiveSpecies_2_dmel6_ujc_junction_catalog.csv"
+    # catalogFile = "/nfshome/k.bankole/mclab/SHARE/McIntyre_Lab/sex_specific_splicing/trand_1GTF_geneMode_fiveSpecies_ujc/fiveSpecies_2_dmel6_ujc_junction_catalog.csv"
+    # miniThresh = 8
     
-    catFile = args.catFile
+    catalogFile = args.catalogFile
     outFile = args.outFile
+    miniThresh = args.miniThresh
     
+    catDf = pd.read_csv(catalogFile, low_memory=False)    
+    catDf = catDf.sort_values(by=['gene_id','transcript_id','coords'])
     
-    jxnDf = pd.read_csv(catFile, low_memory=False)
-
-    # test = jxnDf[jxnDf['gene_id'] == 'FBgn0000504'].copy()
+    xscriptDf = catDf.groupby(['gene_id','transcript_id']).agg(list).reset_index()
     
-    jxnDf = jxnDf.sort_values(by=['gene_id','transcript_id','coords'])
+    coordDf = xscriptDf.explode('coords')
     
-    grp = jxnDf.groupby(['gene_id','transcript_id']).agg(list).reset_index()
+    coordDf[['chr', 'start', 'end', 'strand']] = coordDf['coords'].str.split(':', expand=True)
     
-    newExonDf = grp.explode('coords')
+    coordDf['start'] = coordDf['start'].astype(int)
+    coordDf['end'] = coordDf['start'].astype(int)
     
-    newExonDf[['chr', 'start', 'end', 'strand']] = newExonDf['coords'].str.split(':', expand=True)
+    coordDf = coordDf[['gene_id','transcript_id','start','end']]
     
-    newExonDf['start'] = newExonDf['start'].astype(int)
-    newExonDf['end'] = newExonDf['start'].astype(int)
-    
-    newExonDf = newExonDf[['gene_id','transcript_id','start','end']]
-    
-    newExonDf = newExonDf.rename(columns={
+    coordDf = coordDf.rename(columns={
         'gene_id':'geneID',
         'transcript_id':'transcriptID',
         })
     
-    result = newExonDf.groupby(['geneID','transcriptID']).apply(lambda x: [(start, end) for start, end in zip(x['start'], x['end'])]).reset_index(name='jxns')
+    jxnDf = coordDf.groupby(['geneID','transcriptID']).apply(lambda x: [(start, end) for start, end in zip(x['start'], x['end'])]).reset_index(name='jxns')
     
     def process_jxns(jxns):
         # Extract start and end values from sorted list of tuples
@@ -90,30 +99,27 @@ def main():
         firstExon = ('firstDonor', startValues[0])
         lastExon = (endValues[-1], 'lastAcceptor')
         
-        # firstExon = ('0', startValues[0])
-        # lastExon = (endValues[-1], '0')
-        
         # Prepend first exon and append last exon to the exon list
         exons = [firstExon] + exons + [lastExon]
-        
         return exons
 
     # Apply the process_jxns function to each row in the 'jxns' column
-    result['exons'] = result['jxns'].apply(process_jxns)
+    jxnDf['exons'] = jxnDf['jxns'].apply(process_jxns)
     
-    result = result[['geneID','transcriptID','exons']]
+    jxnDf = jxnDf[['geneID','transcriptID','exons']]
     
-    result = result.explode('exons')
-    newNewDf = result.copy()
+    jxnDf = jxnDf.explode('exons')
+    outDf = jxnDf.copy()
     
-    newNewDf[['start', 'end']] = pd.DataFrame(newNewDf['exons'].tolist(), index=result.index)
-    newNewDf = newNewDf[['geneID','transcriptID','start','end']]
+    outDf[['start', 'end']] = pd.DataFrame(outDf['exons'].tolist(), index=jxnDf.index)
+    outDf = outDf[['geneID','transcriptID','start','end']]
     
-    newNewDf['exonLength'] = newNewDf.apply(lambda row: row['end'] - row['start'] if isinstance(row['end'], int) and isinstance(row['start'], int) else 0, axis=1)
+    outDf['exonLength'] = outDf.apply(lambda row: row['end'] - row['start'] if isinstance(row['end'], int) and isinstance(row['start'], int) else 0, axis=1)
     
-    # miniExons = newNewDf[(newNewDf['exonLength'] <= 8) & (newNewDf['exonLength'] > 0)]
+    miniExons = outDf[(outDf['exonLength'] <= 8) & (outDf['exonLength'] > 0)]
     
-    newNewDf.to_csv(outFile,index=False)
+    print("There are {} mini-exons in this output. (nt size <= {}.)".format(len(miniExons),miniThresh))
+    outDf.to_csv(outFile,index=False)
     
 
 if __name__ == '__main__':
