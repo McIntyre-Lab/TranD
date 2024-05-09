@@ -65,7 +65,7 @@ def main():
     outDir = ""
     
     eaFile = args.eaFile
-    outGTF = args.outGTF    
+    # outGTF = args.outGTF    
     outDir = args.outDir
     
     eaDf = pd.read_csv(eaFile, low_memory=False)       
@@ -97,10 +97,8 @@ def main():
         wideDf = pd.pivot_table(infoDf, values='flag_ERPresent', index=['transcripts','geneID'], columns='ER', fill_value=0)
         
         wideDf.columns = sorted(wideDf.columns, key=lambda x: int(x.split("ER")[1]) if 'ER' in x else int(x.split("exon_")[1]))
-        
-        stackedDf = wideDf.stack().reset_index(name='flag_ERPresent')
-        
-        dfLst.append(stackedDf)
+                
+        dfLst.append(wideDf.stack().reset_index(name='flag_ERPresent'))
         wideDfLst.append(wideDf)
     
     outDf = pd.concat(dfLst)
