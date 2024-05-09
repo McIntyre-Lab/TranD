@@ -82,13 +82,16 @@ def createExonOutput(forGTF, erInfo):
 
 def main():
     
+    PROJ="/nfshome/k.bankole/mclab/SHARE/McIntyre_Lab/sex_specific_splicing/test_gene_based_ERGs"
+    PROJ="/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_gene_based_ERGs"
+    
     # eaFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_gene_based_ERGs/sub_ea_LOC110191367_noIR.csv"
-    eaFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_gene_based_ERGs/sub_keepIR_event_analysis_er.csv"
+    eaFile = "{}/sub_keepIR_event_analysis_er.csv".format(PROJ)
     # eaFile = "/nfshome/k.bankole/mclab/SHARE/McIntyre_Lab/sex_specific_splicing/trand_1GTF_geneMode_fiveSpecies_ujc/fiveSpecies_2_dser1_ujc_event_analysis_er.csv"
     # pw_eaFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_gene_based_ERGs/sub_pw_event_analysis.csv"
-    # pw_eaFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_gene_based_ERGs/sub_pw_noIR_event_analysis.csv"
+    # pw_eaFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_gene_based_ERGs/sub_pw_noIR_event_analysis.csv"    
     
-    outGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_gene_based_ERGs/gene_based_erg_keepIR.gtf"
+    outGTF = "{}/gene_based_erg_keepIR.gtf".format(PROJ)
     # outGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_gene_based_ERGs/gene_based_erg_noIR.gtf"
     
     eaFile = args.eaFile
@@ -96,7 +99,6 @@ def main():
     
     
     eaDf = pd.read_csv(eaFile, low_memory=False)       
-
     
     # pwDf = pd.read_csv(pw_eaFile, low_memory=False)
     # pw_testDf = pwDf[['er_id','er_start']]
@@ -175,7 +177,12 @@ def main():
     # This probably does not work...    
     row = ergDf.iloc[0]
     
-    row['ERC'].split(row['geneID'] + ":")[1]
+    rx = row['ERC'].split(row['geneID'] + ":")[1]
+    parts = rx.split('_')
+    test = [int(re.search(r'\d+', part).group(0)) for part in parts]
+    
+    
+    
     int(re.split(r'STE|ER', row['ERC'].split(row['geneID'] + ":")[1]))    
     
 
