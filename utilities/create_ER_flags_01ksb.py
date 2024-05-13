@@ -36,7 +36,7 @@ def getOptions():
         # OUTPUT
         parser.add_argument("-o",
                             "--output-csv",
-                            dest="outCSV", 
+                            dest="outFile", 
                             required=True,
                             help="Output file path")
         
@@ -68,14 +68,16 @@ def main():
     geneDct = dict(infoDf.groupby('geneID').apply(lambda x: set(x['ER'])))
     xscriptDct = dict(infoDf.groupby('jxnHash').apply(lambda x: set(x['ER'])))
     
+    loopLst = [tuple(x) for x in infoDf[['geneID','jxnHash']].drop_duplicates().to_records(index=False)]
+        
     xscriptLst = []
     geneLst = []
     erLst = []
     flagLst = []
-    for row in infoDf.to_dict('records'):
+    for gene, transcript in loopLst:
         
-        gene = row['geneID']
-        transcript = row['jxnHash']
+        # gene = row['geneID']
+        # transcript = row['jxnHash']
         
         geneERSet = geneDct.get(gene)
         
