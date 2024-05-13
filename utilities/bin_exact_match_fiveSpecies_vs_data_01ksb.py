@@ -80,7 +80,7 @@ def main():
     
     exactMatchDf = dataDf[dataDf['jxnHash'].isin(refJxnHashLst)]
     
-    exactMatchDf.to_csv(outFile,index=False)
+    exactMatchDf.to_csv(outFile,index=False,header=False)
     
     
 
