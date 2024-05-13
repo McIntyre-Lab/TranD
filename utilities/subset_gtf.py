@@ -12,7 +12,6 @@ import numpy as np
 import sys
 import csv
 import time
-import trand.io
 
 def getOptions():
     # Parse command line arguments
@@ -35,12 +34,9 @@ def main():
     # Get GTF file and count total lines
 
     # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc.gtf"
-    # inInclude = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/design_files/df_noHeader_dmel6_sex_det_gene_lst_01ksb.csv"
+    # inInclude = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/design_files/df_noHeader_sex_det_gene_lst_01ksb.csv"
     # listVar = 'gene_id'
-    # outFile = ""
-    # inExclude = None
-    
-    
+
     inGTF = args.inGTF
     
     # Get list ID variable
@@ -51,6 +47,10 @@ def main():
 
     outFile = args.outFile
     
+    
+    gtf = pd.read_csv(inGTF,names=['chr','source','feature','start','end','score',
+                                        'strand','frame','attribute'], dtype=str, sep="\t",low_memory=False)
+
     # Check that only one list argument was provided
     if inInclude is None and inExclude is None:
         print("ERROR: No list provided to subset GTF on")
@@ -64,9 +64,27 @@ def main():
     else:
         print("ERROR: Cannot use both inclusion and exclusion list - only provide one or the other")
         sys.exit()
+        
+    records = gtf.to_dict('records')
+    for row in records:
+        raw_attrs = row['attribute']
+        attr_list = [x.strip() for x in raw_attrs.strip().split(';')]
+        g_t_attrs = [x for x in attr_list if 'transcript_id' in x or 'gene_id' in x]
+        gene_id, transcript_id = np.nan, np.nan
+        for item in g_t_attrs:
+            if 'gene_id' in item:
+                gene_id = item.split('gene_id')[1].strip().strip('\"')
+            elif 'transcript_id' in item:
+                transcript_id = item.split('transcript_id')[-1].strip().strip('\"')
+        if gene_id == np.nan:
+            print("WARNING: gene_id not found in {}".format(row))
+        if transcript_id == np.nan and row['feature'] != "gene" :
+            print("WARNING: transcript_id not found in {}".format(row))
     
-  
-    gtf = trand.io.read_exon_data_from_file(inGTF)    
+        row['gene_id'] = str(gene_id)
+        row['transcript_id'] = str(transcript_id)
+    
+    gtf = pd.DataFrame(records)
 
     if include:
         # If list is for inclusion
@@ -76,12 +94,12 @@ def main():
         # If list is for exclusion
         # Extract GTF elements that do NOT have a value contained in list of IDs
         filterDF = gtf[~gtf[listVar].isin(idDF[listVar])]
-    
+        
     # Output filtered file
     filterDF[['chr','source','feature','start','end','score','strand','frame',
              'attribute']].to_csv(outFile,sep="\t",index=False,header=False,
              doublequote=False,quoting=csv.QUOTE_NONE)
-                              
+
 if __name__ == '__main__':
     #Parse command line arguments
     global args
