@@ -36,7 +36,11 @@ def main():
     # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc.gtf"
     # inInclude = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/design_files/df_noHeader_sex_det_gene_lst_01ksb.csv"
     # listVar = 'gene_id'
-
+    
+    inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dsan_Prin_1.1/GCF_016746245.2/genomic.gtf"
+    inInclude = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dsan_Prin_1.1/list_dsan11_protein_coding_xscript.txt"
+    listVar = 'transcript_id'
+    
     inGTF = args.inGTF
     
     # Get list ID variable
@@ -49,7 +53,7 @@ def main():
     
     
     gtf = pd.read_csv(inGTF,names=['chr','source','feature','start','end','score',
-                                        'strand','frame','attribute'], dtype=str, sep="\t",low_memory=False)
+                                        'strand','frame','attribute'], dtype=str, sep="\t",comment="#",low_memory=False)
 
     # Check that only one list argument was provided
     if inInclude is None and inExclude is None:
