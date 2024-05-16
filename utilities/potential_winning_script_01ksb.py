@@ -56,14 +56,14 @@ def getOptions():
 
 def main():
     
-    # erFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/trand_2gtf_fiveSpecies_er_vs_data/FBgn0000662_fiveSpecies_2_dmel6_ujc_er.gtf"
-    # dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/trand_2gtf_fiveSpecies_er_vs_data/FBgn0000662_data.gtf"    
+    erFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/trand_2gtf_fiveSpecies_er_vs_data/FBgn0000662_fiveSpecies_2_dmel6_ujc_er.gtf"
+    dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/trand_2gtf_fiveSpecies_er_vs_data/FBgn0000662_data.gtf"    
     
     
-    alphatic = time.perf_counter()
     erFile = args.erFile
     dataFile = args.dataFile
     
+    alphatic = time.perf_counter()
     geneDf = trand.io.read_exon_data_from_file(erFile)
     dataDf = trand.io.read_exon_data_from_file(dataFile)
     
@@ -77,7 +77,7 @@ def main():
     records = dataDf.to_dict('records')
     for row in records:
         gene = row['gene_id']
-        jxnHash = row['transcript_id']
+        # jxnHash = row['transcript_id']
         
         matchingERIDLst = []
         
@@ -86,7 +86,7 @@ def main():
             erInfo = erDct.get(erID)
             # print(erInfo)
     
-            print("looping...")
+            # print("looping...")
             
             if max(row['start'], erInfo['start']) < min(row['end'], erInfo['end']):
                 # print ("Yippee!")
