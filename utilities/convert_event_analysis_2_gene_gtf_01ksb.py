@@ -32,6 +32,8 @@ def main():
     # eaFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_conv_EA2GTF/event_analysis_er.csv"
     # gtfOutPath = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_conv_EA2GTF/test_gtf.gtf"
     
+    eaFile = "/nfshome/k.bankole/mclab/SHARE/McIntyre_Lab/sex_specific_splicing/trand_1GTF_geneMode_fiveSpecies_ujc/fiveSpecies_2_dmel6_ujc_event_analysis_er.csv"
+    
     eaFile = args.eaFile
     gtfOutPath = args.outGTF
     
@@ -45,6 +47,7 @@ def main():
     eaDf['transcript_id'] = eaDf['gene_id']
     eaDf = eaDf[['seqname','start','end','strand','transcript_id','gene_id']]
     outExonDf = eaDf.sort_values(by=['seqname','transcript_id','start']).reset_index(drop=True)
+    outExonDf['start'] = outExonDf['start'].apply(lambda x: 1 if x == 0 else x)
 
     trand.io.write_gtf(data=outExonDf, out_fhs={"gtf":gtfOutPath}, fh_name="gtf")
 
