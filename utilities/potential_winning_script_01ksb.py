@@ -105,7 +105,7 @@ def main():
     
     omegatoc = time.perf_counter()
     
-    print(f"Complete! Took {omegatoc-alphatic:0.4f} seconds.")    
+    print(f"Complete! Took {(omegatoc-alphatic)/60:0.2f} seconds.")    
     
     dataDf.groupby('gene_id')
     
