@@ -47,17 +47,47 @@ def getOptions():
 def main():
     
     # PROJ="/nfshome/k.bankole/mclab/SHARE/McIntyre_Lab/sex_specific_splicing/test_gene_based_ERGs"
-    PROJ="/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_gene_based_ERGs"
+    # PROJ="/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_gene_based_ERGs"
     
     # eaFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_gene_based_ERGs/sub_ea_LOC110191367_noIR.csv"
     # eaFile = "{}/sub_keepIR_event_analysis_er.csv".format(PROJ)
     # eaFile = "/nfshome/k.bankole/mclab/SHARE/McIntyre_Lab/sex_specific_splicing/trand_1GTF_geneMode_fiveSpecies_ujc/fiveSpecies_2_dser1_ujc_event_analysis_er.csv"
     # outFile = "/nfshome/k.bankole/mclab/SHARE/McIntyre_Lab/sex_specific_splicing/test_ER_flags/test_ER_flags.csv"
     
+    eaFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/trand_2gtf_fiveSpecies_dmel6_er_vs_data_sexDet/sexDet_fiveSpecies_2_dmel6_ujc_er_vs_mel_2_dmel6_uniq_jxnHash_event_analysis.csv"
+    
+    # pwFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/trand_2gtf_fiveSpecies_dmel6_er_vs_data_sexDet/sexDet_fiveSpecies_2_dmel6_ujc_er_vs_mel_2_dmel6_uniq_jxnHash_minimum_pairwise_transcript_distance.csv"
+    
+    pwFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/trand_2gtf_fiveSpecies_dmel6_er_vs_data_sexDet/FBgn0000662_pw_file.csv"
+    
+    eaFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/trand_2gtf_fiveSpecies_dmel6_er_vs_data_sexDet/FBgn0000662_ea_file.csv"
+    
+    pwDf = pd.read_csv(pwFile, low_memory=False)
+    
+    # TODO: Add a check to see if the number of exon regions is more than what exists in the GTF
+    infoDf = pwDf[['gene_id','transcript_1','transcript_2','num_ER_only_T1','num_ER_only_T2','num_ER_ovlp','ER_only_T1','ER_only_T2','ER_ovlp','flag_IR']]
+    
+    
+    
+    geneDf = infoDf[['transcript_1','num_ER_only_T1', 'num_ER_ovlp','ER_only_T1','ER_ovlp']].copy().fillna('')
+    
+    test = geneDf.drop_duplicates()
+    
+    len(geneDf) - len(test)
+    
+    geneDf['ER'] = geneDf['ER_only_T1'] + '|' + geneDf['ER_ovlp']
+    
+    
+    
     eaFile = args.eaFile
     outFile = args.outFile
 
-    eaDf = pd.read_csv(eaFile, low_memory=False)       
+    eaDf = pd.read_csv(eaFile, low_memory=False) 
+     
+        
+    
+    
+    
     
     infoDf = eaDf[['er_id','er_transcript_ids','gene_id']].copy()
     
