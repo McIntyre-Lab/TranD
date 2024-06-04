@@ -18,7 +18,7 @@ def getOptions():
                         help="Path to event analysis file")
 
     # Output data
-    parser.add_argument("-o",
+    parser.add_argument("-o",+
                         "--output-gtf",
                         dest="outGTF", 
                         required=True,
