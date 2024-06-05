@@ -228,6 +228,8 @@ def main():
         'exonRegion': erLst,
         'flag_ERPresent': flagLst
     })
+    outFlagDf = outFlagDf[['geneID', 'jxnHash',
+                           'exonRegion', 'flag_ERPresent']]
 
     # Making pattern output file
     binaryInfo = [(xscript, *info) for xscript, info in binaryDct.items()]
@@ -258,22 +260,25 @@ def main():
     outPatternDf['IRERs'] = outPatternDf['IRERs'].apply(
         lambda x: '|'.join(x) if x else np.nan)
 
+    outFlagDf = outFlagDf.sort_values(by=['geneID', 'jxnHash'])
+    outPatternDf = outPatternDf.sort_values(by=['geneID', 'jxnHash'])
     # Do not uncomment.
     # wideDf = pd.pivot_table(outDf, values='flag_ERPresent', index=['jxnHash','geneID'], columns='exonRegion', fill_value=0)
 
     # Output
     outPatternDf.to_csv(
         "{}/{}_er_vs_data_pattern_file.csv".format(outdir, prefix), index=False)
+
     outFlagDf.to_csv(
         "{}/{}_er_vs_data_flag_file.csv".format(outdir, prefix), index=False)
 
     if refOnlyGnLst:
         pd.Series(refOnlyGnLst).to_csv(
-            "{}/list_{}_er_vs_data_reference_only_genes.txt".format(outdir, prefix), index=False)
+            "{}/list_{}_er_vs_data_reference_only_genes.txt".format(outdir, prefix), index=False, header=False)
 
     if dataOnlyGnLst:
         pd.Series(dataOnlyGnLst).to_csv(
-            "{}/list_{}_er_vs_data_data_only_genes.txt".format(outdir, prefix), index=False)
+            "{}/list_{}_er_vs_data_data_only_genes.txt".format(outdir, prefix), index=False, header=False)
 
     omegatoc = time.perf_counter()
 
