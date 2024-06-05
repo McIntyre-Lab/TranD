@@ -84,10 +84,21 @@ def main():
 
     alphatic = time.perf_counter()
 
-    geneDf = trand.io.read_exon_data_from_file(erFile)
-    dataDf = trand.io.read_exon_data_from_file(dataFile)
+    inGeneDf = trand.io.read_exon_data_from_file(erFile)
+    inDataDf = trand.io.read_exon_data_from_file(dataFile)
 
-    geneDf = geneDf[['gene_id', 'seqname', 'start', 'end', 'strand']]
+    uniqDataGeneSet = set(inDataDf['gene_id'])
+    uniqRefGeneSet = set(inGeneDf['gene_id'])
+
+    refOnlyGnLst = list(uniqRefGeneSet - uniqDataGeneSet)
+    dataOnlyGnLst = list(uniqDataGeneSet - uniqRefGeneSet)
+
+    genesInBoth = list(uniqRefGeneSet.intersection(uniqDataGeneSet))
+
+    geneDf = inGeneDf[inGeneDf['gene_id'].isin(genesInBoth)].copy()
+    dataDf = inDataDf[inDataDf['gene_id'].isin(genesInBoth)].copy()
+
+    geneDf = geneDf[['gene_id', 'seqname', 'start', 'end', 'strand']].copy()
     geneDf = geneDf.sort_values(['seqname', 'gene_id', 'start'])
 
     geneDf['ER'] = geneDf['gene_id'] + ':ER' + \
@@ -104,15 +115,6 @@ def main():
     # yourBoat = pd.DataFrame({'gene_id':'test','seqname':'test','start':0,'end':0,'strand':13341}, index=[len(dataDf)+4])
 
     # dataDf = pd.concat([dataDf,row,row2,row3,yourBoat])
-
-    refOnlyGnLst = []
-
-    uniqDataGeneSet = set(dataDf['gene_id'])
-    uniqRefGeneSet = set(geneDf['gene_id'])
-
-    refOnlyGnLst = list(uniqRefGeneSet - uniqDataGeneSet)
-
-    dataOnlyGnLst = []
 
     dataDf['numExon'] = dataDf.groupby('transcript_id')[
         'transcript_id'].transform('count')
