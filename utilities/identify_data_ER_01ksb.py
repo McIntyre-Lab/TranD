@@ -159,7 +159,7 @@ def main():
     dataWithERDf['IRERs'] = dataWithERDf.apply(
         lambda x: tuple(x['ER']) if x['flagIR'] == 1 else np.nan, axis=1)
 
-    intmdDf = dataWithERDf[['transcript_id', 'ER',
+    intmdDf = dataWithERDf[['gene_id', 'transcript_id', 'ER',
                             'dataOnlyER', 'flagIR', 'IRERs', 'numExon']]
     intmdDf = intmdDf.explode('ER')
 
@@ -200,7 +200,7 @@ def main():
         binary = [1 if ER in xscriptERSet else 0 for ER in geneERLst]
         binary = ''.join(map(str, binary))
 
-        binaryDct[transcript] = binary
+        binaryDct[transcript] = [binary, gene]
 
         for exonRegion in geneERLst:
 
@@ -230,11 +230,14 @@ def main():
     })
 
     # Making pattern output file
-    binaryDf = pd.DataFrame.from_dict(binaryDct, orient='index').reset_index()
-    binaryDf.columns = ['transcript_id', 'ERP']
+    binaryInfo = [(xscript, *info) for xscript, info in binaryDct.items()]
+    binaryDf = pd.DataFrame(binaryInfo, columns=[
+                            'transcript_id', 'ERP', 'geneID'])
 
     outPatternDf = pd.merge(xscriptERDf, binaryDf, on=[
         'transcript_id'], how='outer', indicator='merge_check')
+    outPatternDf.columns = ['jxnHash', 'ER', 'numExon', 'flagIR',
+                            'dataOnlyER', 'IRERs', 'numIREvent', 'ERP', 'geneID', 'merge_check']
 
     outPatternDf['ERP'] = outPatternDf.apply(
         lambda x: x['ERP'] + str('1' * len(x['dataOnlyER'])) if x['dataOnlyER'] else x['ERP'], axis=1)
@@ -246,7 +249,7 @@ def main():
         print("Something went wrong")
         # quit()
 
-    outPatternDf = outPatternDf[['transcript_id', 'ERP', 'numExon',
+    outPatternDf = outPatternDf[['geneID', 'jxnHash', 'ERP', 'numExon',
                                  'numER', 'numDataOnlyER', 'flagIR', 'numIREvent', 'IRERs']]
 
     outPatternDf['flagReverseIR'] = outPatternDf.apply(
