@@ -147,8 +147,6 @@ def main():
             else:
                 row['dataOnlyER'] = "{}:{}_{}".format(
                     gene, row['start'], row['end'])
-        else:
-            dataOnlyGnLst.append(row)
 
     dataWithERDf = pd.DataFrame(records)
 
@@ -160,7 +158,7 @@ def main():
         lambda x: tuple(x['ER']) if x['flagIR'] == 1 else np.nan, axis=1)
 
     intmdDf = dataWithERDf[['gene_id', 'transcript_id', 'ER',
-                            'dataOnlyER', 'flagIR', 'IRERs', 'numExon']]
+                            'dataOnlyER', 'flagIR', 'IRERs', 'numExon', 'strand']]
     intmdDf = intmdDf.explode('ER')
 
     xscriptERDf = intmdDf.groupby('transcript_id').agg({
@@ -168,8 +166,19 @@ def main():
         'numExon': max,
         'flagIR': max,
         'dataOnlyER': lambda x: set(x.dropna()),
-        'IRERs': lambda x: set(tuple(sum(x.dropna(), ())))
+        'IRERs': lambda x: set(tuple(sum(x.dropna(), ()))),
+        'strand': set
     }).reset_index()
+
+    # Check for no multi-strand transcripts
+    singleStrandXscript = xscriptERDf['strand'].apply(lambda x: len(x) == 1)
+
+    if not singleStrandXscript.all():
+        print("There are transcripts belonging to more than one strand. Quitting.")
+        quit()
+    else:
+        xscriptERDf['strand'] = xscriptERDf['strand'].apply(
+            lambda x: list(x)[0])
 
     # Accounts for situations where transcripts have multiple IR events
     xscriptERDf['numIREvent'] = xscriptERDf.groupby(
@@ -228,8 +237,6 @@ def main():
         'exonRegion': erLst,
         'flag_ERPresent': flagLst
     })
-    outFlagDf = outFlagDf[['geneID', 'jxnHash',
-                           'exonRegion', 'flag_ERPresent']]
 
     # Making pattern output file
     binaryInfo = [(xscript, *info) for xscript, info in binaryDct.items()]
@@ -239,10 +246,10 @@ def main():
     outPatternDf = pd.merge(xscriptERDf, binaryDf, on=[
         'transcript_id'], how='outer', indicator='merge_check')
     outPatternDf.columns = ['jxnHash', 'ER', 'numExon', 'flagIR',
-                            'dataOnlyER', 'IRERs', 'numIREvent', 'ERP', 'geneID', 'merge_check']
+                            'dataOnlyER', 'IRERs', 'strand', 'numIREvent', 'ERP', 'geneID', 'merge_check']
 
     outPatternDf['ERP'] = outPatternDf.apply(
-        lambda x: x['ERP'] + str('1' * len(x['dataOnlyER'])) if x['dataOnlyER'] else x['ERP'], axis=1)
+        lambda x: x['ERP'] + '1' if x['dataOnlyER'] else x['ERP'], axis=1)
 
     outPatternDf['numER'] = outPatternDf['ER'].apply(len)
     outPatternDf['numDataOnlyER'] = outPatternDf['dataOnlyER'].apply(len)
@@ -251,7 +258,7 @@ def main():
         print("Something went wrong")
         # quit()
 
-    outPatternDf = outPatternDf[['geneID', 'jxnHash', 'ERP', 'numExon',
+    outPatternDf = outPatternDf[['jxnHash', 'geneID', 'strand', 'ERP', 'numExon',
                                  'numER', 'numDataOnlyER', 'flagIR', 'numIREvent', 'IRERs']]
 
     outPatternDf['flagReverseIR'] = outPatternDf.apply(
@@ -262,7 +269,8 @@ def main():
 
     outFlagDf = outFlagDf.sort_values(by=['geneID', 'jxnHash'])
     outPatternDf = outPatternDf.sort_values(by=['geneID', 'jxnHash'])
-    # Do not uncomment.
+
+    # Do not uncomment. Will probably crash the script.
     # wideDf = pd.pivot_table(outDf, values='flag_ERPresent', index=['jxnHash','geneID'], columns='exonRegion', fill_value=0)
 
     # Output
