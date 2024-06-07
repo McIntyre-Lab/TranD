@@ -8,6 +8,7 @@ Created on Thu Jun  6 13:17:01 2024
 import argparse
 import pandas as pd
 import re
+import time
 
 
 def getOptions():
@@ -201,22 +202,55 @@ def main():
         'flagLastERPresent']].to_csv(outFile, index=False)
 
     if countFile:
+        alphatic = time.perf_counter()
+
         countDf = pd.read_csv(countFile, low_memory=False)
+
+        omegatoc = time.perf_counter()
+        print(
+            f"Count file read complete! Took {(omegatoc-alphatic):0.4f} seconds.")
+
         # Count number xscript per ERG using count file
         xscript2ERGDf = ergDf[['ERG', 'jxnHash',
                                'geneID', 'numER']].explode('jxnHash')
 
+        uniqPatternHashSet = set(xscript2ERGDf['jxnHash'])
+        uniqCountHashSet = set(countDf['jxnHash'])
+
+        erpOnlyHshLst = list(uniqPatternHashSet - uniqCountHashSet)
+        countOnlyHshLst = list(uniqCountHashSet - uniqPatternHashSet)
+
+        hashesInBoth = list(uniqPatternHashSet.intersection(uniqCountHashSet))
+
+        countDf = countDf[countDf['jxnHash'].isin(hashesInBoth)].copy()
+        xscript2ERGDf = xscript2ERGDf[xscript2ERGDf['jxnHash'].isin(
+            hashesInBoth)].copy()
+
         mergeCountAndERGDf = pd.merge(
             xscript2ERGDf, countDf, on='jxnHash', how='outer', indicator='merge_check')
 
-        if (mergeCountAndERGDf['merge_check'] == 'left_only').any():
+        if erpOnlyHshLst:
             print(
                 "POSSIBLE ERROR: THERE ARE JXNHASHES THAT APPEAR IN THE ERP OUTPUT BUT NOT IN THE COUNT FILE")
-            # quit()
-        if (mergeCountAndERGDf['merge_check'] == 'right_only').any():
+
+            pd.Series(erpOnlyHshLst).to_csv(
+                "{}/list_{}_ERG_count_inFile_only_jxnHash.txt".format(outdir, prefix), index=False, header=False)
+
+        if countOnlyHshLst:
             print(
                 "CAUTION: THERE ARE JXNHASHES THAT APPEAR IN THE COUNT FILE BUT NOT IN THE ERP OUTPUT")
-            # quit()
+
+            pd.Series(countOnlyHshLst).to_csv(
+                "{}/list_{}_ERG_count_countFile_only_jxnHash.txt".format(outdir, prefix), index=False, header=False)
+
+        # if (mergeCountAndERGDf['merge_check'] == 'left_only').any():
+        #     print(
+        #         "POSSIBLE ERROR: THERE ARE JXNHASHES THAT APPEAR IN THE ERP OUTPUT BUT NOT IN THE COUNT FILE")
+        #     # quit()
+        # if (mergeCountAndERGDf['merge_check'] == 'right_only').any():
+        #     print(
+        #         "CAUTION: THERE ARE JXNHASHES THAT APPEAR IN THE COUNT FILE BUT NOT IN THE ERP OUTPUT")
+        #     # quit()
 
         mergeCountAndERGDf = mergeCountAndERGDf.drop('merge_check', axis=1)
         ergCountDf = mergeCountAndERGDf.groupby(['sample', 'geneID', 'ERG']).agg({
@@ -230,9 +264,9 @@ def main():
         # TODO: need new name
         outCountFile = "{}/{}_ERG_count.csv".format(outdir, prefix)
         ergCountDf[[
-            'sample', 'geneID', 'ERG', 'numJxnHash', 'numTranscript',
+            'sample', 'geneID', 'ERG', 'numJxnHash', 'numTranscripts',
             'numER'
-        ]]
+        ]].to_csv(outCountFile, index=False)
 
 
 if __name__ == '__main__':
