@@ -223,7 +223,7 @@ def main():
 
         # Count number xscript per ERG using count file
         xscript2ERGDf = ergDf[['ERG', 'jxnHash',
-                               'geneID', 'numER']].explode('jxnHash')
+                               'geneID', 'numER','strand']].explode('jxnHash')
 
         uniqPatternHashSet = set(xscript2ERGDf['jxnHash'])
         uniqCountHashSet = set(countDf['jxnHash'])
@@ -267,16 +267,26 @@ def main():
         ergCountDf = mergeCountAndERGDf.groupby(['sample', 'geneID', 'ERG']).agg({
             'jxnHash': set,
             'numTranscripts': sum,
-            'numER': max
+            'numER': max,
+            'strand':set
         }).reset_index()
-        
+    
+        singleStrandERGCnt = ergCountDf['strand'].apply(lambda x: len(x) == 1)
+
+        if not singleStrandERGCnt.all():
+            print("There are transcripts belonging to more than one strand. Quitting.")
+            quit()
+        else:
+            ergCountDf['strand'] = ergCountDf['strand'].apply(
+                lambda x: list(x)[0])
+            
         ergCountDf['numJxnHash'] = ergCountDf['jxnHash'].apply(len)
         ergCountDf = ergCountDf.sort_values(by=['ERG', 'sample'])
-
+        
         # TODO: need new name
         outCountFile = "{}/{}_ERG_count.csv".format(outdir, prefix)
         ergCountDf[[
-            'sample', 'geneID', 'ERG', 'numJxnHash', 'numTranscripts',
+            'sample', 'geneID', 'strand', 'ERG', 'numJxnHash', 'numTranscripts',
             'numER'
         ]].to_csv(outCountFile, index=False)
 
