@@ -24,13 +24,13 @@ def getOptions():
         help="Location of ER pattern file"
     )
 
-    parser.add_argument(
-        "-f",
-        "--flag-file",
-        dest="flagFile",
-        required=True,
-        help="Location of data vs ref ER flag file"
-    )
+    # parser.add_argument(
+    #     "-f",
+    #     "--flag-file",
+    #     dest="flagFile",
+    #     required=True,
+    #     help="Location of data vs ref ER flag file"
+    # )
 
     parser.add_argument(
         "-c",
@@ -68,6 +68,10 @@ def main():
     # countFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/rmg_lmm_dros_data/mel2dmel6_jxnHash_cnts_sumTR_FBgn0004652.csv"
     # outdir = 'C://Users/knife/Desktop/Code Dumping Ground/mcintyre'
     # prefix = "test"
+    
+    erpFile = "~/mclab/SHARE/McIntyre_Lab/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/mel_sexdet_er_vs_data_pattern_file_FBgn0004652.csv"
+    flagFile = "~/mclab/SHARE/McIntyre_Lab/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/mel_sexdet_er_vs_data_flag_file_FBgn0004652.csv"
+    countFile = "~/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/mel2dmel6_jxnHash_cnts_sumTR_FBgn0004652.csv"
 
     erpFile = args.erpFile
     flagFile = args.flagFile
@@ -76,14 +80,14 @@ def main():
     prefix = args.prefix
 
     erpDf = pd.read_csv(erpFile, low_memory=False)
-    flagDf = pd.read_csv(flagFile, low_memory=False)
+    # flagDf = pd.read_csv(flagFile, low_memory=False)
 
-    # Create a dictionary of each gene and its number of reference exon regions
-    tmpDf = flagDf[['geneID', 'exonRegion']].copy().drop_duplicates()
-    tmpDf = tmpDf[tmpDf['exonRegion'].str.contains('ER')]
-    tmpDf = tmpDf.groupby('geneID').apply('count').reset_index()
+    # # Create a dictionary of each gene and its number of reference exon regions
+    # tmpDf = flagDf[['geneID', 'exonRegion']].copy().drop_duplicates()
+    # tmpDf = tmpDf[tmpDf['exonRegion'].str.contains('ER')]
+    # tmpDf = tmpDf.groupby('geneID').apply('count').reset_index()
 
-    numERDct = dict(zip(tmpDf['geneID'], tmpDf['exonRegion']))
+    # numERDct = dict(zip(tmpDf['geneID'], tmpDf['exonRegion']))
 
     # Group into ERGs using ERPs and do some edits to the DF
     ergDf = erpDf.groupby(['geneID', 'ERP']).agg({
@@ -108,8 +112,8 @@ def main():
 
     ergDf['numER'] = ergDf['ERP'].apply(lambda x: x.count('1'))
 
-    ergDf['flagDataOnlyExon'] = ergDf.apply(
-        lambda x: 1 if len(x['ERP']) > numERDct[x['geneID']] else 0, axis=1)
+    # ergDf['flagDataOnlyExon'] = ergDf.apply(
+    #     lambda x: 1 if len(x['ERP']) > numERDct[x['geneID']] else 0, axis=1)
 
     patternSeekDf = ergDf.copy()
 
@@ -152,42 +156,49 @@ def main():
     # do any patterns with dataOnly exons get any of these flags? which ones? Should I just ignore the last 1?
 
     # Pattern discernment!
-    # 1. flag transcripts with all exon regions in the gene
+    # 1. flag transcripts with all exon regions in the gene and no reference exon regions
     patternSeekDf['flagNoSkip'] = patternSeekDf['ERP'].apply(
         lambda x: 1 if all(char == '1' for char in x) else 0)
+    
+    patternSeekDf['flagNoRefER'] = patternSeekDf['ERP'].apply(
+        lambda x: 1 if all(char == '0' for char in x) else 0)
 
     # 2. flag transcripts with an exon skip (one missing ER between two present ERs)
     patternSeekDf['flagExonSkip'] = patternSeekDf.apply(
-        lambda x: 1 if re.search('(?<=1)+0+(?=1)+', x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
+        lambda x: 1 if re.search('(?<=1)+0+(?=1)+', x['ERP']) is not None else 0, axis=1)
 
     patternSeekDf['numExonSkip'] = patternSeekDf.apply(
-        lambda x: len(re.findall('(?<=1)+0+(?=1)+', x['ERP'][0:numERDct[x['geneID']]])), axis=1)
+        lambda x: len(re.findall('(?<=1)+0+(?=1)+', x['ERP'])), axis=1)
 
     # 3. 5' and 3' fragment (compared to the gene)
     patternSeekDf['flag5pFragment'] = patternSeekDf.apply(
         lambda x: 1 if re.search(
-            "^1+0+$" if x['strand'] == '+' else '^0+1+$',
-            x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
+            "^1+0+$", x['ERP']) is not None else 0, axis=1)
+            # if x['strand'] == '+' else '^0+1+$',
+            # x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
 
     patternSeekDf['flag3pFragment'] = patternSeekDf.apply(
         lambda x: 1 if re.search(
-            '^0+1+$' if x['strand'] == '+' else "^1+0+$",
-            x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
+            '^0+1+$', x['ERP']) is not None else 0, axis=1)
+            # if x['strand'] == '+' else "^1+0+$",
+            # x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
 
     # 4. internal fragment
     patternSeekDf['flagInternalFragment'] = patternSeekDf.apply(
-        lambda x: 1 if re.search('^0+1+0+$', x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
+        lambda x: 1 if re.search('^0+1+0+$', x['ERP']) is not None else 0, axis=1)
 
     # 5. first/last ER present
     patternSeekDf['flagFirstERPresent'] = patternSeekDf.apply(
         lambda x: 1 if re.search(
-            '^1' if x['strand'] == '+' else "1$",
-            x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
+            '^1', x['ERP']) is not None else  0, axis=1)
+            # if x['strand'] == '+' else "1$",
+            # x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
 
     patternSeekDf['flagLastERPresent'] = patternSeekDf.apply(
         lambda x: 1 if re.search(
-            '1$' if x['strand'] == '+' else "^1",
-            x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
+            '1$', x['ERP']) is not None else  0, axis=1)
+            # if x['strand'] == '+' else "^1",
+            # x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
 
     # note to self:
     # 5' frag = only has 5' exons (only has exons on the 3' side)
@@ -258,8 +269,9 @@ def main():
             'numTranscripts': sum,
             'numER': max
         }).reset_index()
-
+        
         ergCountDf['numJxnHash'] = ergCountDf['jxnHash'].apply(len)
+        ergCountDf = ergCountDf.sort_values(by=['ERG', 'sample'])
 
         # TODO: need new name
         outCountFile = "{}/{}_ERG_count.csv".format(outdir, prefix)
