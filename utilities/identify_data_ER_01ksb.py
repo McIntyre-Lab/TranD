@@ -103,9 +103,23 @@ def main():
 
     geneDf['ER'] = geneDf['gene_id'] + ':ER' + \
         (geneDf.groupby('gene_id').cumcount() + 1).astype(str)
-    geneDct = dict(geneDf.groupby('gene_id').apply(lambda x: sorted(set(
-        x['ER']), key=lambda x: int(x.split("ER")[1]) if 'ER' in x else int(x.split("exon_")[1]))))
+    
+    singleStrandGene = geneDf.groupby('gene_id').agg(set)['strand'].apply(lambda x: len(x) == 1)
 
+    if not singleStrandGene.all():
+        print("There are genes belonging to more than one strand. Quitting.")
+        quit()
+    
+    # sorted(set(
+    #     x['ER']), key=lambda x: int(x.split("ER")[1]) if 'ER' in x else int(x.split("exon_")[1])))
+    
+        
+    geneDct = dict(geneDf.groupby('gene_id').apply(lambda x: 
+        sorted(set(x['ER']), key=lambda x: int(x.split("ER")[1]) if 'ER' in x else int(x.split("exon_")[1])) 
+        if (x['strand'] == "+").all() 
+        else 
+        sorted(set(x['ER']), key=lambda x: int(x.split("ER")[1]) if 'ER' in x else int(x.split("exon_")[1]),reverse=True)))
+        
     # TODO: CHECK THAT ALL SETS ARE OF SIZE ONE
     erDct = geneDf.groupby('ER').agg('first').to_dict(orient='index')
 
@@ -190,15 +204,16 @@ def main():
         zip(xscriptERDf['transcript_id'], xscriptERDf['dataOnlyER']))
 
     loopLst = [tuple(x) for x in dataWithERDf[[
-        'gene_id', 'transcript_id']].drop_duplicates().to_records(index=False)]
+        'gene_id', 'transcript_id', 'strand']].drop_duplicates().to_records(index=False)]
 
     xscriptLst = []
     geneLst = []
     erLst = []
     flagLst = []
+    strandLst = []
 
     binaryDct = dict()
-    for gene, transcript in loopLst:
+    for gene, transcript, strand in loopLst:
 
         # gene = row['geneID']
         # transcript = row['jxnHash']
@@ -208,7 +223,6 @@ def main():
 
         binary = [1 if ER in xscriptERSet else 0 for ER in geneERLst]
         binary = ''.join(map(str, binary))
-
         binaryDct[transcript] = [binary, gene]
 
         for exonRegion in geneERLst:
@@ -222,6 +236,7 @@ def main():
             geneLst.append(gene)
             erLst.append(exonRegion)
             flagLst.append(flag)
+            strandLst.append(strand)
 
         if dataOnlyERDct[transcript]:
 
@@ -230,34 +245,38 @@ def main():
                 geneLst.append(gene)
                 erLst.append(exonRegion)
                 flagLst.append(1)
+                strandLst.append(strand)
+
 
     outFlagDf = pd.DataFrame({
         'jxnHash': xscriptLst,
         'geneID': geneLst,
+        'strand':strandLst,
         'exonRegion': erLst,
         'flag_ERPresent': flagLst
     })
+    
 
     # Making pattern output file
     binaryInfo = [(xscript, *info) for xscript, info in binaryDct.items()]
     binaryDf = pd.DataFrame(binaryInfo, columns=[
                             'transcript_id', 'ERP', 'geneID'])
 
+
     outPatternDf = pd.merge(xscriptERDf, binaryDf, on=[
         'transcript_id'], how='outer', indicator='merge_check')
-    outPatternDf.columns = ['jxnHash', 'ER', 'numExon', 'flagIR',
-                            'dataOnlyER', 'IRERs', 'strand', 'numIREvent', 'ERP', 'geneID', 'merge_check']
-
-    outPatternDf['ERP'] = outPatternDf.apply(
-        lambda x: x['ERP'] + '1' if x['dataOnlyER'] else x['ERP'], axis=1)
-
+    outPatternDf.rename(columns={'transcript_id':'jxnHash'}, inplace=True)
+    
+    if not (outPatternDf['merge_check'] == 'both').all():
+        print("Something went wrong")
+        quit()
+    
+    outPatternDf['flagDataOnlyExon'] = outPatternDf['dataOnlyER'].apply(lambda x: len(x) != 0)
+    
     outPatternDf['numER'] = outPatternDf['ER'].apply(len)
     outPatternDf['numDataOnlyER'] = outPatternDf['dataOnlyER'].apply(len)
 
-    if not (outPatternDf['merge_check'] == 'both').all():
-        print("Something went wrong")
-        # quit()
-
+    
     outPatternDf = outPatternDf[['jxnHash', 'geneID', 'strand', 'ERP', 'numExon',
                                  'numER', 'numDataOnlyER', 'flagIR', 'numIREvent', 'IRERs']]
 

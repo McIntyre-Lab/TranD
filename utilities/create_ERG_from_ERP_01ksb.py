@@ -50,8 +50,8 @@ def getOptions():
     )
 
     parser.add_argument(
-        "-n",
-        "--fileName",
+        "-x",
+        "--prefix",
         dest="prefix",
         required=True,
         help="Prefix for output files. Required."
