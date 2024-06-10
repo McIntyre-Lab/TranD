@@ -207,8 +207,8 @@ def main():
 
     outFile = "{}/{}_data_ERP_based_ERG.csv".format(outdir, prefix)
     patternSeekDf[[
-        'ERG', 'geneID', 'strand', 'numJxnHash', 'numER', 'flagDataOnlyExon',
-        'flagNoSkip', 'flagExonSkip', 'numExonSkip', 'flag5pFragment',
+        'ERG', 'geneID', 'strand', 'numJxnHash', 'numER',
+        'flagNoSkip', 'flagNoRefER', 'flagExonSkip', 'numExonSkip', 'flag5pFragment',
         'flag3pFragment', 'flagInternalFragment', 'flagFirstERPresent',
         'flagLastERPresent']].to_csv(outFile, index=False)
 
