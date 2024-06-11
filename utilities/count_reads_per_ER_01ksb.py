@@ -139,7 +139,7 @@ def main():
         'flag_ERPresent': 'sum'
     })
 
-    outFile = '{}/{}_ER_count'.format(outdir, prefix)
+    outFile = '{}/{}_data_ER_count'.format(outdir, prefix)
     outDf[['geneID', 'strand', 'exonRegion', 'sample',
            'numTranscripts']].to_csv(outFile, index=False)
 
