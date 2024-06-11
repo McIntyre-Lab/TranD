@@ -101,7 +101,7 @@ def main():
     # zG = z.groupby('jxnHash').agg({'info':list}).reset_index()
     # yG = y.groupby('jxnHash').agg({'info':list}).reset_index()
 
-    inNumPerSample = countDf.groupby(['sample'])['numTranscripts'].sum()
+    # inNumPerSample = countDf.groupby(['sample'])['numTranscripts'].sum()
 
     mergeDf = pd.merge(countDf, flagDf, on='jxnHash',
                        how='outer', indicator='merge_check')
@@ -135,10 +135,14 @@ def main():
         outDf['strand'] = outDf['strand'].apply(
             lambda x: list(x)[0])
 
-    outNumPerSample = outDf.groupby(['sample']).agg({
-        'flag_ERPresent': 'sum'
-    })
+    # outNumPerSample = outDf.groupby(['sample']).agg({
+    #     'flag_ERPresent': 'sum'
+    # })
 
+    outDf = outDf[['geneID', 'strand', 'exonRegion', 'sample',
+                   'actualNum']]
+
+    outDf = outDf.rename({'actualNum': 'numTranscripts'}, axis=1)
     outFile = '{}/{}_data_ER_count'.format(outdir, prefix)
     outDf[['geneID', 'strand', 'exonRegion', 'sample',
            'numTranscripts']].to_csv(outFile, index=False)
