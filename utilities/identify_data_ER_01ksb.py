@@ -46,17 +46,21 @@ def getOptions():
     )
 
     # OUTPUT
-    parser.add_argument("-o",
-                        "--outdir",
-                        dest="outdir",
-                        required=True,
-                        help="Output file path")
+    parser.add_argument(
+        "-o",
+        "--outdir",
+        dest="outdir",
+        required=True,
+        help="Output file path"
+    )
 
-    parser.add_argument("-x",
-                        "--prefix",
-                        dest="prefix",
-                        required=True,
-                        help="Output prefix. Required.")
+    parser.add_argument(
+        "-x",
+        "--prefix",
+        dest="prefix",
+        required=True,
+        help="Output prefix. Required."
+    )
 
     args = parser.parse_args()
     return args
@@ -103,23 +107,24 @@ def main():
 
     geneDf['ER'] = geneDf['gene_id'] + ':ER' + \
         (geneDf.groupby('gene_id').cumcount() + 1).astype(str)
-    
-    singleStrandGene = geneDf.groupby('gene_id').agg(set)['strand'].apply(lambda x: len(x) == 1)
+
+    singleStrandGene = geneDf.groupby('gene_id').agg(
+        set)['strand'].apply(lambda x: len(x) == 1)
 
     if not singleStrandGene.all():
         print("There are genes belonging to more than one strand. Quitting.")
         quit()
-    
+
     # sorted(set(
     #     x['ER']), key=lambda x: int(x.split("ER")[1]) if 'ER' in x else int(x.split("exon_")[1])))
-    
-        
-    geneDct = dict(geneDf.groupby('gene_id').apply(lambda x: 
-        sorted(set(x['ER']), key=lambda x: int(x.split("ER")[1]) if 'ER' in x else int(x.split("exon_")[1])) 
-        if (x['strand'] == "+").all() 
-        else 
-        sorted(set(x['ER']), key=lambda x: int(x.split("ER")[1]) if 'ER' in x else int(x.split("exon_")[1]),reverse=True)))
-        
+
+    geneDct = dict(geneDf.groupby('gene_id').apply(lambda x:
+                                                   sorted(set(x['ER']), key=lambda x: int(x.split("ER")[
+                                                          1]) if 'ER' in x else int(x.split("exon_")[1]))
+                                                   if (x['strand'] == "+").all()
+                                                   else
+                                                   sorted(set(x['ER']), key=lambda x: int(x.split("ER")[1]) if 'ER' in x else int(x.split("exon_")[1]), reverse=True)))
+
     # TODO: CHECK THAT ALL SETS ARE OF SIZE ONE
     erDct = geneDf.groupby('ER').agg('first').to_dict(orient='index')
 
@@ -247,36 +252,33 @@ def main():
                 flagLst.append(1)
                 strandLst.append(strand)
 
-
     outFlagDf = pd.DataFrame({
         'jxnHash': xscriptLst,
         'geneID': geneLst,
-        'strand':strandLst,
+        'strand': strandLst,
         'exonRegion': erLst,
         'flag_ERPresent': flagLst
     })
-    
 
     # Making pattern output file
     binaryInfo = [(xscript, *info) for xscript, info in binaryDct.items()]
     binaryDf = pd.DataFrame(binaryInfo, columns=[
                             'transcript_id', 'ERP', 'geneID'])
 
-
     outPatternDf = pd.merge(xscriptERDf, binaryDf, on=[
         'transcript_id'], how='outer', indicator='merge_check')
-    outPatternDf.rename(columns={'transcript_id':'jxnHash'}, inplace=True)
-    
+    outPatternDf.rename(columns={'transcript_id': 'jxnHash'}, inplace=True)
+
     if not (outPatternDf['merge_check'] == 'both').all():
         print("Something went wrong")
         quit()
-    
-    outPatternDf['flagDataOnlyExon'] = outPatternDf['dataOnlyER'].apply(lambda x: len(x) != 0)
-    
+
+    outPatternDf['flagDataOnlyExon'] = outPatternDf['dataOnlyER'].apply(
+        lambda x: len(x) != 0)
+
     outPatternDf['numER'] = outPatternDf['ER'].apply(len)
     outPatternDf['numDataOnlyER'] = outPatternDf['dataOnlyER'].apply(len)
 
-    
     outPatternDf = outPatternDf[['jxnHash', 'geneID', 'strand', 'ERP', 'numExon',
                                  'numER', 'numDataOnlyER', 'flagIR', 'numIREvent', 'IRERs']]
 
