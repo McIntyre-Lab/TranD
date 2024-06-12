@@ -224,8 +224,9 @@ def main():
         geneERLst = geneDct.get(gene)
         xscriptERSet = xscriptERDct.get(transcript)
 
-        # Start with 5'-
-        binary = ["1" if ER in xscriptERSet else "0" for ER in geneERLst]
+        starter = ["5'-"]
+        binary = ["5'-"] + \
+            ["1" if ER in xscriptERSet else "0" for ER in geneERLst]
         binary = ''.join(map(str, binary))
         binaryDct[transcript] = [binary, gene]
 
@@ -321,11 +322,11 @@ def main():
 
     if refOnlyGnLst:
         pd.Series(refOnlyGnLst).to_csv(
-            outPrefix + "{}_vs_{}_anno_only_genes.txt".format(erName, dataName), index=False, header=False)
+            outPrefix + "list_{}_vs_{}_anno_only_genes.txt".format(erName, dataName), index=False, header=False)
 
     if dataOnlyGnLst:
         pd.Series(dataOnlyGnLst).to_csv(
-            outPrefix + "{}_vs_{}_data_only_genes.txt".format(erName, dataName), index=False, header=False)
+            outPrefix + "list_{}_vs_{}_data_only_genes.txt".format(erName, dataName), index=False, header=False)
 
     omegatoc = time.perf_counter()
 
