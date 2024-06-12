@@ -143,7 +143,7 @@ def main():
                    'actualNum']]
 
     outDf = outDf.rename({'actualNum': 'numTranscripts'}, axis=1)
-    outFile = '{}/{}_data_ER_count'.format(outdir, prefix)
+    outFile = '{}/{}_data_ER_count.csv'.format(outdir, prefix)
     outDf[['geneID', 'strand', 'exonRegion', 'sample',
            'numTranscripts']].to_csv(outFile, index=False)
 

@@ -226,7 +226,7 @@ def main():
         geneERLst = geneDct.get(gene)
         xscriptERSet = xscriptERDct.get(transcript)
 
-        binary = [1 if ER in xscriptERSet else 0 for ER in geneERLst]
+        binary = ["1" if ER in xscriptERSet else "0" for ER in geneERLst]
         binary = ''.join(map(str, binary))
         binaryDct[transcript] = [binary, gene]
 
