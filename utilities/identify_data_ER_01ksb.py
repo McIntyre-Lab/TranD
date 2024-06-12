@@ -307,11 +307,17 @@ def main():
 
     print(outPrefix)
 
+    erpFile = outPrefix + "/{}_vs_{}_ERP.csv".format(erName, dataName)
+    print(erpFile)
+
     outPatternDf.to_csv(
-        outPrefix + "/{}_vs_{}_ERP.csv".format(erName, dataName), index=False)
+        erpFile, index=False)
+
+    flagFile = outPrefix + "/{}_vs_{}_flag_ER.csv".format(erName, dataName)
+    print(flagFile)
 
     outFlagDf.to_csv(
-        outPrefix + "/{}_vs_{}_flag_ER.csv".format(erName, dataName), index=False)
+        flagFile, index=False)
 
     if refOnlyGnLst:
         pd.Series(refOnlyGnLst).to_csv(
