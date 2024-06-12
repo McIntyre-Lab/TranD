@@ -301,19 +301,19 @@ def main():
     dataName = os.path.splitext(os.path.basename(dataFile))[0]
 
     if prefix:
-        outPrefix = "{}/{}".format(outdir, prefix)
+        outPrefix = "{}/{}_".format(outdir, prefix)
     else:
         outPrefix = "{}/".format(outdir)
 
     print(outPrefix)
 
-    erpFile = outPrefix + "/{}_vs_{}_ERP.csv".format(erName, dataName)
+    erpFile = outPrefix + "{}_vs_{}_ERP.csv".format(erName, dataName)
     print(erpFile)
 
     outPatternDf.to_csv(
         erpFile, index=False)
 
-    flagFile = outPrefix + "/{}_vs_{}_flag_ER.csv".format(erName, dataName)
+    flagFile = outPrefix + "{}_vs_{}_flag_ER.csv".format(erName, dataName)
     print(flagFile)
 
     outFlagDf.to_csv(
@@ -321,11 +321,11 @@ def main():
 
     if refOnlyGnLst:
         pd.Series(refOnlyGnLst).to_csv(
-            outPrefix + "/{}_vs_{}_anno_only_genes.txt".format(erName, dataName), index=False, header=False)
+            outPrefix + "{}_vs_{}_anno_only_genes.txt".format(erName, dataName), index=False, header=False)
 
     if dataOnlyGnLst:
         pd.Series(dataOnlyGnLst).to_csv(
-            outPrefix + "/{}_vs_{}_data_only_genes.txt".format(erName, dataName), index=False, header=False)
+            outPrefix + "{}_vs_{}_data_only_genes.txt".format(erName, dataName), index=False, header=False)
 
     omegatoc = time.perf_counter()
 
