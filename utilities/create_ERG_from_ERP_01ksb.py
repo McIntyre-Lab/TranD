@@ -63,7 +63,7 @@ def getOptions():
 
 def main():
 
-    erpFile = "Z://SHARE/McIntyre_Lab/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/mel_sexdet_er_vs_data_pattern_file_FBgn0004652.csv"
+    erpFile = "Z://SHARE/McIntyre_Lab/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/FBgn0004652_test_ERP.csv"
     countFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/rmg_lmm_dros_data/mel2dmel6_jxnHash_cnts_sumTR_FBgn0004652.csv"
     outdir = 'C://Users/knife/Desktop/Code Dumping Ground/mcintyre'
 
@@ -139,17 +139,20 @@ def main():
     # patternSeekDf['flagHasDataOnlyExon'] = patternSeekDf.apply(
     #     lambda x: 1 if len(x['ERP']) > numERDct[x['geneID']] else 0, axis=1)
 
+    patternSeekDf['patternSeek'] = patternSeekDf['ERP'].str.split(
+        '5\'-').str[1]
+
     # Pattern discernment!
     # 1. flag transcripts with all exon regions in the gene and no reference exon regions
-    patternSeekDf['flag_noSkip'] = patternSeekDf['ERP'].apply(
+    patternSeekDf['flag_noSkip'] = patternSeekDf['patternSeek'].apply(
         lambda x: 1 if all(char == '1' for char in x) else 0)
 
-    patternSeekDf['flag_novel'] = patternSeekDf['ERP'].apply(
+    patternSeekDf['flag_novel'] = patternSeekDf['patternSeek'].apply(
         lambda x: 1 if all(char == '0' for char in x) else 0)
 
     # 2. flag transcripts with an exon skip (one missing ER between two present ERs)
     patternSeekDf['flag_ERSkip'] = patternSeekDf.apply(
-        lambda x: 1 if re.search('(?<=1)+0+(?=1)+', x['ERP']) is not None else 0, axis=1)
+        lambda x: 1 if re.search('(?<=1)+0+(?=1)+', x['patternSeek']) is not None else 0, axis=1)
 
     # Do not uncomment.
     # patternSeekDf['numExonSkip'] = patternSeekDf.apply(
@@ -158,30 +161,30 @@ def main():
     # 3. 5' and 3' fragment (compared to the gene)
     patternSeekDf['flag_5pFragment'] = patternSeekDf.apply(
         lambda x: 1 if re.search(
-            "^1+0+$", x['ERP']) is not None else 0, axis=1)
+            "^1+0+$", x['patternSeek']) is not None else 0, axis=1)
     # if x['strand'] == '+' else '^0+1+$',
     # x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
 
     patternSeekDf['flag_3pFragment'] = patternSeekDf.apply(
         lambda x: 1 if re.search(
-            '^0+1+$', x['ERP']) is not None else 0, axis=1)
+            '^0+1+$', x['patternSeek']) is not None else 0, axis=1)
     # if x['strand'] == '+' else "^1+0+$",
     # x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
 
     # 4. internal fragment
     patternSeekDf['flag_intrnlFrgmnt'] = patternSeekDf.apply(
-        lambda x: 1 if re.search('^0+1+0+$', x['ERP']) is not None else 0, axis=1)
+        lambda x: 1 if re.search('^0+1+0+$', x['patternSeek']) is not None else 0, axis=1)
 
     # 5. first/last ER present
     patternSeekDf['flag_firstER'] = patternSeekDf.apply(
         lambda x: 1 if re.search(
-            '^1', x['ERP']) is not None else 0, axis=1)
+            '^1', x['patternSeek']) is not None else 0, axis=1)
     # if x['strand'] == '+' else "1$",
     # x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
 
     patternSeekDf['flag_lastER'] = patternSeekDf.apply(
         lambda x: 1 if re.search(
-            '1$', x['ERP']) is not None else 0, axis=1)
+            '1$', x['patternSeek']) is not None else 0, axis=1)
     # if x['strand'] == '+' else "^1",
     # x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
 
@@ -271,7 +274,7 @@ def main():
         #     # quit()
 
         mergeCountAndERPDf = mergeCountAndERPDf.drop('merge_check', axis=1)
-        erpCountDf = mergeCountAndERPDf.groupby(['sample', 'geneID', 'ERG']).agg({
+        erpCountDf = mergeCountAndERPDf.groupby(['sample', 'geneID', 'ERP']).agg({
             'jxnHash': set,
             'numTranscripts': sum,
             'numER': max,

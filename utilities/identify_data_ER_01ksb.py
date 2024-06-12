@@ -306,16 +306,12 @@ def main():
     else:
         outPrefix = "{}/".format(outdir)
 
-    print(outPrefix)
-
     erpFile = outPrefix + "{}_vs_{}_ERP.csv".format(erName, dataName)
-    print(erpFile)
 
     outPatternDf.to_csv(
         erpFile, index=False)
 
     flagFile = outPrefix + "{}_vs_{}_flag_ER.csv".format(erName, dataName)
-    print(flagFile)
 
     outFlagDf.to_csv(
         flagFile, index=False)
