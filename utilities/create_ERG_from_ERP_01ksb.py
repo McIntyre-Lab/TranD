@@ -50,11 +50,19 @@ def getOptions():
     )
 
     parser.add_argument(
+        "-n",
+        "--data-filename",
+        dest="fileName",
+        required=True,
+        help="Name of data GTF for output files. Required."
+    )
+
+    parser.add_argument(
         "-x",
         "--prefix",
         dest="prefix",
         required=True,
-        help="Prefix for output files. Required."
+        help="Prefix for output files."
     )
 
     args = parser.parse_args()
@@ -63,15 +71,15 @@ def getOptions():
 
 def main():
 
-    # erpFile = "Z://SHARE/McIntyre_Lab/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/mel_sexdet_er_vs_data_pattern_file_FBgn0004652.csv"
-    # # flagFile = "Z://SHARE/McIntyre_Lab/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/mel_sexdet_er_vs_data_flag_file_FBgn0004652.csv"
-    # countFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/rmg_lmm_dros_data/mel2dmel6_jxnHash_cnts_sumTR_FBgn0004652.csv"
-    # outdir = 'C://Users/knife/Desktop/Code Dumping Ground/mcintyre'
-    # prefix = "test"
-    
-    erpFile = "~/mclab/SHARE/McIntyre_Lab/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/mel_sexdet_er_vs_data_pattern_file_FBgn0004652.csv"
-    # flagFile = "~/mclab/SHARE/McIntyre_Lab/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/mel_sexdet_er_vs_data_flag_file_FBgn0004652.csv"
-    countFile = "~/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/mel2dmel6_jxnHash_cnts_sumTR_FBgn0004652.csv"
+    erpFile = "Z://SHARE/McIntyre_Lab/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/mel_sexdet_er_vs_data_pattern_file_FBgn0004652.csv"
+    # flagFile = "Z://SHARE/McIntyre_Lab/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/mel_sexdet_er_vs_data_flag_file_FBgn0004652.csv"
+    countFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/rmg_lmm_dros_data/mel2dmel6_jxnHash_cnts_sumTR_FBgn0004652.csv"
+    outdir = 'C://Users/knife/Desktop/Code Dumping Ground/mcintyre'
+    prefix = "test"
+
+    # erpFile = "~/mclab/SHARE/McIntyre_Lab/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/mel_sexdet_er_vs_data_pattern_file_FBgn0004652.csv"
+    # # flagFile = "~/mclab/SHARE/McIntyre_Lab/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/mel_sexdet_er_vs_data_flag_file_FBgn0004652.csv"
+    # countFile = "~/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/mel2dmel6_jxnHash_cnts_sumTR_FBgn0004652.csv"
 
     erpFile = args.erpFile
     # flagFile = args.flagFile
@@ -155,56 +163,64 @@ def main():
     # TODO: to be consistent for now, i'm just ignoring the last dataOnly 1 flag for discerning patterns
     # do any patterns with dataOnly exons get any of these flags? which ones? Should I just ignore the last 1?
 
+    # TODO: add underbars to flags
+
     # Pattern discernment!
     # 1. flag transcripts with all exon regions in the gene and no reference exon regions
-    patternSeekDf['flagNoSkip'] = patternSeekDf['ERP'].apply(
+    patternSeekDf['flag_noSkip'] = patternSeekDf['ERP'].apply(
         lambda x: 1 if all(char == '1' for char in x) else 0)
-    
-    patternSeekDf['flagNoRefER'] = patternSeekDf['ERP'].apply(
+
+    patternSeekDf['flag_novel'] = patternSeekDf['ERP'].apply(
         lambda x: 1 if all(char == '0' for char in x) else 0)
 
+    # TODO: rename to flag_ERSkip
     # 2. flag transcripts with an exon skip (one missing ER between two present ERs)
     patternSeekDf['flagExonSkip'] = patternSeekDf.apply(
         lambda x: 1 if re.search('(?<=1)+0+(?=1)+', x['ERP']) is not None else 0, axis=1)
 
-    patternSeekDf['numExonSkip'] = patternSeekDf.apply(
-        lambda x: len(re.findall('(?<=1)+0+(?=1)+', x['ERP'])), axis=1)
+    # Do not uncomment.
+    # patternSeekDf['numExonSkip'] = patternSeekDf.apply(
+    #     lambda x: len(re.findall('(?<=1)+0+(?=1)+', x['ERP'])), axis=1)
 
     # 3. 5' and 3' fragment (compared to the gene)
     patternSeekDf['flag5pFragment'] = patternSeekDf.apply(
         lambda x: 1 if re.search(
             "^1+0+$", x['ERP']) is not None else 0, axis=1)
-            # if x['strand'] == '+' else '^0+1+$',
-            # x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
+    # if x['strand'] == '+' else '^0+1+$',
+    # x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
 
     patternSeekDf['flag3pFragment'] = patternSeekDf.apply(
         lambda x: 1 if re.search(
             '^0+1+$', x['ERP']) is not None else 0, axis=1)
-            # if x['strand'] == '+' else "^1+0+$",
-            # x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
+    # if x['strand'] == '+' else "^1+0+$",
+    # x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
 
     # 4. internal fragment
-    patternSeekDf['flagInternalFragment'] = patternSeekDf.apply(
+    patternSeekDf['flag_intrnlFrgmnt'] = patternSeekDf.apply(
         lambda x: 1 if re.search('^0+1+0+$', x['ERP']) is not None else 0, axis=1)
 
     # 5. first/last ER present
-    patternSeekDf['flagFirstERPresent'] = patternSeekDf.apply(
+    patternSeekDf['flag_firstER'] = patternSeekDf.apply(
         lambda x: 1 if re.search(
-            '^1', x['ERP']) is not None else  0, axis=1)
-            # if x['strand'] == '+' else "1$",
-            # x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
+            '^1', x['ERP']) is not None else 0, axis=1)
+    # if x['strand'] == '+' else "1$",
+    # x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
 
-    patternSeekDf['flagLastERPresent'] = patternSeekDf.apply(
+    patternSeekDf['flag_lastER'] = patternSeekDf.apply(
         lambda x: 1 if re.search(
-            '1$', x['ERP']) is not None else  0, axis=1)
-            # if x['strand'] == '+' else "^1",
-            # x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
+            '1$', x['ERP']) is not None else 0, axis=1)
+    # if x['strand'] == '+' else "^1",
+    # x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
 
     # note to self:
     # 5' frag = only has 5' exons (only has exons on the 3' side)
     # 3' frag = only has 3' exons
     # internal frag: only has internal (0s on either end)
 
+    # TODO: Check that the number of total unique jxnHash in pattern file matches
+    # number of numJxnHash
+
+    # GTF2_ERP_jxnHash_cnt
     outFile = "{}/{}_data_ERP_based_ERG.csv".format(outdir, prefix)
     patternSeekDf[[
         'ERG', 'geneID', 'strand', 'numJxnHash', 'numER',
@@ -212,6 +228,7 @@ def main():
         'flag3pFragment', 'flagInternalFragment', 'flagFirstERPresent',
         'flagLastERPresent']].to_csv(outFile, index=False)
 
+    # TODO: do this separately
     if countFile:
         alphatic = time.perf_counter()
 
@@ -223,7 +240,7 @@ def main():
 
         # Count number xscript per ERG using count file
         xscript2ERGDf = ergDf[['ERG', 'jxnHash',
-                               'geneID', 'numER','strand']].explode('jxnHash')
+                               'geneID', 'numER', 'strand']].explode('jxnHash')
 
         uniqPatternHashSet = set(xscript2ERGDf['jxnHash'])
         uniqCountHashSet = set(countDf['jxnHash'])
@@ -268,9 +285,9 @@ def main():
             'jxnHash': set,
             'numTranscripts': sum,
             'numER': max,
-            'strand':set
+            'strand': set
         }).reset_index()
-    
+
         singleStrandERGCnt = ergCountDf['strand'].apply(lambda x: len(x) == 1)
 
         if not singleStrandERGCnt.all():
@@ -279,10 +296,10 @@ def main():
         else:
             ergCountDf['strand'] = ergCountDf['strand'].apply(
                 lambda x: list(x)[0])
-            
+
         ergCountDf['numJxnHash'] = ergCountDf['jxnHash'].apply(len)
         ergCountDf = ergCountDf.sort_values(by=['ERG', 'sample'])
-        
+
         # TODO: need new name
         outCountFile = "{}/{}_ERG_count.csv".format(outdir, prefix)
         ergCountDf[[

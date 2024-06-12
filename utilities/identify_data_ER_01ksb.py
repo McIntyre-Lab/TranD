@@ -60,7 +60,7 @@ def getOptions():
         "--prefix",
         dest="prefix",
         required=False,
-        help="Output prefix. Required."
+        help="Output prefix."
     )
 
     args = parser.parse_args()
@@ -304,6 +304,8 @@ def main():
         outPrefix = "{}/{}".format(outdir, prefix)
     else:
         outPrefix = "{}/".format(outdir)
+
+    print(outPrefix)
 
     outPatternDf.to_csv(
         outPrefix + "/{}_vs_{}_ERP.csv".format(erName, dataName), index=False)
