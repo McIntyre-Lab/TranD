@@ -11,6 +11,7 @@ import pandas as pd
 import trand.io
 import time
 import numpy as np
+import os
 
 
 def getOptions():
@@ -58,7 +59,7 @@ def getOptions():
         "-x",
         "--prefix",
         dest="prefix",
-        required=True,
+        required=False,
         help="Output prefix. Required."
     )
 
@@ -115,9 +116,6 @@ def main():
         print("There are genes belonging to more than one strand. Quitting.")
         quit()
 
-    # sorted(set(
-    #     x['ER']), key=lambda x: int(x.split("ER")[1]) if 'ER' in x else int(x.split("exon_")[1])))
-
     geneDct = dict(geneDf.groupby('gene_id').apply(lambda x:
                                                    sorted(set(x['ER']), key=lambda x: int(x.split("ER")[
                                                           1]) if 'ER' in x else int(x.split("exon_")[1]))
@@ -132,7 +130,6 @@ def main():
     # row2 = pd.DataFrame({'gene_id':'test','seqname':'test','start':0,'end':0,'strand':13341}, index=[len(dataDf)+2])
     # row3 = pd.DataFrame({'gene_id':'test','seqname':'test','start':0,'end':0,'strand':13341}, index=[len(dataDf)+3])
     # yourBoat = pd.DataFrame({'gene_id':'test','seqname':'test','start':0,'end':0,'strand':13341}, index=[len(dataDf)+4])
-
     # dataDf = pd.concat([dataDf,row,row2,row3,yourBoat])
 
     dataDf['numExon'] = dataDf.groupby('transcript_id')[
@@ -141,6 +138,7 @@ def main():
     records = dataDf.to_dict('records')
 
     for row in records:
+
         gene = row['gene_id']
         # jxnHash = row['transcript_id']
 
@@ -155,10 +153,10 @@ def main():
                 # print("looping...")
 
                 if max(row['start'], erInfo['start']) < min(row['end'], erInfo['end']):
-                    # print ("Yippee!")
                     # print(row)
                     # print(erID)
                     # print(erInfo)
+
                     matchingERIDLst.append(erID)
 
             if matchingERIDLst:
@@ -171,21 +169,21 @@ def main():
 
     # TODO: May not be true but makes sense right? if there is an exon that overlaps two exon regions
     # it may not be true biological IR but its definitely overlapping an intron...
-    dataWithERDf['flagIR'] = dataWithERDf['ER'].apply(
+    dataWithERDf['flag_IR'] = dataWithERDf['ER'].apply(
         lambda x: x if not type(x) is list else 1 if len(x) > 1 else 0)
-    dataWithERDf['IRERs'] = dataWithERDf.apply(
-        lambda x: tuple(x['ER']) if x['flagIR'] == 1 else np.nan, axis=1)
+    dataWithERDf['IRER'] = dataWithERDf.apply(
+        lambda x: tuple(x['ER']) if x['flag_IR'] == 1 else np.nan, axis=1)
 
     intmdDf = dataWithERDf[['gene_id', 'transcript_id', 'ER',
-                            'dataOnlyER', 'flagIR', 'IRERs', 'numExon', 'strand']]
+                            'dataOnlyER', 'flag_IR', 'IRER', 'numExon', 'strand']]
     intmdDf = intmdDf.explode('ER')
 
     xscriptERDf = intmdDf.groupby('transcript_id').agg({
         'ER': lambda x: set(x.dropna()),
         'numExon': max,
-        'flagIR': max,
+        'flag_IR': max,
         'dataOnlyER': lambda x: set(x.dropna()),
-        'IRERs': lambda x: set(tuple(sum(x.dropna(), ()))),
+        'IRER': lambda x: set(tuple(sum(x.dropna(), ()))),
         'strand': set
     }).reset_index()
 
@@ -201,7 +199,7 @@ def main():
 
     # Accounts for situations where transcripts have multiple IR events
     xscriptERDf['numIREvent'] = xscriptERDf.groupby(
-        'transcript_id')['flagIR'].transform('sum')
+        'transcript_id')['flag_IR'].transform('sum')
 
     xscriptERDct = dict(zip(xscriptERDf['transcript_id'], xscriptERDf['ER']))
 
@@ -226,6 +224,7 @@ def main():
         geneERLst = geneDct.get(gene)
         xscriptERSet = xscriptERDct.get(transcript)
 
+        # Start with 5'-
         binary = ["1" if ER in xscriptERSet else "0" for ER in geneERLst]
         binary = ''.join(map(str, binary))
         binaryDct[transcript] = [binary, gene]
@@ -257,7 +256,7 @@ def main():
         'geneID': geneLst,
         'strand': strandLst,
         'exonRegion': erLst,
-        'flag_ERPresent': flagLst
+        'flag_IR': flagLst
     })
 
     # Making pattern output file
@@ -273,41 +272,52 @@ def main():
         print("Something went wrong")
         quit()
 
-    outPatternDf['flagDataOnlyExon'] = outPatternDf['dataOnlyER'].apply(
+    outPatternDf['flag_dataOnlyExon'] = outPatternDf['dataOnlyER'].apply(
         lambda x: len(x) != 0)
 
+    # TODO: no numER in ERP file
     outPatternDf['numER'] = outPatternDf['ER'].apply(len)
     outPatternDf['numDataOnlyER'] = outPatternDf['dataOnlyER'].apply(len)
 
-    outPatternDf = outPatternDf[['jxnHash', 'geneID', 'strand', 'ERP', 'numExon',
-                                 'numER', 'numDataOnlyER', 'flagIR', 'numIREvent', 'IRERs']]
-
-    outPatternDf['flagReverseIR'] = outPatternDf.apply(
+    # TODO: rename reverseIR
+    outPatternDf['flag_reverseIR'] = outPatternDf.apply(
         lambda x: 1 if x['numExon'] > x['numER'] + x['numDataOnlyER'] else 0, axis=1)
 
-    outPatternDf['IRERs'] = outPatternDf['IRERs'].apply(
+    outPatternDf['IRER'] = outPatternDf['IRER'].apply(
         lambda x: '|'.join(x) if x else np.nan)
 
     outFlagDf = outFlagDf.sort_values(by=['geneID', 'jxnHash'])
     outPatternDf = outPatternDf.sort_values(by=['geneID', 'jxnHash'])
 
+    outPatternDf = outPatternDf[['jxnHash', 'geneID', 'strand', 'ERP', 'numExon',
+                                 'numDataOnlyER', 'flag_IR', 'numIREvent', 'IRER',
+                                 'flag_reverseIR']]
+
     # Do not uncomment. Will probably crash the script.
-    # wideDf = pd.pivot_table(outDf, values='flag_ERPresent', index=['jxnHash','geneID'], columns='exonRegion', fill_value=0)
+    # wideDf = pd.pivot_table(outDf, values='flag_ER', index=['jxnHash','geneID'], columns='exonRegion', fill_value=0)
 
     # Output
+    erName = os.path.splitext(os.path.basename(erFile))[0]
+    dataName = os.path.splitext(os.path.basename(dataFile))[0]
+
+    if prefix:
+        outPrefix = "{}/{}".format(outdir, prefix)
+    else:
+        outPrefix = "{}/".format(outdir)
+
     outPatternDf.to_csv(
-        "{}/{}_er_vs_data_pattern_file.csv".format(outdir, prefix), index=False)
+        outPrefix + "/{}_vs_{}_ERP.csv".format(erName, dataName), index=False)
 
     outFlagDf.to_csv(
-        "{}/{}_er_vs_data_flag_file.csv".format(outdir, prefix), index=False)
+        outPrefix + "/{}_vs_{}_flag_ER.csv".format(erName, dataName), index=False)
 
     if refOnlyGnLst:
         pd.Series(refOnlyGnLst).to_csv(
-            "{}/list_{}_er_vs_data_reference_only_genes.txt".format(outdir, prefix), index=False, header=False)
+            outPrefix + "/{}_vs_{}_anno_only_genes.txt".format(erName, dataName), index=False, header=False)
 
     if dataOnlyGnLst:
         pd.Series(dataOnlyGnLst).to_csv(
-            "{}/list_{}_er_vs_data_data_only_genes.txt".format(outdir, prefix), index=False, header=False)
+            outPrefix + "/{}_vs_{}_data_only_genes.txt".format(erName, dataName), index=False, header=False)
 
     omegatoc = time.perf_counter()
 
