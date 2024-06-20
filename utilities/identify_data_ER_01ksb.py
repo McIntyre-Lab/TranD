@@ -73,6 +73,8 @@ def main():
     dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/trand_2gtf_fiveSpecies_er_vs_data/FBgn0000662_data.gtf"
     outdir = "/nfshome/k.bankole/Desktop/test_folder"
 
+    # dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc.gtf"
+
     # erFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/trand_2gtf_fiveSpecies_er_vs_data/fiveSpecies_2_dmel6_ujc_er.gtf"
     # dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/dmel_sexdet_fiveSpecies_vs_data/mel_2_dmel6_uniq_jxnHash_sexDet.gtf"
 
@@ -120,8 +122,9 @@ def main():
                                                    sorted(set(x['ER']), key=lambda x: int(x.split("ER")[
                                                           1]) if 'ER' in x else int(x.split("exon_")[1]))
                                                    if (x['strand'] == "+").all()
-                                                   else
-                                                   sorted(set(x['ER']), key=lambda x: int(x.split("ER")[1]) if 'ER' in x else int(x.split("exon_")[1]), reverse=True)))
+                                                   else 
+                                                   sorted(set(x['ER']), key=lambda x: int(x.split("ER")[
+                                                       1]) if 'ER' in x else int(x.split("exon_")[1]), reverse=True)))
 
     # TODO: CHECK THAT ALL SETS ARE OF SIZE ONE
     erDct = geneDf.groupby('ER').agg('first').to_dict(orient='index')
@@ -134,9 +137,14 @@ def main():
 
     dataDf['numExon'] = dataDf.groupby('transcript_id')[
         'transcript_id'].transform('count')
+    
+    dataDf['dataOnlyER'] = np.nan
 
     records = dataDf.to_dict('records')
-
+    
+    
+    
+    
     for row in records:
 
         gene = row['gene_id']

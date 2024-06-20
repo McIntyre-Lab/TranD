@@ -67,8 +67,8 @@ def main():
     countFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/rmg_lmm_dros_data/mel2dmel6_jxnHash_cnts_sumTR_FBgn0004652.csv"
     outdir = 'C://Users/knife/Desktop/Code Dumping Ground/mcintyre'
 
-    # erpFile = "~/mclab/SHARE/McIntyre_Lab/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/mel_sexdet_er_vs_data_pattern_file_FBgn0004652.csv"
-    # countFile = "~/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/mel2dmel6_jxnHash_cnts_sumTR_FBgn0004652.csv"
+    erpFile = "~/mclab/SHARE/McIntyre_Lab/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/mel_sexdet_er_vs_data_pattern_file_FBgn0004652.csv"
+    countFile = "~/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/mel2dmel6_jxnHash_cnts_sumTR_FBgn0004652.csv"
 
     prefix = "test"
     fileName = "gtf2"
@@ -82,9 +82,11 @@ def main():
     inERPDf = pd.read_csv(erpFile, low_memory=False)
 
     # Group into ERGs using ERPs and do some edits to the DF
+    
+    # TODO: data only exons? are patterns that are the same but with a different number of dataonly exons different?
     erpDf = inERPDf.groupby(['geneID', 'ERP']).agg({
         'jxnHash': set,
-        'strand': set
+        'strand': set,
     }).reset_index()
 
     singleStrandERP = erpDf['strand'].apply(lambda x: len(x) == 1)
