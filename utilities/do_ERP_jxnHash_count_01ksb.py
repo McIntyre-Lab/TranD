@@ -220,7 +220,8 @@ def main():
     outNumCheck = patternSeekDf['numJxnHash'].sum()
 
     if numUniqJxnHash != outNumCheck:
-        print("The number of jxnHashes in the input does not match the number of jxnHashes in the input.")
+        raise Exception(
+            "The number of jxnHashes in the input does not match the number of jxnHashes in the input.")
         print("There are {} unique jxnHash in the output file.".format(outNumCheck))
 
     patternSeekDf[[
