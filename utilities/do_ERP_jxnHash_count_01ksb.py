@@ -81,6 +81,10 @@ def main():
     prefix = args.prefix
 
     inERPDf = pd.read_csv(erpFile, low_memory=False)
+
+    numUniqJxnHash = inERPDf['jxnHash'].nunique()
+    print("There are {} unique jxnHash in the ERP file.".format(numUniqJxnHash))
+
     # inERPDf['numDataOnlyExon'] = inERPDf['numDataOnlyER']
 
     # Group into ERGs using ERPs and do some edits to the DF
@@ -212,6 +216,12 @@ def main():
     # GTF2_ERP_jxnHash_cnt
 
     outFile = outPrefix + "{}_ERP_jxnHash_cnt.csv".format(fileName)
+
+    outNumCheck = patternSeekDf['numJxnHash'].sum()
+
+    if numUniqJxnHash != outNumCheck:
+        print("The number of jxnHashes in the input does not match the number of jxnHashes in the input.")
+        print("There are {} unique jxnHash in the output file.".format(outNumCheck))
 
     patternSeekDf[[
         'ERP', 'flagDataOnlyExon', 'geneID', 'strand', 'numJxnHash', 'numAnnotatedER',
