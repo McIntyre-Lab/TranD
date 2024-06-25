@@ -313,7 +313,7 @@ def main():
         erpCountDf = erpCountDf.sort_values(by=['ERP', 'sample'])
 
         # TODO: need new name
-        outCountFile = "{}/{}_ERP_count.csv".format(outdir, prefix)
+        outCountFile = outPrefix + "{}_ERP_read_cnt.csv".format(fileName)
         erpCountDf[[
             'sample', 'geneID', 'strand', 'ERP', 'flagDataOnlyExon', 'numJxnHash', 'numTranscripts',
             'numAnnotatedER'
