@@ -69,17 +69,17 @@ def getOptions():
 
 def main():
 
-    erFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/trand_2gtf_fiveSpecies_er_vs_data/FBgn0000662_fiveSpecies_2_dmel6_ujc_er.gtf"
-    dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/trand_2gtf_fiveSpecies_er_vs_data/FBgn0000662_data.gtf"
+    erFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/FBgn0000662_fiveSpecies_2_dmel6_ujc_er.gtf"
+    dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/FBgn0000662_data.gtf"
     outdir = "/nfshome/k.bankole/Desktop/test_folder"
 
     # dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc.gtf"
 
-    # erFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/trand_2gtf_fiveSpecies_er_vs_data/fiveSpecies_2_dmel6_ujc_er.gtf"
+    # erFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc_er.gtf"
     # dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/dmel_sexdet_fiveSpecies_vs_data/mel_2_dmel6_uniq_jxnHash_sexDet.gtf"
 
-    erFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/trand_2gtf_fiveSpecies_er_vs_data/FBgn0000662_fiveSpecies_2_dmel6_ujc_er.gtf"
-    dataFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/trand_2gtf_fiveSpecies_er_vs_data/FBgn0000662_data.gtf"
+    erFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/FBgn0000662_fiveSpecies_2_dmel6_ujc_er.gtf"
+    dataFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/FBgn0000662_data.gtf"
     outdir = 'C://Users/knife/Desktop/Code Dumping Ground/mcintyre'
 
     prefix = "test_prefix"
@@ -122,7 +122,7 @@ def main():
                                                    sorted(set(x['ER']), key=lambda x: int(x.split("ER")[
                                                           1]) if 'ER' in x else int(x.split("exon_")[1]))
                                                    if (x['strand'] == "+").all()
-                                                   else 
+                                                   else
                                                    sorted(set(x['ER']), key=lambda x: int(x.split("ER")[
                                                        1]) if 'ER' in x else int(x.split("exon_")[1]), reverse=True)))
 
@@ -137,14 +137,11 @@ def main():
 
     dataDf['numExon'] = dataDf.groupby('transcript_id')[
         'transcript_id'].transform('count')
-    
-    dataDf['dataOnlyER'] = np.nan
+
+    dataDf['dataOnlyExon'] = np.nan
 
     records = dataDf.to_dict('records')
-    
-    
-    
-    
+
     for row in records:
 
         gene = row['gene_id']
@@ -170,27 +167,27 @@ def main():
             if matchingERIDLst:
                 row['ER'] = matchingERIDLst
             else:
-                row['dataOnlyER'] = "{}:{}_{}".format(
+                row['dataOnlyExon'] = "{}:{}_{}".format(
                     gene, row['start'], row['end'])
 
     dataWithERDf = pd.DataFrame(records)
 
     # TODO: May not be true but makes sense right? if there is an exon that overlaps two exon regions
     # it may not be true biological IR but its definitely overlapping an intron...
-    dataWithERDf['flag_IR'] = dataWithERDf['ER'].apply(
+    dataWithERDf['flagIR'] = dataWithERDf['ER'].apply(
         lambda x: x if not type(x) is list else 1 if len(x) > 1 else 0)
     dataWithERDf['IRER'] = dataWithERDf.apply(
-        lambda x: tuple(x['ER']) if x['flag_IR'] == 1 else np.nan, axis=1)
+        lambda x: tuple(x['ER']) if x['flagIR'] == 1 else np.nan, axis=1)
 
     intmdDf = dataWithERDf[['gene_id', 'transcript_id', 'ER',
-                            'dataOnlyER', 'flag_IR', 'IRER', 'numExon', 'strand']]
+                            'dataOnlyExon', 'flagIR', 'IRER', 'numExon', 'strand']]
     intmdDf = intmdDf.explode('ER')
 
     xscriptERDf = intmdDf.groupby('transcript_id').agg({
         'ER': lambda x: set(x.dropna()),
         'numExon': max,
-        'flag_IR': max,
-        'dataOnlyER': lambda x: set(x.dropna()),
+        'flagIR': max,
+        'dataOnlyExon': lambda x: set(x.dropna()),
         'IRER': lambda x: set(tuple(sum(x.dropna(), ()))),
         'strand': set
     }).reset_index()
@@ -207,12 +204,12 @@ def main():
 
     # Accounts for situations where transcripts have multiple IR events
     xscriptERDf['numIREvent'] = xscriptERDf.groupby(
-        'transcript_id')['flag_IR'].transform('sum')
+        'transcript_id')['flagIR'].transform('sum')
 
     xscriptERDct = dict(zip(xscriptERDf['transcript_id'], xscriptERDf['ER']))
 
-    dataOnlyERDct = dict(
-        zip(xscriptERDf['transcript_id'], xscriptERDf['dataOnlyER']))
+    dataOnlyExonDct = dict(
+        zip(xscriptERDf['transcript_id'], xscriptERDf['dataOnlyExon']))
 
     loopLst = [tuple(x) for x in dataWithERDf[[
         'gene_id', 'transcript_id', 'strand']].drop_duplicates().to_records(index=False)]
@@ -232,7 +229,6 @@ def main():
         geneERLst = geneDct.get(gene)
         xscriptERSet = xscriptERDct.get(transcript)
 
-        starter = ["5'-"]
         binary = ["5'-"] + \
             ["1" if ER in xscriptERSet else "0" for ER in geneERLst]
         binary = ''.join(map(str, binary))
@@ -251,9 +247,9 @@ def main():
             flagLst.append(flag)
             strandLst.append(strand)
 
-        if dataOnlyERDct[transcript]:
+        if dataOnlyExonDct[transcript]:
 
-            for exonRegion in dataOnlyERDct[transcript]:
+            for exonRegion in dataOnlyExonDct[transcript]:
                 xscriptLst.append(transcript)
                 geneLst.append(gene)
                 erLst.append(exonRegion)
@@ -265,7 +261,7 @@ def main():
         'geneID': geneLst,
         'strand': strandLst,
         'exonRegion': erLst,
-        'flag_IR': flagLst
+        'flagER': flagLst
     })
 
     # Making pattern output file
@@ -281,16 +277,16 @@ def main():
         print("Something went wrong")
         quit()
 
-    outPatternDf['flag_dataOnlyExon'] = outPatternDf['dataOnlyER'].apply(
+    outPatternDf['flagDataOnlyExon'] = outPatternDf['dataOnlyExon'].apply(
         lambda x: len(x) != 0)
 
     # TODO: no numER in ERP file
     outPatternDf['numER'] = outPatternDf['ER'].apply(len)
-    outPatternDf['numDataOnlyER'] = outPatternDf['dataOnlyER'].apply(len)
+    outPatternDf['numDataOnlyExon'] = outPatternDf['dataOnlyExon'].apply(len)
 
     # TODO: rename reverseIR
-    outPatternDf['flag_reverseIR'] = outPatternDf.apply(
-        lambda x: 1 if x['numExon'] > x['numER'] + x['numDataOnlyER'] else 0, axis=1)
+    outPatternDf['flagReverseIR'] = outPatternDf.apply(
+        lambda x: 1 if x['numExon'] > x['numER'] + x['numDataOnlyExon'] else 0, axis=1)
 
     outPatternDf['IRER'] = outPatternDf['IRER'].apply(
         lambda x: '|'.join(x) if x else np.nan)
@@ -299,8 +295,8 @@ def main():
     outPatternDf = outPatternDf.sort_values(by=['geneID', 'jxnHash'])
 
     outPatternDf = outPatternDf[['jxnHash', 'geneID', 'strand', 'ERP', 'numExon',
-                                 'numDataOnlyER', 'flag_IR', 'numIREvent', 'IRER',
-                                 'flag_reverseIR']]
+                                 'numDataOnlyExon', 'flagIR', 'numIREvent', 'IRER',
+                                 'flagReverseIR']]
 
     # Do not uncomment. Will probably crash the script.
     # wideDf = pd.pivot_table(outDf, values='flag_ER', index=['jxnHash','geneID'], columns='exonRegion', fill_value=0)
