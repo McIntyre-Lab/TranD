@@ -214,7 +214,7 @@ def main():
     outFile = outPrefix + "{}_ERP_jxnHash_cnt.csv".format(fileName)
 
     patternSeekDf[[
-        'ERP', 'flagDataOnlyExon', 'geneID', 'strand', 'numJxnHash', 'numER',
+        'ERP', 'flagDataOnlyExon', 'geneID', 'strand', 'numJxnHash', 'numAnnotatedER',
         'flagNoSkip', 'flagNovel', 'flagERSkip', 'flag5pFragment',
         'flag3pFragment', 'flagIntrnlFrgmnt', 'flagFirstER',
         'flagLastER']].to_csv(outFile, index=False)
@@ -230,8 +230,8 @@ def main():
             f"Count file read complete! Took {(omegatoc-alphatic):0.4f} seconds.")
 
         # Count number xscript per ERG using count file
-        xscript2ERPDf = erpDf[['ERP', 'jxnHash',
-                               'geneID', 'numER', 'strand']].explode('jxnHash')
+        xscript2ERPDf = erpDf[['ERP', 'flagDataOnlyExon', 'jxnHash',
+                               'geneID', 'numAnnotatedER', 'strand']].explode('jxnHash')
 
         uniqPatternHashSet = set(xscript2ERPDf['jxnHash'])
         uniqCountHashSet = set(countDf['jxnHash'])
@@ -282,10 +282,10 @@ def main():
         #     # quit()
 
         mergeCountAndERPDf = mergeCountAndERPDf.drop('merge_check', axis=1)
-        erpCountDf = mergeCountAndERPDf.groupby(['sample', 'geneID', 'ERP']).agg({
+        erpCountDf = mergeCountAndERPDf.groupby(['sample', 'geneID', 'ERP', 'flagDataOnlyExon']).agg({
             'jxnHash': set,
             'numTranscripts': sum,
-            'numER': max,
+            'numAnnotatedER': max,
             'strand': set
         }).reset_index()
 
@@ -304,8 +304,8 @@ def main():
         # TODO: need new name
         outCountFile = "{}/{}_ERP_count.csv".format(outdir, prefix)
         erpCountDf[[
-            'sample', 'geneID', 'strand', 'ERP', 'numJxnHash', 'numTranscripts',
-            'numER'
+            'sample', 'geneID', 'strand', 'ERP', 'flagDataOnlyExon', 'numJxnHash', 'numTranscripts',
+            'numAnnotatedER'
         ]].to_csv(outCountFile, index=False)
 
 
