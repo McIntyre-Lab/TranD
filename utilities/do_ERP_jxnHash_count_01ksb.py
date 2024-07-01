@@ -312,7 +312,6 @@ def main():
         erpCountDf['numJxnHash'] = erpCountDf['jxnHash'].apply(len)
         erpCountDf = erpCountDf.sort_values(by=['ERP', 'sample'])
 
-        # TODO: need new name
         outCountFile = outPrefix + "{}_ERP_read_cnt.csv".format(fileName)
         erpCountDf[[
             'sample', 'geneID', 'strand', 'ERP', 'flagDataOnlyExon', 'numJxnHash', 'numTranscripts',
