@@ -71,16 +71,16 @@ def main():
 
     erFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/FBgn0000662_fiveSpecies_2_dmel6_ujc_er.gtf"
     dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/FBgn0000662_data.gtf"
-    outdir = "/nfshome/k.bankole/Desktop/test_folder"
+    # outdir = "/nfshome/k.bankole/Desktop/test_folder"
 
     # dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc.gtf"
 
     # erFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc_er.gtf"
-    # dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/dmel_sexdet_fiveSpecies_vs_data/mel_2_dmel6_uniq_jxnHash_sexDet.gtf"
+    # dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/mel_2_dmel6_uniq_jxnHash_sexDet.gtf"
 
-    erFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/FBgn0000662_fiveSpecies_2_dmel6_ujc_er.gtf"
-    dataFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/FBgn0000662_data.gtf"
-    outdir = 'C://Users/knife/Desktop/Code Dumping Ground/mcintyre'
+    # erFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/FBgn0000662_fiveSpecies_2_dmel6_ujc_er.gtf"
+    # dataFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/FBgn0000662_data.gtf"
+    # outdir = 'C://Users/knife/Desktop/Code Dumping Ground/mcintyre'
 
     prefix = "test_prefix"
 
@@ -106,10 +106,7 @@ def main():
     dataDf = inDataDf[inDataDf['gene_id'].isin(genesInBoth)].copy()
 
     geneDf = geneDf[['gene_id', 'seqname', 'start', 'end', 'strand']].copy()
-    geneDf = geneDf.sort_values(['seqname', 'gene_id', 'start'])
-
-    geneDf['ER'] = geneDf['gene_id'] + ':ER' + \
-        (geneDf.groupby('gene_id').cumcount() + 1).astype(str)
+    geneDf = geneDf.sort_values(['seqname', 'gene_id', 'start'],ignore_index=True)
 
     singleStrandGene = geneDf.groupby('gene_id').agg(
         set)['strand'].apply(lambda x: len(x) == 1)
@@ -117,14 +114,30 @@ def main():
     if not singleStrandGene.all():
         print("There are genes belonging to more than one strand. Quitting.")
         quit()
+    
+    plusDf = geneDf[geneDf['strand'] == "+"].copy()
+    minusDf = geneDf[geneDf['strand'] == "-"].copy()
+    
+    plusDf['ER'] = geneDf['gene_id'] + ':ER' + \
+        (geneDf.groupby('gene_id').cumcount() + 1).astype(str)
 
-    geneDct = dict(geneDf.groupby('gene_id').apply(lambda x:
-                                                   sorted(set(x['ER']), key=lambda x: int(x.split("ER")[
-                                                          1]) if 'ER' in x else int(x.split("exon_")[1]))
-                                                   if (x['strand'] == "+").all()
-                                                   else
-                                                   sorted(set(x['ER']), key=lambda x: int(x.split("ER")[
-                                                       1]) if 'ER' in x else int(x.split("exon_")[1]), reverse=True)))
+    minusDf['ER'] = geneDf['gene_id'] + ':ER' + \
+        (geneDf.groupby('gene_id').cumcount(ascending=False) + 1).astype(str)
+    
+    geneDf = pd.concat([plusDf, minusDf], axis=0, sort=False)            
+    
+    # geneDf['ER'] = geneDf['gene_id'] + ':ER' + \
+    #     (geneDf.groupby('gene_id').cumcount() + 1).astype(str)
+    
+    geneDct = dict(geneDf.groupby('gene_id').apply(lambda x: sorted(set(x['ER']), key=lambda x: int(x.split("ER")[1]))))
+        
+    # geneDct = dict(geneDf.groupby('gene_id').apply(lambda x:
+    #                                                sorted(set(x['ER']), key=lambda x: int(x.split("ER")[
+    #                                                       1]) if 'ER' in x else int(x.split("exon_")[1]))
+    #                                                if (x['strand'] == "+").all()
+    #                                                else
+    #                                                sorted(set(x['ER']), key=lambda x: int(x.split("ER")[
+    #                                                    1]) if 'ER' in x else int(x.split("exon_")[1]), reverse=True)))
 
     # TODO: CHECK THAT ALL SETS ARE OF SIZE ONE
     erDct = geneDf.groupby('ER').agg('first').to_dict(orient='index')

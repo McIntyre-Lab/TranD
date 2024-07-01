@@ -56,13 +56,13 @@ def getOptions():
 
 def main():
 
-    # inAnnoERPFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc_er_vs_fiveSpecies_2_dmel6_ujc_ERP.csv"
-    # inDataERPFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/fiveSpecies_2_dmel6_ujc_er_vs_mel_2_dmel6_uniq_jxnHash_ERP.csv"
-    # in5SpFlagFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/flag_fiveSpecies_2_dmel6_ujc.csv"
+    inAnnoERPFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc_er_vs_fiveSpecies_2_dmel6_ujc_ERP.csv"
+    inDataERPFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/mel_sexdet_fiveSpecies_2_dmel6_ujc_er_sexDetSubset_vs_mel_2_dmel6_uniq_jxnHash_sexDetSubset_ERP.csv"
+    in5SpFlagFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/flag_fiveSpecies_2_dmel6_ujc.csv"
 
-    inAnnoERPFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc_er_vs_fiveSpecies_2_dmel6_ujc_ERP.csv"
-    inDataERPFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/mel_sexdet_fiveSpecies_2_dmel6_ujc_er_sexDetSubset_vs_mel_2_dmel6_uniq_jxnHash_sexDetSubset_ERP.csv"
-    in5SpFlagFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/flag_fiveSpecies_2_dmel6_ujc.csv"
+    # inAnnoERPFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc_er_vs_fiveSpecies_2_dmel6_ujc_ERP.csv"
+    # inDataERPFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/mel_sexdet_fiveSpecies_2_dmel6_ujc_er_sexDetSubset_vs_mel_2_dmel6_uniq_jxnHash_sexDetSubset_ERP.csv"
+    # in5SpFlagFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/flag_fiveSpecies_2_dmel6_ujc.csv"
 
     inAnnoERPDf = pd.read_csv(inAnnoERPFile, low_memory=False)
     inDataERPDf = pd.read_csv(inDataERPFile, low_memory=False)
@@ -93,6 +93,7 @@ def main():
     merge1Df = pd.merge(erpDf, flagDf, how='outer', on=[
                         'geneID', 'jxnHash'], indicator='merge_check')
 
+
     # TODO: error and success message
     if not (merge1Df['merge_check'] == 'both').all():
         print("Something")
@@ -108,6 +109,15 @@ def main():
 
     merge2Df = pd.merge(dataDf, merge1Df, how='outer', on=[
                         'jxnHash'], indicator='merge_check', suffixes=['_data', '_anno'])
+
+
+    a = merge2Df[merge2Df['merge_check'].str.contains("both")]
+    
+    testDf = a[a['ERP_data'] != a['ERP_anno']]
+    
+    testDf = testDf[['jxnHash','geneID_data','geneID_anno','ERP_data','ERP_anno']]
+
+
 
     quickOut = merge2Df[merge2Df['merge_check'] == 'both'].copy()
 
