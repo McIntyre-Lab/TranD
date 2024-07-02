@@ -77,7 +77,7 @@ def main():
     # Subsetting the design file for testing purposese only
     # dsnDf = dsnDf[dsnDf['sample'].apply(lambda x: 'mel' in x)]
 
-    dscFileDct = {sampleID: "{}/{}.csv".format(
+    dscFileDct = {sampleID: "{}/{}".format(
         inDir, fileFormat).format(sampleID) for sampleID in dsnDf['sampleID']}
 
     # dsnDf['sampleID'] = dsnDf['sample'] + "_TR" + dsnDf[techRep].astype(str)
