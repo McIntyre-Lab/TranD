@@ -62,7 +62,7 @@ def main():
     # outFile = "/nfshome/k.bankole/Desktop/test_dsc/out_ujc_dsc.csv"
     # genomeName = "dmel6"
     # techRep = "TechRep"
-    # fileFormat = ???
+    # fileFormat = "test"
 
     desiFile = args.desiFile
     inDir = args.inDir
@@ -78,7 +78,7 @@ def main():
     # dsnDf = dsnDf[dsnDf['sample'].apply(lambda x: 'mel' in x)]
 
     dscFileDct = {sampleID: "{}/{}.csv".format(
-        fileFormat, inDir, sampleID, genomeName) for sampleID in dsnDf['sampleID']}
+        inDir, fileFormat).format(sampleID) for sampleID in dsnDf['sampleID']}
 
     # dsnDf['sampleID'] = dsnDf['sample'] + "_TR" + dsnDf[techRep].astype(str)
     # dscFileDct = {sampleID:"{}/{}_2_{}_ujc_dscrptn.csv".format(inDir, sampleID, genomeName) for sampleID in dsnDf['sampleID']}
