@@ -4,6 +4,7 @@ import argparse
 import pandas as pd
 import trand.io
 
+
 def getOptions():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="Convert event analysis file from TranD 1 GTF gene output "
@@ -13,43 +14,48 @@ def getOptions():
     # Input data
     parser.add_argument("-e",
                         "--event-analysis",
-                        dest="eaFile", 
-                        required=True, 
+                        dest="eaFile",
+                        required=True,
                         help="Path to event analysis file")
 
     # Output data
-    parser.add_argument("-o",+
+    parser.add_argument("-o",
                         "--output-gtf",
-                        dest="outGTF", 
+                        dest="outGTF",
                         required=True,
                         help="Path and filename for output GTF")
-    
+
     args = parser.parse_args()
     return args
 
+
 def main():
-    
+
     # eaFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_conv_EA2GTF/event_analysis_er.csv"
     # gtfOutPath = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_conv_EA2GTF/test_gtf.gtf"
-    
+
     eaFile = "/nfshome/k.bankole/mclab/SHARE/McIntyre_Lab/sex_specific_splicing/trand_1GTF_geneMode_fiveSpecies_ujc/fiveSpecies_2_dmel6_ujc_event_analysis_er.csv"
-    
+
     eaFile = args.eaFile
     gtfOutPath = args.outGTF
-    
-    eaDf = pd.read_csv(eaFile,low_memory=False)
-    
-    eaDf = eaDf.rename(columns={'er_chr':'seqname',
-                        'er_strand':'strand',
-                        'er_start':'start',
-                        'er_end':'end'})
-    
+
+    eaDf = pd.read_csv(eaFile, low_memory=False)
+
+    eaDf = eaDf.rename(columns={'er_chr': 'seqname',
+                                'er_strand': 'strand',
+                                'er_start': 'start',
+                                'er_end': 'end'})
+
     eaDf['transcript_id'] = eaDf['gene_id']
-    eaDf = eaDf[['seqname','start','end','strand','transcript_id','gene_id']]
-    outExonDf = eaDf.sort_values(by=['seqname','transcript_id','start']).reset_index(drop=True)
+    eaDf = eaDf[['seqname', 'start', 'end',
+                 'strand', 'transcript_id', 'gene_id']]
+    outExonDf = eaDf.sort_values(
+        by=['seqname', 'transcript_id', 'start']).reset_index(drop=True)
     outExonDf['start'] = outExonDf['start'].apply(lambda x: 1 if x == 0 else x)
 
-    trand.io.write_gtf(data=outExonDf, out_fhs={"gtf":gtfOutPath}, fh_name="gtf")
+    trand.io.write_gtf(data=outExonDf, out_fhs={
+                       "gtf": gtfOutPath}, fh_name="gtf")
+
 
 if __name__ == '__main__':
     # Parse command line arguments
