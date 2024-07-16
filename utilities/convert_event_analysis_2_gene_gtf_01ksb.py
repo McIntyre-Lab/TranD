@@ -3,6 +3,7 @@
 import argparse
 import pandas as pd
 import trand.io
+import os
 
 
 def getOptions():
@@ -53,6 +54,10 @@ def main():
         by=['seqname', 'transcript_id', 'start']).reset_index(drop=True)
     outExonDf['start'] = outExonDf['start'].apply(lambda x: 1 if x == 0 else x)
 
+    if os.path.isfile(gtfOutPath):
+            os.remove(gtfOutPath)
+            
+            
     trand.io.write_gtf(data=outExonDf, out_fhs={
                        "gtf": gtfOutPath}, fh_name="gtf")
 
