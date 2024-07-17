@@ -60,6 +60,11 @@ def main():
     genomeName = args.genomeName
     inCat = args.inCat
     outGTF = args.outGTF
+    
+    print(inCat)
+    for file in inCat:
+        print(file)
+        
 
     # Create dct {ujc gtf name:GTF DF}
     # indexDfDct = dict()
