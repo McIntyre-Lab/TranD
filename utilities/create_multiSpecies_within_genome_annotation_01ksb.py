@@ -90,6 +90,7 @@ def main():
         concatDf['transcript_id'].nunique()))
 
     # Could use some extra verification but... seems like this is good?
+    # You could not have been more wrong^^^^^^^^
 
     print("Writing GTF...")
     if os.path.isfile(outGTF):
