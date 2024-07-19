@@ -10,10 +10,15 @@ import trand.io
 
 def getOptions():
     # Parse command line arguments
-    parser = argparse.ArgumentParser(description="Input genomeName as seen in mapping/ujc output, "
-                                     "path to UJC GTF files all mapped to said genome in one argument, and"
-                                     "outfile for the GTF (path and name). Outputs a file only contains unique jxnHashes "
-                                     "from all species within one genome.")
+    parser = argparse.ArgumentParser(description="Input path to UJC GTF files all mapped to "
+                                     "one genome in one argument and "
+                                     "outfile for the GTF (path and name). "
+                                     "Outputs a file only contains unique jxnHashes "
+                                     "from all species within one genome. If "
+                                     "the same jxnHash exists across multiple "
+                                     "annotations, the earliest start for the "
+                                     "first exon and the latest end for the "
+                                     "last exon will be chosen.")
 
     # Input data
     # parser.add_argument("-gn",
