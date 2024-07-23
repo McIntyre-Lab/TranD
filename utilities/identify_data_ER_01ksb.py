@@ -77,7 +77,7 @@ def getOptions():
     )
 
     parser.add_argument(
-        "-sid",
+        "-s",
         "--sample-ID",
         dest="sampleID",
         required=False,
