@@ -27,7 +27,20 @@ def getOptions():
     """
 
     # Parse command line arguments
-    parser = argparse.ArgumentParser(description="Placeholder")
+    parser = argparse.ArgumentParser(description="A script that compares a desired GTF (-d) (typically "
+                                     "reads in GTF form) to an exon region (ER) "
+                                     "GTF (-er). Creates exon region patterns (ERP) which are "
+                                     "binary patterns indicating which of a gene's exon "
+                                     "regions a transcript has exons within. Outputs two files: "
+                                     "to desired output directory (-o). "
+                                     "1. A list of transcripts and their ERPs. 2. A flag file "
+                                     "that indicates which of the gene's exon regions the "
+                                     "transcript has. Script will also output a list of genes"
+                                     "that only appear one GTF. There is also an option to add an "
+                                     "output prefix (-x). Note that there are two forms of "
+                                     "these ERPs: one in which the exon regions "
+                                     "match the way they would appear in the DNA (takes strand into account "
+                                     "and one in which they match the order of the GTF. ")
 
     # INPUT
     parser.add_argument(
@@ -63,14 +76,22 @@ def getOptions():
         help="Output prefix."
     )
 
+    parser.add_argument(
+        "-sid",
+        "--sample-ID",
+        dest="sampleID",
+        required=False,
+        help="Optional SampleID. Will create a sampleID column in output."
+    )
+
     args = parser.parse_args()
     return args
 
 
 def main():
 
-    erFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/FBgn0000662_fiveSpecies_2_dmel6_ujc_er.gtf"
-    dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/FBgn0000662_data.gtf"
+    # erFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/FBgn0000662_fiveSpecies_2_dmel6_ujc_er.gtf"
+    # dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/FBgn0000662_data.gtf"
     # outdir = "/nfshome/k.bankole/Desktop/test_folder"
 
     # dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc.gtf"
@@ -82,12 +103,20 @@ def main():
     # dataFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/FBgn0000662_data.gtf"
     # outdir = 'C://Users/knife/Desktop/Code Dumping Ground/mcintyre'
 
-    prefix = "test_prefix"
+    erFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc_sexDetSubset_er.gtf"
+    dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc_sexDetSubset.gtf"
+
+    outdir = "/nfshome/k.bankole/Desktop/test_folder"
+
+    # prefix = "test_prefix"
+    sampleID = "testSampleID"
+    prefix = None
 
     erFile = args.erFile
     dataFile = args.dataFile
     outdir = args.outdir
     prefix = args.prefix
+    sampleID = args.sampleID
 
     alphatic = time.perf_counter()
 
@@ -106,7 +135,8 @@ def main():
     dataDf = inDataDf[inDataDf['gene_id'].isin(genesInBoth)].copy()
 
     geneDf = geneDf[['gene_id', 'seqname', 'start', 'end', 'strand']].copy()
-    geneDf = geneDf.sort_values(['seqname', 'gene_id', 'start'],ignore_index=True)
+    geneDf = geneDf.sort_values(
+        ['seqname', 'gene_id', 'start'], ignore_index=True)
 
     singleStrandGene = geneDf.groupby('gene_id').agg(
         set)['strand'].apply(lambda x: len(x) == 1)
@@ -114,33 +144,17 @@ def main():
     if not singleStrandGene.all():
         print("There are genes belonging to more than one strand. Quitting.")
         quit()
-    
-    plusDf = geneDf[geneDf['strand'] == "+"].copy()
-    minusDf = geneDf[geneDf['strand'] == "-"].copy()
-    
-    plusDf['ER'] = geneDf['gene_id'] + ':ER' + \
+
+    geneDf['ER'] = geneDf['gene_id'] + ':ER' + \
         (geneDf.groupby('gene_id').cumcount() + 1).astype(str)
 
-    minusDf['ER'] = geneDf['gene_id'] + ':ER' + \
-        (geneDf.groupby('gene_id').cumcount(ascending=False) + 1).astype(str)
-    
-    geneDf = pd.concat([plusDf, minusDf], axis=0, sort=False)            
-    
-    # geneDf['ER'] = geneDf['gene_id'] + ':ER' + \
-    #     (geneDf.groupby('gene_id').cumcount() + 1).astype(str)
-    
-    geneDct = dict(geneDf.groupby('gene_id').apply(lambda x: sorted(set(x['ER']), key=lambda x: int(x.split("ER")[1]))))
-        
-    # geneDct = dict(geneDf.groupby('gene_id').apply(lambda x:
-    #                                                sorted(set(x['ER']), key=lambda x: int(x.split("ER")[
-    #                                                       1]) if 'ER' in x else int(x.split("exon_")[1]))
-    #                                                if (x['strand'] == "+").all()
-    #                                                else
-    #                                                sorted(set(x['ER']), key=lambda x: int(x.split("ER")[
-    #                                                    1]) if 'ER' in x else int(x.split("exon_")[1]), reverse=True)))
+    geneDct = dict(geneDf.groupby('gene_id').apply(
+        lambda x: sorted(set(x['ER']), key=lambda x: int(x.split("ER")[1]))))
 
     # TODO: CHECK THAT ALL SETS ARE OF SIZE ONE
-    erDct = geneDf.groupby('ER').agg('first').to_dict(orient='index')
+    erDf = geneDf.groupby('ER').agg('first')
+    erDf['length'] = erDf['end'] - erDf['start']
+    erDct = erDf.to_dict(orient='index')
 
     # row = pd.DataFrame({'gene_id':'test','seqname':'test','start':0,'end':0,'strand':13341}, index=[len(dataDf)+1])
     # row2 = pd.DataFrame({'gene_id':'test','seqname':'test','start':0,'end':0,'strand':13341}, index=[len(dataDf)+2])
@@ -192,8 +206,11 @@ def main():
     dataWithERDf['IRER'] = dataWithERDf.apply(
         lambda x: tuple(x['ER']) if x['flagIR'] == 1 else np.nan, axis=1)
 
+    dataWithERDf['numIREvent'] = dataWithERDf.groupby(
+        'transcript_id')['flagIR'].transform('sum')
+
     intmdDf = dataWithERDf[['gene_id', 'transcript_id', 'ER',
-                            'dataOnlyExon', 'flagIR', 'IRER', 'numExon', 'strand']]
+                            'dataOnlyExon', 'flagIR', 'numIREvent', 'IRER', 'numExon', 'strand']]
     intmdDf = intmdDf.explode('ER')
 
     xscriptERDf = intmdDf.groupby('transcript_id').agg({
@@ -202,7 +219,8 @@ def main():
         'flagIR': max,
         'dataOnlyExon': lambda x: set(x.dropna()),
         'IRER': lambda x: set(tuple(sum(x.dropna(), ()))),
-        'strand': set
+        'strand': set,
+        'numIREvent': max
     }).reset_index()
 
     # Check for no multi-strand transcripts
@@ -216,13 +234,16 @@ def main():
             lambda x: list(x)[0])
 
     # Accounts for situations where transcripts have multiple IR events
-    xscriptERDf['numIREvent'] = xscriptERDf.groupby(
-        'transcript_id')['flagIR'].transform('sum')
 
     xscriptERDct = dict(zip(xscriptERDf['transcript_id'], xscriptERDf['ER']))
 
     dataOnlyExonDct = dict(
         zip(xscriptERDf['transcript_id'], xscriptERDf['dataOnlyExon']))
+
+    # dataWithERDf = dataWithERDf[
+    #     (dataWithERDf['transcript_id'] ==
+    #      "34a6dd0389208ff91783b8ec557da2427785a0988ffa8243635e75c13b7f334c")
+    #     | (dataWithERDf['transcript_id'] == "068509f23790d261052860383c257e94c8d917c9c67a0140875242cd7302b738")]
 
     loopLst = [tuple(x) for x in dataWithERDf[[
         'gene_id', 'transcript_id', 'strand']].drop_duplicates().to_records(index=False)]
@@ -232,20 +253,25 @@ def main():
     erLst = []
     flagLst = []
     strandLst = []
+    lngthLst = []
 
-    binaryDct = dict()
+    patternDct = dict()
     for gene, transcript, strand in loopLst:
-
-        # gene = row['geneID']
-        # transcript = row['jxnHash']
 
         geneERLst = geneDct.get(gene)
         xscriptERSet = xscriptERDct.get(transcript)
 
-        binary = ["5'-"] + \
-            ["1" if ER in xscriptERSet else "0" for ER in geneERLst]
-        binary = ''.join(map(str, binary))
-        binaryDct[transcript] = [binary, gene]
+        pttrnLst = ["1" if ER in xscriptERSet else "0" for ER in geneERLst]
+        erIDLst = [ER for ER in geneERLst if ER in xscriptERSet]
+
+        if strand == "-":
+            pttrnLst.reverse()
+            erIDLst.reverse()
+
+        pattern = strand + "_" + ''.join(map(str, pttrnLst))
+        patternERID = strand + "_" + "_".join(erIDLst)
+
+        patternDct[transcript] = [pattern, patternERID, gene]
 
         for exonRegion in geneERLst:
 
@@ -259,6 +285,7 @@ def main():
             erLst.append(exonRegion)
             flagLst.append(flag)
             strandLst.append(strand)
+            lngthLst.append(erDct[exonRegion]['length'])
 
         if dataOnlyExonDct[transcript]:
 
@@ -269,25 +296,33 @@ def main():
                 flagLst.append(1)
                 strandLst.append(strand)
 
+                # TODO: CHANGE THIS IF THE DATA ONLY EXON FORMAT CHANGES
+                startNEnd = exonRegion.split(':')[1].split('_')
+                exonLngth = int(startNEnd[1]) - int(startNEnd[0])
+
+                lngthLst.append(exonLngth)
+
     outFlagDf = pd.DataFrame({
         'jxnHash': xscriptLst,
         'geneID': geneLst,
         'strand': strandLst,
         'exonRegion': erLst,
-        'flagER': flagLst
+        'flagER': flagLst,
+        'ERLength': lngthLst
     })
 
     # Making pattern output file
-    binaryInfo = [(xscript, *info) for xscript, info in binaryDct.items()]
-    binaryDf = pd.DataFrame(binaryInfo, columns=[
-                            'transcript_id', 'ERP', 'geneID'])
+    pttrnInfo = [(xscript, *info) for xscript, info in patternDct.items()]
+    patternDf = pd.DataFrame(pttrnInfo, columns=[
+        'transcript_id', 'ERP', 'patternERID', 'geneID'])
 
-    outPatternDf = pd.merge(xscriptERDf, binaryDf, on=[
+    outPatternDf = pd.merge(xscriptERDf, patternDf, on=[
         'transcript_id'], how='outer', indicator='merge_check')
     outPatternDf.rename(columns={'transcript_id': 'jxnHash'}, inplace=True)
 
     if not (outPatternDf['merge_check'] == 'both').all():
-        print("Something went wrong")
+        raise Exception(
+            "Something went wrong. Merge of patterns and xscript information failed.")
         quit()
 
     outPatternDf['flagDataOnlyExon'] = outPatternDf['dataOnlyExon'].apply(
@@ -307,9 +342,13 @@ def main():
     outFlagDf = outFlagDf.sort_values(by=['geneID', 'jxnHash'])
     outPatternDf = outPatternDf.sort_values(by=['geneID', 'jxnHash'])
 
-    outPatternDf = outPatternDf[['jxnHash', 'geneID', 'strand', 'ERP', 'numExon',
+    outPatternDf = outPatternDf[['jxnHash', 'geneID', 'strand', 'ERP', 'patternERID', 'numExon',
                                  'numDataOnlyExon', 'flagIR', 'numIREvent', 'IRER',
                                  'flagReverseIR']]
+
+    if sampleID:
+        outFlagDf['sampleID'] = sampleID
+        outPatternDf['sampleID'] = sampleID
 
     # Do not uncomment. Will probably crash the script.
     # wideDf = pd.pivot_table(outDf, values='flag_ER', index=['jxnHash','geneID'], columns='exonRegion', fill_value=0)
