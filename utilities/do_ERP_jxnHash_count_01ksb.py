@@ -13,7 +13,10 @@ import time
 
 def getOptions():
     # Parse command line arguments
-    parser = argparse.ArgumentParser(description="")
+    parser = argparse.ArgumentParser(
+        description="Count reads/transcripts per ERP using original ujc count "
+                    "file and erp info."
+    )
 
     # Input data
     parser.add_argument(
@@ -29,7 +32,7 @@ def getOptions():
         "--count-file",
         dest="countFile",
         required=False,
-        help="Location of counts per jxnHash"
+        help="Location of counts per jxnHash output from id_ujc"
     )
 
     # # Output data
@@ -57,28 +60,39 @@ def getOptions():
         help="Prefix for output files."
     )
 
+    parser.add_argument(
+        "-s",
+        "--sample-ID",
+        dest="sampleID",
+        required=False,
+        help="Optional SampleID. Will create a sampleID column in output."
+    )
+
     args = parser.parse_args()
     return args
 
 
 def main():
 
-    erpFile = "Z://SHARE/McIntyre_Lab/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/FBgn0004652_test_ERP.csv"
-    countFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/rmg_lmm_dros_data/mel2dmel6_jxnHash_cnts_sumTR_FBgn0004652.csv"
-    outdir = 'C://Users/knife/Desktop/Code Dumping Ground/mcintyre'
+    # erpFile = "Z://SHARE/McIntyre_Lab/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/FBgn0004652_test_ERP.csv"
+    # countFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/rmg_lmm_dros_data/mel2dmel6_jxnHash_cnts_sumTR_FBgn0004652.csv"
+    # outdir = 'C://Users/knife/Desktop/Code Dumping Ground/mcintyre'
 
-    erpFile = "~/mclab/SHARE/McIntyre_Lab/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/mel_sexdet_er_vs_data_pattern_file_FBgn0004652.csv"
-    countFile = "~/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/mel2dmel6_jxnHash_cnts_sumTR_FBgn0004652.csv"
+    # erpFile = "~/mclab/SHARE/McIntyre_Lab/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/mel_sexdet_er_vs_data_pattern_file_FBgn0004652.csv"
+    # countFile = "~/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/mel2dmel6_jxnHash_cnts_sumTR_FBgn0004652.csv"
 
-    prefix = "test"
+    erpFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_F_2_dsan1_ujc_updGeneID_ERP.csv"
+    countFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_from_read_aln_samples/dsan_F_2_dsan1_ujc_count.csv"
     prefix = None
-    fileName = "gtf2"
+    fileName = "test"
+    sampleID = "dsan_F"
 
     erpFile = args.erpFile
     countFile = args.countFile
     outdir = args.outdir
     fileName = args.fileName
     prefix = args.prefix
+    sampleID = args.sampleID
 
     inERPDf = pd.read_csv(erpFile, low_memory=False)
 
@@ -102,7 +116,7 @@ def main():
     singleStrandERP = erpDf['strand'].apply(lambda x: len(x) == 1)
 
     if not singleStrandERP.all():
-        print("There are transcripts belonging to more than one strand. Quitting.")
+        print("There are transcripts belonging to more than one strand. QuittinggeneID.")
         quit()
     else:
         erpDf['strand'] = erpDf['strand'].apply(
