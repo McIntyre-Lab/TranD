@@ -100,10 +100,10 @@ def main():
     #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_M_2_dsan1_ujc_updGeneID_ERP.csv"
     # ]
 
-    erFileLst = [
-        "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_F_2_dsan1_ujc_updGeneID_flagER.csv",
-        "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_M_2_dsan1_ujc_updGeneID_flagER.csv"
-    ]
+    # erFileLst = [
+    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_F_2_dsan1_ujc_updGeneID_flagER.csv",
+    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_M_2_dsan1_ujc_updGeneID_flagER.csv"
+    # ]
 
     # cntFileLst = [
     #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_from_read_aln_samples/dsan_F_2_dsan1_ujc_count.csv",
@@ -133,9 +133,11 @@ def main():
 
     # Loop through sample and get the three input files
 
-    print("Reading files...")
     fileDfDct = dict()
     for sample in sampleLst:
+
+        print(f"Reading {sample} files...")
+
         # Read in ERP file for sample
         inERPFile = [
             erpFile for erpFile in erpFileLst
