@@ -100,10 +100,10 @@ def main():
     #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_M_2_dsan1_ujc_updGeneID_ERP.csv"
     # ]
 
-    # erFileLst = [
-    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_F_2_dsan1_ujc_updGeneID_flagER.csv",
-    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_M_2_dsan1_ujc_updGeneID_flagER.csv"
-    # ]
+    erFileLst = [
+        "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_F_2_dsan1_ujc_updGeneID_flagER.csv",
+        "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_M_2_dsan1_ujc_updGeneID_flagER.csv"
+    ]
 
     # cntFileLst = [
     #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_from_read_aln_samples/dsan_F_2_dsan1_ujc_count.csv",
@@ -146,7 +146,8 @@ def main():
             inERPFile = inERPFile[0]
         else:
             raise Exception(
-                "There is a duplicate input ERP file (two files with the same sample).")
+                "There is either a duplicate input ERP file (two files with the same sample) "
+                "or you have not input the correct file type for the -p parameter.")
 
         # Read in flagER file for sample
         inERFile = [
@@ -158,7 +159,8 @@ def main():
             inERFile = inERFile[0]
         else:
             raise Exception(
-                "There is a duplicate input flagER file (two files with the same sample).")
+                "There is either a duplicate input flagER file (two files with the same sample) "
+                "or you have not input the correct file type for the -f parameter.")
 
         # Read in ujc count file for sample
         inCntFile = [
@@ -170,7 +172,8 @@ def main():
             inCntFile = inCntFile[0]
         else:
             raise Exception(
-                "There is a duplicate input ujc count file (two files with the same sample).")
+                "There is either a duplicate input ujc count file (two files with the same sample) "
+                "or you have not input the correct file type for the -c parameter.")
 
         print("Reading:", sample)
         print("ERP File:", inERPFile)
