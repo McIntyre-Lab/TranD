@@ -188,7 +188,7 @@ def main():
         inERDf = pd.read_csv(inERFile, low_memory=False)
         inCntDf = pd.read_csv(inCntFile, low_memory=False)
 
-        # verify that the ERP and flagER files have the same list of jxnHash
+        # verify that the ERP and flagER files have the same lis t of jxnHash
         # (if they don't there's an issue)
         if len(inERPDf['jxnHash'].unique().tolist()) != inERDf['jxnHash'].nunique():
             raise Exception("Error. The jxnHashes in the ERP file are different from "
