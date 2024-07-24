@@ -116,14 +116,14 @@ def main():
     outdir = ""
     prefix = None
 
-    # erpFileLst = args.erpFileLst
-    # flagERFileLst = args.flagERFileLst
-    # cntFileLst = args.cntFileLst
-    # genome = args.genome
-    # name = args.name
-    # sampleLst = args.sampleLst
-    # outdir = args.outdir
-    # prefix = args.prefix
+    erpFileLst = args.erpFileLst
+    flagERFileLst = args.flagERFileLst
+    cntFileLst = args.cntFileLst
+    genome = args.genome
+    name = args.name
+    sampleLst = args.sampleLst
+    outdir = args.outdir
+    prefix = args.prefix
 
     alphatic = time.perf_counter()
 
