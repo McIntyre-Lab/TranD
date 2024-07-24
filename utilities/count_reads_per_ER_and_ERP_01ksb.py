@@ -65,7 +65,7 @@ def getOptions():
     )
 
     parser.add_argument(
-        "-name",
+        "-n",
         "--name",
         dest="name",
         required=True,
