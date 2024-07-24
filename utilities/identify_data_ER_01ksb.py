@@ -65,7 +65,7 @@ def getOptions():
         "--outdir",
         dest="outdir",
         required=True,
-        help="Output file path"
+        help="Output file path. Must already exist."
     )
 
     parser.add_argument(
@@ -99,12 +99,15 @@ def main():
     # erFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc_er.gtf"
     # dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/mel_2_dmel6_uniq_jxnHash_sexDet.gtf"
 
-    # erFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/FBgn0000662_fiveSpecies_2_dmel6_ujc_er.gtf"
-    # dataFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/FBgn0000662_data.gtf"
+    # erFile = "//exasmb.rc.ufl.edu/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/FBgn0000662_fiveSpecies_2_dmel6_ujc_er.gtf"
+    # dataFile = "//exasmb.rc.ufl.edu/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/FBgn0000662_data.gtf"
     # outdir = 'C://Users/knife/Desktop/Code Dumping Ground/mcintyre'
 
     erFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc_sexDetSubset_er.gtf"
     dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc_sexDetSubset.gtf"
+
+    # erFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dyak2_ujc_sexDetSubset_er.gtf"
+    # dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/gffcompare_read_aln_ujc/dyak_F_2_dyak2_ujc_updGeneID.gtf"
 
     outdir = "/nfshome/k.bankole/Desktop/test_folder"
 
@@ -203,6 +206,7 @@ def main():
     # it may not be true biological IR but its definitely overlapping an intron...
     dataWithERDf['flagIR'] = dataWithERDf['ER'].apply(
         lambda x: x if not type(x) is list else 1 if len(x) > 1 else 0)
+
     dataWithERDf['IRER'] = dataWithERDf.apply(
         lambda x: tuple(x['ER']) if x['flagIR'] == 1 else np.nan, axis=1)
 
@@ -256,7 +260,6 @@ def main():
     lngthLst = []
 
     patternDct = dict()
-    dataERIDDct = dict()
     for gene, transcript, strand in loopLst:
 
         geneERLst = geneDct.get(gene)
@@ -307,9 +310,9 @@ def main():
         'jxnHash': xscriptLst,
         'geneID': geneLst,
         'strand': strandLst,
-        'exonRegion': erLst,
+        'ER': erLst,
         'flagER': flagLst,
-        'ERLength': lngthLst
+        'lengthER': lngthLst
     })
 
     # Making pattern output file

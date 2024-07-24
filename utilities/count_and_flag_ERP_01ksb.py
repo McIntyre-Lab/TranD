@@ -41,7 +41,7 @@ def getOptions():
         "--outdir",
         dest="outdir",
         required=True,
-        help="Output directory"
+        help="Output directory. Must already exist."
     )
 
     parser.add_argument(
