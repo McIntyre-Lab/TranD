@@ -14,8 +14,8 @@ import time
 def getOptions():
     # Parse command line arguments
     parser = argparse.ArgumentParser(
-        description="Count reads/transcripts per ERP using original ujc count "
-                    "file and erp info."
+        description="Count num jxnHash per ERP and describe ERP through "
+                    "flags. Takes in \"ERP.csv\" file as input."
     )
 
     # Input data
@@ -27,15 +27,15 @@ def getOptions():
         help="Location of ER pattern file"
     )
 
-    parser.add_argument(
-        "-c",
-        "--count-file",
-        dest="countFile",
-        required=False,
-        help="Location of counts per jxnHash output from id_ujc"
-    )
+    # parser.add_argument(
+    #     "-c",
+    #     "--count-file",
+    #     dest="countFile",
+    #     required=False,
+    #     help="Location of counts per jxnHash output from id_ujc"
+    # )
 
-    # # Output data
+    # Output data
     parser.add_argument(
         "-o",
         "--outdir",
@@ -47,7 +47,7 @@ def getOptions():
     parser.add_argument(
         "-x",
         "--prefix",
-        dest="fileName",
+        dest="prefix",
         required=True,
         help="Prefix for output files. Required."
     )
@@ -67,22 +67,17 @@ def getOptions():
 def main():
 
     # erpFile = "Z://SHARE/McIntyre_Lab/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/FBgn0004652_test_ERP.csv"
-    # countFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/rmg_lmm_dros_data/mel2dmel6_jxnHash_cnts_sumTR_FBgn0004652.csv"
     # outdir = 'C://Users/knife/Desktop/Code Dumping Ground/mcintyre'
 
     # erpFile = "~/mclab/SHARE/McIntyre_Lab/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/mel_sexdet_er_vs_data_pattern_file_FBgn0004652.csv"
-    # countFile = "~/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/mel2dmel6_jxnHash_cnts_sumTR_FBgn0004652.csv"
 
     erpFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_F_2_dsan1_ujc_updGeneID_ERP.csv"
-    countFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_from_read_aln_samples/dsan_F_2_dsan1_ujc_count.csv"
-    prefix = None
-    fileName = "test"
+    prefix = "prefix"
     sampleID = "dsan_F"
+    outdir = ""
 
     erpFile = args.erpFile
-    countFile = args.countFile
     outdir = args.outdir
-    fileName = args.fileName
     prefix = args.prefix
     sampleID = args.sampleID
 
@@ -90,8 +85,6 @@ def main():
 
     numUniqJxnHash = inERPDf['jxnHash'].nunique()
     print("There are {} unique jxnHash in the ERP file.".format(numUniqJxnHash))
-
-    # inERPDf['numDataOnlyExon'] = inERPDf['numDataOnlyER']
 
     # Group into ERGs using ERPs and do some edits to the DF
 
@@ -158,7 +151,7 @@ def main():
     #     lambda x: 1 if len(x['ERP']) > numERDct[x['geneID']] else 0, axis=1)
 
     patternSeekDf['patternSeek'] = patternSeekDf['ERP'].str.split(
-        '5\'-').str[1]
+        '_').str[1]
 
     # Pattern discernment!
     # 1. flag transcripts with all exon regions in the gene and no reference exon regions
@@ -180,6 +173,7 @@ def main():
     patternSeekDf['flag5pFragment'] = patternSeekDf.apply(
         lambda x: 1 if re.search(
             "^1+0+$", x['patternSeek']) is not None else 0, axis=1)
+
     # if x['strand'] == '+' else '^0+1+$',
     # x['ERP'][0:numERDct[x['geneID']]]) is not None else 0, axis=1)
 
@@ -211,118 +205,119 @@ def main():
     # 3' frag = only has 3' exons
     # internal frag: only has internal (0s on either end)
 
-    # TODO: Check that the number of total unique jxnHash in pattern file matches
-    # number of numJxnHash
-
-    if prefix:
-        outPrefix = "{}/{}_".format(outdir, prefix)
-    else:
-        outPrefix = "{}/".format(outdir)
-
-    # GTF2_ERP_jxnHash_cnt
-
-    outFile = outPrefix + "{}_flagERP.csv".format(fileName)
-
+    # Check that the number of unique starting jxnHash matches the sum of numJxnHash column
     outNumCheck = patternSeekDf['numJxnHash'].sum()
+
+    print("There are {} unique jxnHash in the output file.".format(outNumCheck))
 
     if numUniqJxnHash != outNumCheck:
         raise Exception(
             "The number of jxnHashes in the input does not match the number of jxnHashes in the input.")
-        print("There are {} unique jxnHash in the output file.".format(outNumCheck))
 
-    patternSeekDf[[
+    outPrefix = "{}/{}".format(outdir, prefix)
+
+    # GTF1_vs_GTF2_flagERP
+
+    outFile = "{}_flagERP.csv".format(outPrefix)
+
+    outDf = patternSeekDf[[
         'ERP', 'flagDataOnlyExon', 'geneID', 'strand', 'numJxnHash', 'numAnnotatedER',
         'flagNoSkip', 'flagNovel', 'flagERSkip', 'flag5pFragment',
         'flag3pFragment', 'flagIntrnlFrgmnt', 'flagFirstER',
-        'flagLastER']].to_csv(outFile, index=False)
+        'flagLastER']].copy()
 
-    # TODO: do this separately
-    if countFile:
-        alphatic = time.perf_counter()
+    if sampleID:
+        outDf['sampleID'] = sampleID
 
-        countDf = pd.read_csv(countFile, low_memory=False)
+    outDf.to_csv(outFile, index=False)
 
-        omegatoc = time.perf_counter()
-        print(
-            f"Count file read complete! Took {(omegatoc-alphatic):0.4f} seconds.")
+    # # TODO: do this separately
+    # if countFile:
+    #     alphatic = time.perf_counter()
 
-        # Count number xscript per ERG using count file
-        xscript2ERPDf = erpDf[['ERP', 'flagDataOnlyExon', 'jxnHash',
-                               'geneID', 'numAnnotatedER', 'strand']].explode('jxnHash')
+    #     countDf = pd.read_csv(countFile, low_memory=False)
 
-        uniqPatternHashSet = set(xscript2ERPDf['jxnHash'])
-        uniqCountHashSet = set(countDf['jxnHash'])
+    #     omegatoc = time.perf_counter()
+    #     print(
+    #         f"Count file read complete! Took {(omegatoc-alphatic):0.4f} seconds.")
 
-        erpOnlyHshLst = list(uniqPatternHashSet - uniqCountHashSet)
-        countOnlyHshLst = list(uniqCountHashSet - uniqPatternHashSet)
+    #     # Count number xscript per ERG using count file
+    #     xscript2ERPDf = erpDf[['ERP', 'flagDataOnlyExon', 'jxnHash',
+    #                            'geneID', 'numAnnotatedER', 'strand']].explode('jxnHash')
 
-        hashesInBoth = list(uniqPatternHashSet.intersection(uniqCountHashSet))
+    #     uniqPatternHashSet = set(xscript2ERPDf['jxnHash'])
+    #     uniqCountHashSet = set(countDf['jxnHash'])
 
-        countDf = countDf[countDf['jxnHash'].isin(hashesInBoth)].copy()
-        xscript2ERPDf = xscript2ERPDf[xscript2ERPDf['jxnHash'].isin(
-            hashesInBoth)].copy()
+    #     erpOnlyHshLst = list(uniqPatternHashSet - uniqCountHashSet)
+    #     countOnlyHshLst = list(uniqCountHashSet - uniqPatternHashSet)
 
-        mergeCountAndERPDf = pd.merge(
-            xscript2ERPDf, countDf, on='jxnHash', how='outer', indicator='merge_check')
+    #     hashesInBoth = list(uniqPatternHashSet.intersection(uniqCountHashSet))
 
-        if erpOnlyHshLst:
-            print(
-                "POSSIBLE ERROR: THERE ARE JXNHASHES THAT APPEAR IN THE ERP OUTPUT BUT NOT IN THE COUNT FILE")
+    #     countDf = countDf[countDf['jxnHash'].isin(hashesInBoth)].copy()
+    #     xscript2ERPDf = xscript2ERPDf[xscript2ERPDf['jxnHash'].isin(
+    #         hashesInBoth)].copy()
 
-            pd.Series(erpOnlyHshLst).to_csv(
-                outPrefix +
-                "list_{}_ERP_jxnHash_cnt_hashes_in_ERPFile_only.txt".format(
-                    fileName),
-                index=False, header=False)
+    #     mergeCountAndERPDf = pd.merge(
+    #         xscript2ERPDf, countDf, on='jxnHash', how='outer', indicator='merge_check')
 
-        if countOnlyHshLst:
-            print(
-                "CAUTION: THERE ARE JXNHASHES THAT APPEAR IN THE COUNT FILE BUT NOT IN THE ERP OUTPUT")
+    #     if erpOnlyHshLst:
+    #         print(
+    #             "POSSIBLE ERROR: THERE ARE JXNHASHES THAT APPEAR IN THE ERP OUTPUT BUT NOT IN THE COUNT FILE")
 
-            outFile = outPrefix + \
-                "list_{}_ERP_jxnHash_cnt_hashes_in_countFile_only.txt".format(
-                    fileName)
+    #         pd.Series(erpOnlyHshLst).to_csv(
+    #             outPrefix +
+    #             "list_{}_ERP_jxnHash_cnt_hashes_in_ERPFile_only.txt".format(
+    #                 fileName),
+    #             index=False, header=False)
 
-            pd.Series(countOnlyHshLst).to_csv(
-                outPrefix +
-                "list_{}_ERP_jxnHash_cnt_hashes_in_countFile_only.txt".format(
-                    fileName),
-                index=False, header=False)
+    #     if countOnlyHshLst:
+    #         print(
+    #             "CAUTION: THERE ARE JXNHASHES THAT APPEAR IN THE COUNT FILE BUT NOT IN THE ERP OUTPUT")
 
-        # if (mergeCountAndERGDf['merge_check'] == 'left_only').any():
-        #     print(
-        #         "POSSIBLE ERROR: THERE ARE JXNHASHES THAT APPEAR IN THE ERP OUTPUT BUT NOT IN THE COUNT FILE")
-        #     # quit()
-        # if (mergeCountAndERGDf['merge_check'] == 'right_only').any():
-        #     print(
-        #         "CAUTION: THERE ARE JXNHASHES THAT APPEAR IN THE COUNT FILE BUT NOT IN THE ERP OUTPUT")
-        #     # quit()
+    #         outFile = outPrefix + \
+    #             "list_{}_ERP_jxnHash_cnt_hashes_in_countFile_only.txt".format(
+    #                 fileName)
 
-        mergeCountAndERPDf = mergeCountAndERPDf.drop('merge_check', axis=1)
-        erpCountDf = mergeCountAndERPDf.groupby(['sample', 'geneID', 'ERP', 'flagDataOnlyExon']).agg({
-            'jxnHash': set,
-            'numTranscripts': sum,
-            'numAnnotatedER': max,
-            'strand': set
-        }).reset_index()
+    #         pd.Series(countOnlyHshLst).to_csv(
+    #             outPrefix +
+    #             "list_{}_ERP_jxnHash_cnt_hashes_in_countFile_only.txt".format(
+    #                 fileName),
+    #             index=False, header=False)
 
-        singleStrandERPCnt = erpCountDf['strand'].apply(lambda x: len(x) == 1)
+    #     # if (mergeCountAndERGDf['merge_check'] == 'left_only').any():
+    #     #     print(
+    #     #         "POSSIBLE ERROR: THERE ARE JXNHASHES THAT APPEAR IN THE ERP OUTPUT BUT NOT IN THE COUNT FILE")
+    #     #     # quit()
+    #     # if (mergeCountAndERGDf['merge_check'] == 'right_only').any():
+    #     #     print(
+    #     #         "CAUTION: THERE ARE JXNHASHES THAT APPEAR IN THE COUNT FILE BUT NOT IN THE ERP OUTPUT")
+    #     #     # quit()
 
-        if not singleStrandERPCnt.all():
-            print("There are transcripts belonging to more than one strand. Quitting.")
-            quit()
-        else:
-            erpCountDf['strand'] = erpCountDf['strand'].apply(
-                lambda x: list(x)[0])
+    #     mergeCountAndERPDf = mergeCountAndERPDf.drop('merge_check', axis=1)
+    #     erpCountDf = mergeCountAndERPDf.groupby(['sample', 'geneID', 'ERP', 'flagDataOnlyExon']).agg({
+    #         'jxnHash': set,
+    #         'numTranscripts': sum,
+    #         'numAnnotatedER': max,
+    #         'strand': set
+    #     }).reset_index()
 
-        erpCountDf['numJxnHash'] = erpCountDf['jxnHash'].apply(len)
-        erpCountDf = erpCountDf.sort_values(by=['ERP', 'sample'])
+    #     singleStrandERPCnt = erpCountDf['strand'].apply(lambda x: len(x) == 1)
 
-        outCountFile = outPrefix + "{}_ERP_read_cnt.csv".format(fileName)
-        erpCountDf[[
-            'sample', 'geneID', 'strand', 'ERP', 'flagDataOnlyExon', 'numJxnHash', 'numTranscripts',
-            'numAnnotatedER'
-        ]].to_csv(outCountFile, index=False)
+    #     if not singleStrandERPCnt.all():
+    #         print("There are transcripts belonging to more than one strand. Quitting.")
+    #         quit()
+    #     else:
+    #         erpCountDf['strand'] = erpCountDf['strand'].apply(
+    #             lambda x: list(x)[0])
+
+    #     erpCountDf['numJxnHash'] = erpCountDf['jxnHash'].apply(len)
+    #     erpCountDf = erpCountDf.sort_values(by=['ERP', 'sample'])
+
+    #     outCountFile = outPrefix + "{}_ERP_read_cnt.csv".format(fileName)
+    #     erpCountDf[[
+    #         'sample', 'geneID', 'strand', 'ERP', 'flagDataOnlyExon', 'numJxnHash', 'numTranscripts',
+    #         'numAnnotatedER'
+    #     ]].to_csv(outCountFile, index=False)
 
 
 if __name__ == '__main__':
