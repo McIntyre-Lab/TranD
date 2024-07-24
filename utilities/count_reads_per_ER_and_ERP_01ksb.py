@@ -145,6 +145,7 @@ def main():
         if len(inERPFile) == 1:
             inERPFile = inERPFile[0]
         else:
+            print(str(inERPFile))
             raise Exception(
                 "There is either a duplicate input ERP file (two files with the same sample) "
                 "or you have not input the correct file type for the -p parameter.")
@@ -158,6 +159,7 @@ def main():
         if len(inERFile) == 1:
             inERFile = inERFile[0]
         else:
+            print(str(inERFile))
             raise Exception(
                 "There is either a duplicate input flagER file (two files with the same sample) "
                 "or you have not input the correct file type for the -f parameter.")
@@ -171,6 +173,7 @@ def main():
         if len(inCntFile) == 1:
             inCntFile = inCntFile[0]
         else:
+            print(str(inCntFile))
             raise Exception(
                 "There is either a duplicate input ujc count file (two files with the same sample) "
                 "or you have not input the correct file type for the -c parameter.")
