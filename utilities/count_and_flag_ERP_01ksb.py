@@ -45,19 +45,11 @@ def getOptions():
     )
 
     parser.add_argument(
-        "-n",
-        "--data-filename",
-        dest="fileName",
-        required=True,
-        help="Name of data GTF for output files. Required."
-    )
-
-    parser.add_argument(
         "-x",
         "--prefix",
-        dest="prefix",
-        required=False,
-        help="Prefix for output files."
+        dest="fileName",
+        required=True,
+        help="Prefix for output files. Required."
     )
 
     parser.add_argument(
@@ -229,7 +221,7 @@ def main():
 
     # GTF2_ERP_jxnHash_cnt
 
-    outFile = outPrefix + "{}_ERP_jxnHash_cnt.csv".format(fileName)
+    outFile = outPrefix + "{}_flagERP.csv".format(fileName)
 
     outNumCheck = patternSeekDf['numJxnHash'].sum()
 

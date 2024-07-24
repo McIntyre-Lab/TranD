@@ -370,7 +370,7 @@ def main():
     outPatternDf.to_csv(
         erpFile, index=False)
 
-    flagFile = outPrefix + "{}_vs_{}_flag_ER.csv".format(erName, dataName)
+    flagFile = outPrefix + "{}_vs_{}_flagER.csv".format(erName, dataName)
 
     outFlagDf.to_csv(
         flagFile, index=False)
