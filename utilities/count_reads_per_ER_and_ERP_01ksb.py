@@ -95,29 +95,29 @@ def getOptions():
 
 def main():
 
-    erpFileLst = [
-        "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_F_2_dsan1_ujc_updGeneID_ERP.csv",
-        "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_M_2_dsan1_ujc_updGeneID_ERP.csv"
-    ]
+    # erpFileLst = [
+    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_F_2_dsan1_ujc_updGeneID_ERP.csv",
+    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_M_2_dsan1_ujc_updGeneID_ERP.csv"
+    # ]
 
-    erFileLst = [
-        "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_F_2_dsan1_ujc_updGeneID_flagER.csv",
-        "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_M_2_dsan1_ujc_updGeneID_flagER.csv"
-    ]
+    # erFileLst = [
+    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_F_2_dsan1_ujc_updGeneID_flagER.csv",
+    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_M_2_dsan1_ujc_updGeneID_flagER.csv"
+    # ]
 
-    cntFileLst = [
-        "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_from_read_aln_samples/dsan_F_2_dsan1_ujc_count.csv",
-        "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_from_read_aln_samples/dsan_M_2_dsan1_ujc_count.csv"
-    ]
+    # cntFileLst = [
+    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_from_read_aln_samples/dsan_F_2_dsan1_ujc_count.csv",
+    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_from_read_aln_samples/dsan_M_2_dsan1_ujc_count.csv"
+    # ]
 
-    sampleLst = ["dsan_F", "dsan_M"]
-    genome = "dsan1"
-    name = "dsan_data"
-    outdir = ""
-    prefix = None
+    # sampleLst = ["dsan_F", "dsan_M"]
+    # genome = "dsan1"
+    # name = "dsan_data"
+    # outdir = ""
+    # prefix = None
 
     erpFileLst = args.erpFileLst
-    flagERFileLst = args.flagERFileLst
+    erFileLst = args.erFileLst
     cntFileLst = args.cntFileLst
     genome = args.genome
     name = args.name
