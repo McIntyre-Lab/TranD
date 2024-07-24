@@ -180,7 +180,6 @@ def main():
                 "There is either a duplicate input ujc count file (two files with the same sample) "
                 "or you have not input the correct file type for the -c parameter.")
 
-        print("Reading:", sample)
         print("ERP File:", inERPFile)
         print("ER File:", inERFile)
         print("Count File:", inCntFile)
