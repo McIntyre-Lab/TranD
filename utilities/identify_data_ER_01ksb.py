@@ -242,7 +242,7 @@ def main():
 
     # dataWithERDf = dataWithERDf[
     #     (dataWithERDf['transcript_id'] ==
-    #      "34a6dd0389208ff91783b8ec557da2427785a0988ffa8243635e75c13b7f334c")
+    #       "34a6dd0389208ff91783b8ec557da2427785a0988ffa8243635e75c13b7f334c")
     #     | (dataWithERDf['transcript_id'] == "068509f23790d261052860383c257e94c8d917c9c67a0140875242cd7302b738")]
 
     loopLst = [tuple(x) for x in dataWithERDf[[
@@ -256,6 +256,7 @@ def main():
     lngthLst = []
 
     patternDct = dict()
+    dataERIDDct = dict()
     for gene, transcript, strand in loopLst:
 
         geneERLst = geneDct.get(gene)
@@ -323,7 +324,6 @@ def main():
     if not (outPatternDf['merge_check'] == 'both').all():
         raise Exception(
             "Something went wrong. Merge of patterns and xscript information failed.")
-        quit()
 
     outPatternDf['flagDataOnlyExon'] = outPatternDf['dataOnlyExon'].apply(
         lambda x: len(x) != 0)
@@ -339,11 +339,14 @@ def main():
     outPatternDf['IRER'] = outPatternDf['IRER'].apply(
         lambda x: '|'.join(x) if x else np.nan)
 
+    outPatternDf['dataOnlyERID'] = outPatternDf['dataOnlyExon'].apply(
+        lambda x: '|'.join(x) if x else np.nan)
+
     outFlagDf = outFlagDf.sort_values(by=['geneID', 'jxnHash'])
     outPatternDf = outPatternDf.sort_values(by=['geneID', 'jxnHash'])
 
     outPatternDf = outPatternDf[['jxnHash', 'geneID', 'strand', 'ERP', 'patternERID', 'numExon',
-                                 'numDataOnlyExon', 'flagIR', 'numIREvent', 'IRER',
+                                 'numDataOnlyExon', 'dataOnlyERID', 'flagIR', 'numIREvent', 'IRER',
                                  'flagReverseIR']]
 
     if sampleID:
