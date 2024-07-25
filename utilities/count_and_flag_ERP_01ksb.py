@@ -111,7 +111,7 @@ def main():
     singleChrERP = erpDf['seqname'].apply(lambda x: len(x) == 1)
 
     if not singleChrERP.all():
-        print("There are transcripts belonging to more than one strand. Quitting.")
+        print("There are transcripts belonging to more than one seqname. Quitting.")
         quit()
     else:
         erpDf['seqname'] = erpDf['seqname'].apply(

@@ -10,7 +10,7 @@ import warnings
 def getOptions():
     # Parse command line arguments
     parser = argparse.ArgumentParser(
-        description="Count num reads per ERP/ERR using read counts from "
+        description="Count num reads per ERP/ER using read counts from "
                     "UJC output and \"ERP\"/\"flagER\" file. For each "
                     "input file, input a list of all desired samples. "
                     "Output will include counts per ERP/ER split by sample, "
@@ -276,7 +276,7 @@ def main():
         singleChrERP = erpCntDf['seqname'].apply(lambda x: len(x) == 1)
         if not singleChrERP.all():
             raise Exception(
-                "There are ERPs belonging to more than one strand. Quitting.")
+                "There are ERPs belonging to more than one seqname. Quitting.")
         else:
             erpCntDf['seqname'] = erpCntDf['seqname'].apply(
                 lambda x: list(x)[0])
