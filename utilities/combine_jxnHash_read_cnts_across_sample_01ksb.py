@@ -102,19 +102,19 @@ def main():
     # genome = "dsan1"
     # name = "dsan_data"
 
-    cntFileLst = [
-        "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_from_read_aln_samples/dyak_F_2_dyak2_ujc_count.csv",
-        "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_from_read_aln_samples/dyak_M_2_dyak2_ujc_count.csv"
-    ]
+    # cntFileLst = [
+    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_from_read_aln_samples/dyak_F_2_dyak2_ujc_count.csv",
+    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_from_read_aln_samples/dyak_M_2_dyak2_ujc_count.csv"
+    # ]
 
-    gnKeyLst = [
-        "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/gffcompare_read_aln_ujc/dyak_M_2_dyak2_ujc_gffcompare_gene_key.csv",
-        "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/gffcompare_read_aln_ujc/dyak_F_2_dyak2_ujc_gffcompare_gene_key.csv"
-    ]
+    # gnKeyLst = [
+    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/gffcompare_read_aln_ujc/dyak_M_2_dyak2_ujc_gffcompare_gene_key.csv",
+    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/gffcompare_read_aln_ujc/dyak_F_2_dyak2_ujc_gffcompare_gene_key.csv"
+    # ]
 
-    sampleLst = ["dyak_F", "dyak_M"]
-    genome = "dyak2"
-    name = "dyak_data"
+    # sampleLst = ["dyak_F", "dyak_M"]
+    # genome = "dyak2"
+    # name = "dyak_data"
 
     outdir = ""
     prefix = None
@@ -224,7 +224,8 @@ def main():
         if geneAndCountDf.empty:
             geneAndCountDf = mergeDf
         else:
-            geneAndCountDf = pd.concat([geneAndCountDf, mergeDf])
+            geneAndCountDf = pd.concat(
+                [geneAndCountDf, mergeDf]).reset_index(drop=True)
 
     # #san
     # sexDetLst = [
@@ -297,7 +298,8 @@ def main():
     # nonXLOC = multiGeneHashes[~tesagsag]
 
     # TODO: output stuff
-    outDf = geneAndCountDf.copy()
+    outDf = geneAndCountDf[['sampleID', 'jxnHash', 'geneID',
+                            'numRead', 'flagMultiGene', 'flagMultiSample']].copy()
 
     if prefix:
         outPrefix = "{}/{}_".format(outdir, prefix)
