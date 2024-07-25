@@ -127,8 +127,6 @@ def main():
 
     alphatic = time.perf_counter()
 
-    # This is gonna suck.
-
     # TODO: verification steps that I cannot think of rn
 
     # Loop through sample and get the three input files
@@ -246,7 +244,7 @@ def main():
         numReadCol = sample + '_numRead'
 
         ######### Part 1: Count Reads per ERP ########
-        erpDf = erpDf[['jxnHash', 'ERP', 'geneID', 'strand']]
+        erpDf = erpDf[['jxnHash', 'ERP', 'geneID', 'strand', 'seqname']]
 
         # Merge ERP and counts
         mergeDf = pd.merge(erpDf, cntDf, on='jxnHash',
@@ -257,6 +255,7 @@ def main():
         erpCntDf = mergeDf.groupby(['ERP', 'geneID']).agg({
             'jxnHash': 'size',
             'strand': set,
+            'seqname': set,
             numReadCol: sum
         }).reset_index()
 
@@ -274,10 +273,18 @@ def main():
             erpCntDf['strand'] = erpCntDf['strand'].apply(
                 lambda x: list(x)[0])
 
+        singleChrERP = erpCntDf['seqname'].apply(lambda x: len(x) == 1)
+        if not singleChrERP.all():
+            raise Exception(
+                "There are ERPs belonging to more than one strand. Quitting.")
+        else:
+            erpCntDf['seqname'] = erpCntDf['seqname'].apply(
+                lambda x: list(x)[0])
+
         print(f"{sample} ERP counts complete and verified!")
 
         # Reorder columns to look nicer
-        erpCntDf = erpCntDf[['ERP', 'geneID', 'strand', numReadCol]]
+        erpCntDf = erpCntDf[['ERP', 'geneID', 'strand', 'seqname', numReadCol]]
 
         ######### Part 2: Count Reads per exon region (ER) ########
 
@@ -290,6 +297,7 @@ def main():
             'flagER': sum,
             numReadCol: sum,
             'strand': set,
+            'seqname': set
         }).reset_index()
 
         # TODO: need to figure out a verification step
@@ -302,10 +310,18 @@ def main():
             erCntDf['strand'] = erCntDf['strand'].apply(
                 lambda x: list(x)[0])
 
+        singleChrER = erCntDf['seqname'].apply(lambda x: len(x) == 1)
+        if not singleChrER.all():
+            raise Exception(
+                "There are ERPs belonging to more than one strand. Quitting.")
+        else:
+            erCntDf['seqname'] = erCntDf['seqname'].apply(
+                lambda x: list(x)[0])
+
         print(f"{sample} ER counts complete and verified!")
 
         # Reorder columns to look nicer
-        erCntDf = erCntDf[['ER', 'geneID', 'strand', numReadCol]]
+        erCntDf = erCntDf[['ER', 'geneID', 'seqname', 'strand', numReadCol]]
 
         ######### Part 3: Merge samples together (keep samples in separate columns) ########
 
@@ -313,7 +329,7 @@ def main():
             allSampleERPCntDf = erpCntDf
         else:
             allSampleERPCntDf = pd.merge(allSampleERPCntDf, erpCntDf, on=[
-                                         'ERP', 'geneID', 'strand'], how='outer')
+                                         'ERP', 'geneID', 'seqname', 'strand'], how='outer')
 
         readNumColLst = [
             col for col in allSampleERPCntDf.columns if 'numRead' in col]
@@ -325,7 +341,7 @@ def main():
             allSampleERCntDf = erCntDf
         else:
             allSampleERCntDf = pd.merge(allSampleERCntDf, erCntDf, on=[
-                'ER', 'geneID', 'strand'], how='outer')
+                'ER', 'geneID', 'seqname', 'strand'], how='outer')
 
         readNumColLst = [
             col for col in allSampleERCntDf.columns if 'numRead' in col]
