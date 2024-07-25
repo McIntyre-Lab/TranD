@@ -96,18 +96,29 @@ def main():
     erpDf = erpDf.groupby(['geneID', 'ERP', 'flagDataOnlyExon']).agg({
         'jxnHash': set,
         'strand': set,
+        'seqname': set
     }).reset_index()
 
     singleStrandERP = erpDf['strand'].apply(lambda x: len(x) == 1)
 
     if not singleStrandERP.all():
-        print("There are transcripts belonging to more than one strand. QuittinggeneID.")
+        print("There are transcripts belonging to more than one strand. Quitting.")
         quit()
     else:
         erpDf['strand'] = erpDf['strand'].apply(
             lambda x: list(x)[0])
 
-    erpDf = erpDf[['ERP', 'flagDataOnlyExon', 'jxnHash', 'geneID', 'strand']]
+    singleChrERP = erpDf['seqname'].apply(lambda x: len(x) == 1)
+
+    if not singleChrERP.all():
+        print("There are transcripts belonging to more than one strand. Quitting.")
+        quit()
+    else:
+        erpDf['seqname'] = erpDf['seqname'].apply(
+            lambda x: list(x)[0])
+
+    erpDf = erpDf[['ERP', 'flagDataOnlyExon',
+                   'jxnHash', 'geneID', 'strand', 'seqname']]
 
     erpDf['numJxnHash'] = erpDf['jxnHash'].apply(len)
 
@@ -221,7 +232,7 @@ def main():
     outFile = "{}_flagERP.csv".format(outPrefix)
 
     outDf = patternSeekDf[[
-        'ERP', 'flagDataOnlyExon', 'geneID', 'strand', 'numJxnHash', 'numAnnotatedER',
+        'ERP', 'flagDataOnlyExon', 'geneID', 'seqname', 'strand', 'numJxnHash', 'numAnnotatedER',
         'flagNoSkip', 'flagNovel', 'flagERSkip', 'flag5pFragment',
         'flag3pFragment', 'flagIntrnlFrgmnt', 'flagFirstER',
         'flagLastER']].copy()
