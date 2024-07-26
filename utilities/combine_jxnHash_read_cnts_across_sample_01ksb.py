@@ -102,19 +102,53 @@ def main():
     # genome = "dsan1"
     # name = "dsan_data"
 
-    # cntFileLst = [
-    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_from_read_aln_samples/dyak_F_2_dyak2_ujc_count.csv",
-    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_from_read_aln_samples/dyak_M_2_dyak2_ujc_count.csv"
-    # ]
+    cntFileLst = [
+        "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_from_read_aln_samples/dyak_F_2_dyak2_ujc_count.csv",
+        "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_from_read_aln_samples/dyak_M_2_dyak2_ujc_count.csv"
+    ]
 
-    # gnKeyLst = [
-    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/gffcompare_read_aln_ujc/dyak_M_2_dyak2_ujc_gffcompare_gene_key.csv",
-    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/gffcompare_read_aln_ujc/dyak_F_2_dyak2_ujc_gffcompare_gene_key.csv"
-    # ]
+    gnKeyLst = [
+        "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/gffcompare_read_aln_ujc/dyak_M_2_dyak2_ujc_gffcompare_gene_key.csv",
+        "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/gffcompare_read_aln_ujc/dyak_F_2_dyak2_ujc_gffcompare_gene_key.csv"
+    ]
 
-    # sampleLst = ["dyak_F", "dyak_M"]
-    # genome = "dyak2"
-    # name = "dyak_data"
+    sampleLst = ["dyak_F", "dyak_M"]
+    genome = "dyak2"
+    name = "dyak_data"
+
+    outdir = ""
+    prefix = None
+
+    cntFileLst = [
+        "//exasmb.rc.ufl.edu/blue/mcintyre/share/transcript_ortholog/ujc_from_read_aln_samples/dyak_F_2_dyak2_ujc_count.csv",
+        "//exasmb.rc.ufl.edu/blue/mcintyre/share/transcript_ortholog/ujc_from_read_aln_samples/dyak_M_2_dyak2_ujc_count.csv"
+    ]
+
+    gnKeyLst = [
+        "//exasmb.rc.ufl.edu/blue/mcintyre/share/transcript_ortholog/gffcompare_read_aln_ujc/dyak_M_2_dyak2_ujc_gffcompare_gene_key.csv",
+        "//exasmb.rc.ufl.edu/blue/mcintyre/share/transcript_ortholog/gffcompare_read_aln_ujc/dyak_F_2_dyak2_ujc_gffcompare_gene_key.csv"
+    ]
+
+    sampleLst = ["dyak_F", "dyak_M"]
+    genome = "dyak2"
+    name = "dyak_data"
+
+    outdir = ""
+    prefix = None
+
+    cntFileLst = [
+        "//exasmb.rc.ufl.edu/blue/mcintyre/share/transcript_ortholog/ujc_from_read_aln_samples/dsan_F_2_dsan1_ujc_count.csv",
+        "//exasmb.rc.ufl.edu/blue/mcintyre/share/transcript_ortholog/ujc_from_read_aln_samples/dsan_M_2_dsan1_ujc_count.csv"
+    ]
+
+    gnKeyLst = [
+        "//exasmb.rc.ufl.edu/blue/mcintyre/share/transcript_ortholog/gffcompare_read_aln_ujc/dsan_M_2_dsan1_ujc_gffcompare_gene_key.csv",
+        "//exasmb.rc.ufl.edu/blue/mcintyre/share/transcript_ortholog/gffcompare_read_aln_ujc/dsan_F_2_dsan1_ujc_gffcompare_gene_key.csv"
+    ]
+
+    sampleLst = ["dsan_F", "dsan_M"]
+    genome = "dsan1"
+    name = "dsan_data"
 
     outdir = ""
     prefix = None
@@ -289,13 +323,24 @@ def main():
     geneAndCountDf['flagMultiSample'] = geneAndCountDf['jxnHash'].map(
         numSamplePerJxnHash > 1).astype(int)
 
-    # Can be transitioned to wide mode if necessary
-    # pivot = geneAndCountDf.pivot(index=['geneID', 'jxnHash'],columns='sampleID')
+    multiSampleDf = geneAndCountDf[geneAndCountDf['flagMultiSample'] == 1]
+    multiGeneDf = multiSampleDf[multiSampleDf['flagMultiGene'] == 1]
+
+    multiGeneDf = multiGeneDf.groupby('jxnHash').agg(set)[
+        'geneID'].reset_index()
+
+    multiGeneDf['numXLOC'] = multiGeneDf['geneID'].apply(
+        lambda geneIDSet: sum("XLOC" in gene for gene in geneIDSet))
+
+    len(multiGeneDf[multiGeneDf['numXLOC'] > 0]) / len(multiGeneDf)
 
     # Dev, Looking at multiGenes and whats in them
     # multiGeneHashes = grpTest[grpTest['test']]
     # tesagsag = multiGeneHashes['geneID'].apply(lambda geneIDSet: any('XLOC' in gene for gene in geneIDSet))
     # nonXLOC = multiGeneHashes[~tesagsag]
+
+    # Can be transitioned to wide mode if necessary (not complete)
+    # pivot = geneAndCountDf.pivot(index=['geneID', 'jxnHash'],columns='sampleID')
 
     # TODO: output stuff
     outDf = geneAndCountDf[['sampleID', 'jxnHash', 'geneID',
