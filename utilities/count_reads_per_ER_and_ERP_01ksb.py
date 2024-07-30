@@ -313,7 +313,7 @@ def main():
         singleChrER = erCntDf['seqname'].apply(lambda x: len(x) == 1)
         if not singleChrER.all():
             raise Exception(
-                "There are ERPs belonging to more than one strand. Quitting.")
+                "There are ERPs belonging to more than one chromosome. Quitting.")
         else:
             erCntDf['seqname'] = erCntDf['seqname'].apply(
                 lambda x: list(x)[0])
