@@ -323,21 +323,16 @@ def main():
     geneAndCountDf['flagMultiSample'] = geneAndCountDf['jxnHash'].map(
         numSamplePerJxnHash > 1).astype(int)
 
-    multiSampleDf = geneAndCountDf[geneAndCountDf['flagMultiSample'] == 1]
-    multiGeneDf = multiSampleDf[multiSampleDf['flagMultiGene'] == 1]
-
-    multiGeneDf = multiGeneDf.groupby('jxnHash').agg(set)[
-        'geneID'].reset_index()
-
-    multiGeneDf['numXLOC'] = multiGeneDf['geneID'].apply(
-        lambda geneIDSet: sum("XLOC" in gene for gene in geneIDSet))
-
-    len(multiGeneDf[multiGeneDf['numXLOC'] > 0]) / len(multiGeneDf)
-
     # Dev, Looking at multiGenes and whats in them
-    # multiGeneHashes = grpTest[grpTest['test']]
-    # tesagsag = multiGeneHashes['geneID'].apply(lambda geneIDSet: any('XLOC' in gene for gene in geneIDSet))
-    # nonXLOC = multiGeneHashes[~tesagsag]
+    # multiSampleDf = geneAndCountDf[geneAndCountDf['flagMultiSample'] == 1]
+    # multiGeneDf = multiSampleDf[multiSampleDf['flagMultiGene'] == 1]
+    # multiGeneDf = multiGeneDf.groupby('jxnHash').agg(set)[
+    #     'geneID'].reset_index()
+
+    # multiGeneDf['numXLOC'] = multiGeneDf['geneID'].apply(
+    #     lambda geneIDSet: sum("XLOC" in gene for gene in geneIDSet))
+
+    # len(multiGeneDf[multiGeneDf['numXLOC'] > 0]) / len(multiGeneDf)
 
     # Can be transitioned to wide mode if necessary (not complete)
     # pivot = geneAndCountDf.pivot(index=['geneID', 'jxnHash'],columns='sampleID')
