@@ -587,9 +587,9 @@ def createExonOutput(ujcDf, ujcDct, keepGene=False):
 
     outExonDf = outExonDf.sort_values(by=['seqname', 'transcript_id', 'start'])
 
-    numColumns = ['start', 'end']
-    outExonDf[numColumns] = outExonDf[numColumns].astype(int)
-    result = outExonDf[outExonDf['end'] < outExonDf['start']]
+    # numColumns = ['start', 'end']
+    # outExonDf[numColumns] = outExonDf[numColumns].astype(int)
+    # result = outExonDf[outExonDf['end'] < outExonDf['start']]
 
     return outExonDf
 
