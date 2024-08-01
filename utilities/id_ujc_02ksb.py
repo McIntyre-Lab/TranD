@@ -647,6 +647,8 @@ def main():
     # keepGene = True
     # trackSrc = True
 
+    inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_species_gtf/roz_dyak_data_XLOC_018390/dyak_data_XLOC_018390_job__run_26080.gtf"
+
     inGTF = args.inGTF
     outdir = args.outdir
     includeCnt = args.includeCnt
@@ -660,8 +662,6 @@ def main():
     exonData = trand.io.read_exon_data_from_file(
         infile=inGTF, keepSrc=trackSrc)
     prefix = os.path.basename(inGTF).split('.')[0]
-
-    exonData = exonData[exonData['gene_id'] == "FBgn0264270"]
 
     toc = time.perf_counter()
     print(
