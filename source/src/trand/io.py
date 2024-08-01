@@ -139,7 +139,7 @@ def write_gtf(data, out_fhs, fh_name):
 #     data['end'] = pd.to_numeric(data['end'], downcast="unsigned")
 #     return data
 
-def read_exon_data_from_file(infile):
+def read_exon_data_from_file(infile, keepSrc=False):
         """
         Create a pandas dataframe with exon records from a gtf file
         Raw gtf data:
@@ -158,11 +158,11 @@ def read_exon_data_from_file(infile):
 
         omegatic = time.perf_counter()
 
-        
         all_gtf_columns = ['seqname', 'source', 'feature', 'start', 'end', 'score', 'strand', 'frame',
                            'attributes', 'comments']
         
-        drop_columns = ['source', 'feature', 'score', 'frame', 'comments']
+        drop_columns = ['feature', 'score', 'frame', 'comments']
+        # drop_columns = ['source', 'feature', 'score', 'frame', 'comments']
 
         data = pd.read_csv(infile, sep='\t', comment='#', header=None, low_memory=False)
         file_cols = data.columns
@@ -175,12 +175,14 @@ def read_exon_data_from_file(infile):
         data = data[data['feature'] == 'exon']
         data = data.drop(labels=drop_cols, axis=1)
 
+        data['source'] = data['source'].astype(str)
         data['seqname'] = data['seqname'].astype(str)
         data['start'] = data['start'].astype(int)
         data['end'] = data['end'].astype(int)
         
         data.reset_index(drop=True, inplace=True)
         
+        sourceLst = []
         seqnameLst = []
         startLst = []
         endLst = []
@@ -208,7 +210,7 @@ def read_exon_data_from_file(infile):
                         print("transcript_id not found in '{}'", row)
                         transcript_id = None
 
-                
+                sourceLst.append(row['source'])
                 seqnameLst.append(row['seqname'])
                 startLst.append(row['start'])
                 endLst.append(row['end'])
@@ -218,15 +220,28 @@ def read_exon_data_from_file(infile):
                 xscriptIDLst.append(transcript_id)
                 
         
-        newData = pd.DataFrame(
-                {
-                        'seqname':seqnameLst,
-                        'start':startLst,
-                        'end':endLst,
-                        'strand':strandLst,
-                        'gene_id':geneIDLst,
-                        'transcript_id':xscriptIDLst
-                })
+        if keepSrc:
+            newData = pd.DataFrame(
+                    {
+                            'seqname':seqnameLst,
+                            'source':sourceLst,
+                            'start':startLst,
+                            'end':endLst,
+                            'strand':strandLst,
+                            'gene_id':geneIDLst,
+                            'transcript_id':xscriptIDLst
+                    })
+        else:
+            
+            newData = pd.DataFrame(
+                    {
+                            'seqname':seqnameLst,
+                            'start':startLst,
+                            'end':endLst,
+                            'strand':strandLst,
+                            'gene_id':geneIDLst,
+                            'transcript_id':xscriptIDLst
+                    })
                 
         logger.debug("Exon data rows: {}", newData.shape[0])
         

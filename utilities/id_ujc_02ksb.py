@@ -101,6 +101,19 @@ def getOptions():
         "than one gene)."
     )
 
+    parser.add_argument(
+        "-ts",
+        "--track-source",
+        dest="trackSrc",
+        action="store_true",
+        help="Use this argument to keep the source from the "
+        "input GTF. Useful if inputting a GTF with multiple catted samples. "
+        "make sure the sample is in the source column of the GTF. Will create "
+        "a sampleID column in xscript_link and ujc_count files. This option "
+        "will fail if there are duplicate transcriptIDs with two different "
+        "samples/sources."
+    )
+
     # OUTPUT
     parser.add_argument(
         "-o",
@@ -163,7 +176,7 @@ def checkStrandAndChromosome(exonData):
     return exonData
 
 
-def extractJunction(exonData):
+def extractJunction(exonData, trackSrc=False):
     """
 
     Takes the exon data and extracts the locations of the junctions for each
@@ -220,7 +233,10 @@ def extractJunction(exonData):
         start = row['start']
         end = row['end']
 
-        source = ""
+        if trackSrc:
+            source = row['source']
+        else:
+            source = ""
 
         if xscript in ujcDct.keys():
             info = ujcDct[xscript]
@@ -271,7 +287,7 @@ def extractJunction(exonData):
     return ujcDct
 
 
-def createUJCIndex(ujcDct, keepGene=False):
+def createUJCIndex(ujcDct, keepGene=False, trackSrc=False):
     """
     Takes extracted junction information and creates a dataframe that is 
     UJC focused (all transcripts under one UJC grouped into the transcript_id column).
@@ -315,6 +331,7 @@ def createUJCIndex(ujcDct, keepGene=False):
                             "numJxn"])
         ).T.sort_values(by=["jxnString", "start", "end"])
 
+        # THIS IS WHERE OVERLAPPING MONOEXONS IN THE SAME GENE ARE COLLAPSED
         monoXscriptDf['tmpStart'] = monoXscriptDf['start']
         monoXscriptDf['tmpEnd'] = monoXscriptDf['end']
 
@@ -390,6 +407,7 @@ def createUJCIndex(ujcDct, keepGene=False):
         multiXscriptDf['pair'] = list(
             zip(multiXscriptDf['geneID'], multiXscriptDf['transcriptID']))
 
+        # THIS IS WHERE TRANSCRIPTS WITH 1+ EXONS HAVE THEIR STARTS/ENDS COLLAPSED
         multiUJC = multiXscriptDf.groupby(["jxnString"]).agg({
             "geneID": set,
             "chr": "first",
@@ -459,6 +477,23 @@ def createUJCIndex(ujcDct, keepGene=False):
 
     xscriptLinkDf = xscriptLinkDf.drop_duplicates(
     )[['transcriptID', 'geneID', 'jxnHash', 'jxnString']]
+
+    if trackSrc:
+        xscript2SrcDf = pd.DataFrame([
+            (xscript, info[7]) for xscript, info in ujcDct.items()
+        ], columns=['transcriptID', 'source'])
+
+        xscriptLinkDf = pd.merge(xscriptLinkDf, xscript2SrcDf,
+                                 on='transcriptID', how='outer', indicator='merge_check')
+
+        if not (xscriptLinkDf['merge_check'] == "both").all():
+            raise Exception(
+                "An error occurred when adding sample column to xscript_link file.")
+        else:
+            xscriptLinkDf = xscriptLinkDf.drop('merge_check', axis=1)
+
+        xscriptLinkDf = xscriptLinkDf.drop_duplicates(
+        )[['source', 'transcriptID', 'geneID', 'jxnHash', 'jxnString']]
 
     return ujcDscrptnDf, ujcOutDf, xscriptLinkDf
 
@@ -603,23 +638,27 @@ def main():
     None.
 
     """
-    print("Loading...")
-    alphatic = time.perf_counter()
 
     # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/dmel-all-r6.50.gtf"
-    # # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update/subset_dm650.gtf"
+    # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update/subset_dm650.gtf"
     # outdir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update"
     # includeGTF = True
     # includeCnt = True
     # keepGene = True
+    # trackSrc = True
 
     inGTF = args.inGTF
     outdir = args.outdir
     includeCnt = args.includeCnt
     includeGTF = args.includeGTF
     keepGene = args.keepGene
+    trackSrc = args.trackSrc
 
-    exonData = trand.io.read_exon_data_from_file(infile=inGTF)
+    print("Loading...")
+    alphatic = time.perf_counter()
+
+    exonData = trand.io.read_exon_data_from_file(
+        infile=inGTF, keepSrc=trackSrc)
     prefix = os.path.basename(inGTF).split('.')[0]
 
     exonData = exonData[exonData['gene_id'] == "FBgn0264270"]
@@ -629,14 +668,15 @@ def main():
         f"GTF Read complete! Took {toc-alphatic:0.4f} seconds. Extracting junctions...")
     tic = time.perf_counter()
 
-    ujcDct = extractJunction(exonData)
+    ujcDct = extractJunction(exonData=exonData, trackSrc=trackSrc)
 
     toc = time.perf_counter()
     print(
         f"Complete! Operation took {toc-tic:0.4f} seconds. Creating UJC DataFrame...")
     tic = time.perf_counter()
 
-    ujcDf, dscDf, linkDf = createUJCIndex(ujcDct=ujcDct, keepGene=keepGene)
+    ujcDf, dscDf, linkDf = createUJCIndex(
+        ujcDct=ujcDct, keepGene=keepGene, trackSrc=trackSrc)
 
     toc = time.perf_counter()
     print(f"Complete! Operation took {toc-tic:0.4f} seconds. Writing files...")
@@ -668,9 +708,20 @@ def main():
 
         print("Counting transcripts per UJC...")
 
-        countDf = linkDf.groupby(['jxnHash']).count()[
-            'transcriptID'].reset_index()
-        countDf.columns = ['jxnHash', 'numTranscripts']
+        if trackSrc:
+            countDf = linkDf.groupby(['jxnHash', 'source']).count()[
+                'transcriptID'].reset_index()
+
+            countDf = countDf.rename(
+                columns={'transcriptID': 'numTranscripts'})
+            countDf = countDf[['source', 'jxnHash', 'numTranscripts']]
+
+        else:
+            countDf = linkDf.groupby(['jxnHash']).count()[
+                'transcriptID'].reset_index()
+
+            countDf.columns = ['jxnHash', 'numTranscripts']
+
         countOutPath = outdir + "/" + prefix + "_ujc_count.csv"
 
         try:
