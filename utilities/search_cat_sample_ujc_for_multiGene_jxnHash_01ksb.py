@@ -31,9 +31,9 @@ def getOptions():
 
 def main():
 
-    inFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_species_gtf_combined_genes/dsan_data_2_dsan1_ujc_xscript_link.csv"
+    # inFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_species_gtf_combined_genes/dsan_data_2_dsan1_ujc_xscript_link.csv"
 
-    outFile = "/nfshome/k.bankole/Desktop/test_folder/multigene.txt"
+    # outFile = "/nfshome/k.bankole/Desktop/test_folder/multigene.txt"
 
     inFile = args.inFile
     outFile = args.outFile
