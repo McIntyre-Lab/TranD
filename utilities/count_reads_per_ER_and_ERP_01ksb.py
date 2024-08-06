@@ -95,24 +95,6 @@ def getOptions():
 
 def main():
 
-    # erpFileLst = [
-    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_F_2_dsan1_ujc_updGeneID_ERP.csv",
-    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_M_2_dsan1_ujc_updGeneID_ERP.csv"
-    # ]
-
-    # erFileLst = [
-    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_F_2_dsan1_ujc_updGeneID_flagER.csv",
-    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_M_2_dsan1_ujc_updGeneID_flagER.csv"
-    # ]
-
-    # cntFileLst = [
-    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_from_read_aln_samples/dsan_F_2_dsan1_ujc_count.csv",
-    #     "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_from_read_aln_samples/dsan_M_2_dsan1_ujc_count.csv"
-    # ]
-
-    # sampleLst = ["dsan_F", "dsan_M"]
-    # genome = "dsan1"
-    # name = "dsan_data"
     # outdir = ""
     # prefix = None
 
@@ -127,231 +109,144 @@ def main():
 
     alphatic = time.perf_counter()
 
-    # TODO: verification steps that I cannot think of rn
+    inERFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/erp_output/fiveSpecies_2_dyak2_ujc_sexDetSubset_er_vs_dyak_data_2_dyak2_ujc_noMultiGene_flagER.csv"
+    inERPFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/erp_output/fiveSpecies_2_dyak2_ujc_sexDetSubset_er_vs_dyak_data_2_dyak2_ujc_noMultiGene_ERP.csv"
+    cntFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_species_gtf_combined_genes/dyak_data_2_dyak2_ujc_count_noMultiGene.csv"
+    # genome = "dyak2"
+    # name = "dyak_data"
 
-    # Loop through sample and get the three input files
+    # Read in Files
+    inERDf = pd.read_csv(inERFile, low_memory=False)
+    inERPDf = pd.read_csv(inERPFile, low_memory=False)
+    inCntDf = pd.read_csv(cntFile, low_memory=False)
 
-    fileDfDct = dict()
-    for sample in sampleLst:
+    # verify that the ERP and flagER files have the same lis t of jxnHash
+    # (if they don't there's an issue)
+    if len(inERPDf['jxnHash'].unique().tolist()) != inERDf['jxnHash'].nunique():
+        raise Exception("Error. The jxnHashes in the ERP file are different from "
+                        "the jxnHashes in the ER file. "
+                        " Files: {} {}".format(inERPFile, inERFile))
 
-        print(f"Reading {sample} files...")
+    # Only count for jxnHashes in both the count file and ERP file so that
+    # script can be used on uneven subsets.
+    # Output a really loud warning if any jxnHashes are removed
+    # (counts will be off)
 
-        # Read in ERP file for sample
-        inERPFile = [
-            erpFile for erpFile in erpFileLst
-            if f"{sample}_2_{genome}" in erpFile
-            and "ERP.csv" in erpFile]
+    uniqERPHashSet = set(inERPDf['jxnHash'])
+    uniqCntHashSet = set(inCntDf['jxnHash'])
 
-        if len(inERPFile) == 1:
-            inERPFile = inERPFile[0]
-        else:
-            print(str(inERPFile))
-            raise Exception(
-                "There is either a duplicate input ERP file (two files with the same sample) "
-                "or you have not input the correct file type for the -p parameter.")
+    erpOnlyHshLst = list(uniqERPHashSet - uniqCntHashSet)
+    cntOnlyHshLst = list(uniqCntHashSet - uniqERPHashSet)
 
-        # Read in flagER file for sample
-        inERFile = [
-            erFile for erFile in erFileLst
-            if f"{sample}_2_{genome}" in erFile
-            and "flagER.csv" in erFile]
+    hashInBoth = list(uniqERPHashSet.intersection(uniqCntHashSet))
 
-        if len(inERFile) == 1:
-            inERFile = inERFile[0]
-        else:
-            print(str(inERFile))
-            raise Exception(
-                "There is either a duplicate input flagER file (two files with the same sample) "
-                "or you have not input the correct file type for the -f parameter.")
+    if len(hashInBoth) != len(uniqCntHashSet):
+        warnings.warn("WARNING !!!! There are jxnHashes that are only in the count file. "
+                      "If you did not subset the fiveSpecies ER annotation, "
+                      "there is an issue. ")
 
-        # Read in ujc count file for sample
-        inCntFile = [
-            cntFile for cntFile in cntFileLst
-            if f"{sample}_2_{genome}" in cntFile
-            and "ujc_count.csv" in cntFile]
+    if len(hashInBoth) != len(uniqERPHashSet):
+        warnings.warn("WARNING !!!! There are jxnHashes that are only in the ERP file. "
+                      "If you did not subset the UJC data files, "
+                      "there is an issue. ")
 
-        if len(inCntFile) == 1:
-            inCntFile = inCntFile[0]
-        else:
-            print(str(inCntFile))
-            raise Exception(
-                "There is either a duplicate input ujc count file (two files with the same sample) "
-                "or you have not input the correct file type for the -c parameter.")
+    erpDf = inERPDf[inERPDf['jxnHash'].isin(hashInBoth)].copy()
+    erDf = inERDf[inERDf['jxnHash'].isin(hashInBoth)].copy()
+    cntDf = inCntDf[inCntDf['jxnHash'].isin(hashInBoth)].copy()
 
-        print("ERP File:", inERPFile)
-        print("ER File:", inERFile)
-        print("Count File:", inCntFile)
-
-        inERPDf = pd.read_csv(inERPFile, low_memory=False)
-        inERDf = pd.read_csv(inERFile, low_memory=False)
-        inCntDf = pd.read_csv(inCntFile, low_memory=False)
-
-        # verify that the ERP and flagER files have the same lis t of jxnHash
-        # (if they don't there's an issue)
-        if len(inERPDf['jxnHash'].unique().tolist()) != inERDf['jxnHash'].nunique():
-            raise Exception("Error. The jxnHashes in the ERP file are different from "
-                            "the jxnHashes in the ER file. "
-                            " Files: {} {}".format(inERPFile, inERFile))
-
-        # Only count for jxnHashes in both the count file and ERP file so that
-        # script can be used on uneven subsets.
-        # Output a really loud warning if any jxnHashes are removed
-        # (counts will be off)
-
-        uniqERPHashSet = set(inERPDf['jxnHash'])
-        uniqCntHashSet = set(inCntDf['jxnHash'])
-
-        erpOnlyHshLst = list(uniqERPHashSet - uniqCntHashSet)
-        cntOnlyHshLst = list(uniqCntHashSet - uniqERPHashSet)
-
-        hashInBoth = list(uniqERPHashSet.intersection(uniqCntHashSet))
-
-        if len(hashInBoth) != len(uniqCntHashSet):
-            warnings.warn("WARNING !!!! There are jxnHashes that are only in the count file. "
-                          "If you did not subset the fiveSpecies ER annotation, "
-                          "there is an issue. ")
-
-        if len(hashInBoth) != len(uniqERPHashSet):
-            warnings.warn("WARNING !!!! There are jxnHashes that are only in the ERP file. "
-                          "If you did not subset the UJC data files, "
-                          "there is an issue. ")
-
-        inERPDf = inERPDf[inERPDf['jxnHash'].isin(hashInBoth)].copy()
-        inERDf = inERDf[inERDf['jxnHash'].isin(hashInBoth)].copy()
-        inCntDf = inCntDf[inCntDf['jxnHash'].isin(hashInBoth)].copy()
-
-        fileDfDct[sample] = [inERPDf, inERDf, inCntDf]
+    cntDf['numTranscripts'] = cntDf['numTranscripts'].astype(int)
 
     toc = time.perf_counter()
     print(
         f"File read complete! Took {toc-alphatic:0.4f} seconds.")
 
-    # # For testing
-    # test = fileDfDct['dsan_F']
-    # erpDf = test[0]
-    # erDf = test[1]
-    # cntDf = test[2]
-    # sample = sampleLst[0]
+    ######### Part 1: Count Reads per ERP ########
+    erpDf = erpDf[['jxnHash', 'ERP', 'geneID', 'strand', 'seqname']]
 
-    allSampleERPCntDf = pd.DataFrame()
-    allSampleERCntDf = pd.DataFrame()
-    for sample, dfLst in fileDfDct.items():
+    # Merge ERP and counts
+    erpMergeDf = pd.merge(erpDf, cntDf, on='jxnHash',
+                          how='outer', indicator='merge_check')
 
-        # Get dataframes
-        erpDf = dfLst[0]
-        erDf = dfLst[1]
-        cntDf = dfLst[2]
-        numReadCol = sample + '_numRead'
+    # Convert to unique on ERP and sum reads accross jxnHash
+    erpCntDf = erpMergeDf.groupby(['source', 'ERP', 'geneID']).agg({
+        'jxnHash': 'size',
+        'strand': set,
+        'seqname': set,
+        'numTranscripts': sum
+    }).reset_index()
 
-        ######### Part 1: Count Reads per ERP ########
-        erpDf = erpDf[['jxnHash', 'ERP', 'geneID', 'strand', 'seqname']]
+    # Verify that total number of reads in converted Df matches counts in input
+    if erpCntDf['numTranscripts'].sum() != cntDf['numTranscripts'].sum():
+        raise Exception(
+            "Error: Number of total reads in output does not match number of total reads in input.")
 
-        # Merge ERP and counts
-        mergeDf = pd.merge(erpDf, cntDf, on='jxnHash',
-                           how='outer', indicator='merge_check')
-        mergeDf[numReadCol] = mergeDf['numTranscripts']
+    # Make sure all ERPs are on a single strand and chr (dont know why they wouldnt be)
+    singleStrandERP = erpCntDf['strand'].apply(lambda x: len(x) == 1)
+    if not singleStrandERP.all():
+        raise Exception(
+            "There are ERPs belonging to more than one strand. Quitting.")
+    else:
+        erpCntDf['strand'] = erpCntDf['strand'].apply(
+            lambda x: list(x)[0])
 
-        # Convert to unique on ERP and sum reads accross jxnHash
-        erpCntDf = mergeDf.groupby(['ERP', 'geneID']).agg({
-            'jxnHash': 'size',
-            'strand': set,
-            'seqname': set,
-            numReadCol: sum
-        }).reset_index()
+    singleChrERP = erpCntDf['seqname'].apply(lambda x: len(x) == 1)
+    if not singleChrERP.all():
+        raise Exception(
+            "There are ERPs belonging to more than one seqname. Quitting.")
+    else:
+        erpCntDf['seqname'] = erpCntDf['seqname'].apply(
+            lambda x: list(x)[0])
 
-        # Verify that total number of reads in converted Df matches counts in input
-        if erpCntDf[numReadCol].sum() != cntDf['numTranscripts'].sum():
-            raise Exception(
-                "Error: Number of total reads in output does not match number of total reads in input.")
+    erpCntDf = erpCntDf[['source', 'ERP', 'geneID',
+                         'strand', 'seqname', 'numTranscripts']]
+    erpCntDf = erpCntDf.rename(columns={'numTranscripts': 'numRead'})
 
-        # Make sure all ERPs are on a single strand (dont know why they wouldnt be)
-        singleStrandERP = erpCntDf['strand'].apply(lambda x: len(x) == 1)
-        if not singleStrandERP.all():
-            raise Exception(
-                "There are ERPs belonging to more than one strand. Quitting.")
-        else:
-            erpCntDf['strand'] = erpCntDf['strand'].apply(
-                lambda x: list(x)[0])
+    # pivot = pd.pivot_table(erpCntDf, index=['ERP','geneID','strand','seqname'], columns='source').reset_index()
+    print("ERP counts complete and verified!")
 
-        singleChrERP = erpCntDf['seqname'].apply(lambda x: len(x) == 1)
-        if not singleChrERP.all():
-            raise Exception(
-                "There are ERPs belonging to more than one seqname. Quitting.")
-        else:
-            erpCntDf['seqname'] = erpCntDf['seqname'].apply(
-                lambda x: list(x)[0])
+    ######### Part 2: Count Reads per exon region (ER) ########
 
-        print(f"{sample} ERP counts complete and verified!")
+    erMergeDf = pd.merge(erDf, cntDf, on='jxnHash',
+                         how='outer', indicator='merge_check')
 
-        # Reorder columns to look nicer
-        erpCntDf = erpCntDf[['ERP', 'geneID', 'strand', 'seqname', numReadCol]]
+    erMergeDf['numTranscripts'] = erMergeDf.apply(
+        lambda x: x['numTranscripts'] if x['flagER'] == 1 else 0, axis=1)
 
-        ######### Part 2: Count Reads per exon region (ER) ########
+    erCntDf = erMergeDf.groupby(['source', 'ER', 'geneID'], sort=False).agg({
+        'flagER': sum,
+        'numTranscripts': sum,
+        'strand': set,
+        'seqname': set,
+        'lengthER': max
+    }).reset_index()
 
-        mergeDf = pd.merge(erDf, cntDf, on='jxnHash',
-                           how='outer', indicator='merge_check')
-        mergeDf[numReadCol] = mergeDf.apply(
-            lambda x: x['numTranscripts'] if x['flagER'] == 1 else 0, axis=1)
+    # TODO: need to figure out a verification step
 
-        erCntDf = mergeDf.groupby(['ER', 'geneID'], sort=False).agg({
-            'flagER': sum,
-            numReadCol: sum,
-            'strand': set,
-            'seqname': set
-        }).reset_index()
+    singleStrandER = erCntDf['strand'].apply(lambda x: len(x) == 1)
+    if not singleStrandER.all():
+        raise Exception(
+            "There are ERs belonging to more than one strand. Quitting.")
+    else:
+        erCntDf['strand'] = erCntDf['strand'].apply(
+            lambda x: list(x)[0])
 
-        # TODO: need to figure out a verification step
+    singleChrER = erCntDf['seqname'].apply(lambda x: len(x) == 1)
+    if not singleChrER.all():
+        raise Exception(
+            "There are ERPs belonging to more than one chromosome. Quitting.")
+    else:
+        erCntDf['seqname'] = erCntDf['seqname'].apply(
+            lambda x: list(x)[0])
 
-        singleStrandER = erCntDf['strand'].apply(lambda x: len(x) == 1)
-        if not singleStrandER.all():
-            raise Exception(
-                "There are ERs belonging to more than one strand. Quitting.")
-        else:
-            erCntDf['strand'] = erCntDf['strand'].apply(
-                lambda x: list(x)[0])
+    # Reorder columns to look nicer
+    erCntDf = erCntDf[['source', 'ER', 'geneID',
+                       'seqname', 'strand', 'numTranscripts']]
 
-        singleChrER = erCntDf['seqname'].apply(lambda x: len(x) == 1)
-        if not singleChrER.all():
-            raise Exception(
-                "There are ERPs belonging to more than one chromosome. Quitting.")
-        else:
-            erCntDf['seqname'] = erCntDf['seqname'].apply(
-                lambda x: list(x)[0])
-
-        print(f"{sample} ER counts complete and verified!")
-
-        # Reorder columns to look nicer
-        erCntDf = erCntDf[['ER', 'geneID', 'seqname', 'strand', numReadCol]]
-
-        ######### Part 3: Merge samples together (keep samples in separate columns) ########
-
-        if allSampleERPCntDf.empty:
-            allSampleERPCntDf = erpCntDf
-        else:
-            allSampleERPCntDf = pd.merge(allSampleERPCntDf, erpCntDf, on=[
-                                         'ERP', 'geneID', 'seqname', 'strand'], how='outer')
-
-        readNumColLst = [
-            col for col in allSampleERPCntDf.columns if 'numRead' in col]
-
-        allSampleERPCntDf[readNumColLst] = \
-            allSampleERPCntDf[readNumColLst].fillna(0)
-
-        if allSampleERCntDf.empty:
-            allSampleERCntDf = erCntDf
-        else:
-            allSampleERCntDf = pd.merge(allSampleERCntDf, erCntDf, on=[
-                'ER', 'geneID', 'seqname', 'strand'], how='outer')
-
-        readNumColLst = [
-            col for col in allSampleERCntDf.columns if 'numRead' in col]
-
-        allSampleERCntDf[readNumColLst] = \
-            allSampleERCntDf[readNumColLst].fillna(0)
+    print("ER counts complete and verified!")
 
     # TODO: output stuff
-    outReadsPerERPDf = allSampleERPCntDf.copy()
-    outReadsPerERDf = allSampleERCntDf.copy()
+    outReadsPerERPDf = erpCntDf.copy()
+    outReadsPerERDf = erCntDf.copy()
 
     if prefix:
         outPrefix = "{}/{}_".format(outdir, prefix)
