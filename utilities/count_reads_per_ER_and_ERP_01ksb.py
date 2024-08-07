@@ -11,48 +11,33 @@ def getOptions():
     # Parse command line arguments
     parser = argparse.ArgumentParser(
         description="Count num reads per ERP/ER using read counts from "
-                    "UJC output and \"ERP\"/\"flagER\" file. For each "
-                    "input file, input a list of all desired samples. "
-                    "Output will include counts per ERP/ER split by sample, "
-                    "where sample is in the column header."
-
+                    "UJC output (ujc_count.csv) and \"ERP\"/\"flagER\" file. "
+                    "Output will include counts per ERP/ER in a stacked format. "
     )
 
     # Input data
     parser.add_argument(
         "-p",
         "--pattern-file",
-        dest="erpFileLst",
+        dest="inERPFile",
         required=True,
-        nargs="+",
-        help="One line list of ERP files per sample. Space separated."
+        help="ERP File"
     )
 
-    parser.add_argument(
-        "-f",
-        "--flagER-file",
-        dest="erFileLst",
-        required=True,
-        nargs="+",
-        help="One line list of flagER files per sample. Space separated."
-    )
+    # parser.add_argument(
+    #     "-f",
+    #     "--flagER-file",
+    #     dest="inERFile",
+    #     required=True,
+    #     help="flagER File"
+    # )
 
     parser.add_argument(
         "-c",
         "--count-file",
-        dest="cntFileLst",
+        dest="inCntFile",
         required=True,
-        nargs="+",
-        help="One line list of counts per jxnHash output from id_ujc. Space separated."
-    )
-
-    parser.add_argument(
-        "-s",
-        "--sampleID-list",
-        dest="sampleLst",
-        required=True,
-        nargs="+",
-        help="One line list of sample IDs. Space separated."
+        help="ujc_count File"
     )
 
     parser.add_argument(
@@ -60,8 +45,7 @@ def getOptions():
         "--genome",
         dest="genome",
         required=True,
-        help="Name of the coordinates that all the samples output are "
-        "mapped to. Must match what is in the file name."
+        help="For the name of the output file (ex: name_2_genome_ERP_count.csv"
     )
 
     parser.add_argument(
@@ -69,7 +53,7 @@ def getOptions():
         "--name",
         dest="name",
         required=True,
-        help="Name for collective samples (ex: dmel_data)."
+        help="Name for collective samples. For the name of the output file (ex: name_2_genome_ERP_count.csv)."
     )
 
     # Output data
@@ -95,30 +79,29 @@ def getOptions():
 
 def main():
 
-    # outdir = ""
+    # inERFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/erp_output/fiveSpecies_2_dyak2_ujc_sexDetSubset_er_vs_dyak_data_2_dyak2_ujc_noMultiGene_flagER.csv"
+    # inERPFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/erp_output/fiveSpecies_2_dyak2_ujc_sexDetSubset_er_vs_dyak_data_2_dyak2_ujc_noMultiGene_ERP.csv"
+    # inCntFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_species_gtf_combined_genes/dyak_data_2_dyak2_ujc_count_noMultiGene.csv"
+    # genome = "dyak2"
+    # name = "dyak_data"
+    # outdir = "/nfshome/k.bankole/Desktop/test_folder"
     # prefix = None
+    # prefix = "sexdet"
 
-    erpFileLst = args.erpFileLst
-    erFileLst = args.erFileLst
-    cntFileLst = args.cntFileLst
+    inERFile = args.inERFile
+    inERPFile = args.inERPFile
+    inCntFile = args.inCntFile
     genome = args.genome
     name = args.name
-    sampleLst = args.sampleLst
     outdir = args.outdir
     prefix = args.prefix
 
     alphatic = time.perf_counter()
 
-    inERFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/erp_output/fiveSpecies_2_dyak2_ujc_sexDetSubset_er_vs_dyak_data_2_dyak2_ujc_noMultiGene_flagER.csv"
-    inERPFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/erp_output/fiveSpecies_2_dyak2_ujc_sexDetSubset_er_vs_dyak_data_2_dyak2_ujc_noMultiGene_ERP.csv"
-    cntFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_species_gtf_combined_genes/dyak_data_2_dyak2_ujc_count_noMultiGene.csv"
-    # genome = "dyak2"
-    # name = "dyak_data"
-
     # Read in Files
     inERDf = pd.read_csv(inERFile, low_memory=False)
     inERPDf = pd.read_csv(inERPFile, low_memory=False)
-    inCntDf = pd.read_csv(cntFile, low_memory=False)
+    inCntDf = pd.read_csv(inCntFile, low_memory=False)
 
     # verify that the ERP and flagER files have the same lis t of jxnHash
     # (if they don't there's an issue)
@@ -155,6 +138,12 @@ def main():
     cntDf = inCntDf[inCntDf['jxnHash'].isin(hashInBoth)].copy()
 
     cntDf['numTranscripts'] = cntDf['numTranscripts'].astype(int)
+    numHashPerSample = pd.DataFrame(cntDf.groupby('source').nunique()[
+                                    'jxnHash'].rename('startNum'))
+    numReadPerSample = pd.DataFrame(cntDf.groupby('source').sum()[
+                                    'numTranscripts'].rename('startNum'))
+
+    # sampleOvlpDf = cntDf.groupby('jxnHash').agg(list)[cntDf.groupby('jxnHash').agg(set)['source'].apply(lambda x: len(x) > 1)]
 
     toc = time.perf_counter()
     print(
@@ -167,6 +156,22 @@ def main():
     erpMergeDf = pd.merge(erpDf, cntDf, on='jxnHash',
                           how='outer', indicator='merge_check')
 
+    # Check that the merge did not add/remove jxnHash/reads per sample
+    numHashPerSample['postERPMerge'] = erpMergeDf.groupby('source').nunique()[
+        'jxnHash']
+    numReadPerSample['postERPMerge'] = erpMergeDf[[
+        'numTranscripts', 'source']].groupby('source').sum()
+
+    if not (numHashPerSample['startNum'] == numHashPerSample['postERPMerge']).all():
+        raise Exception("The merge of the ERP and Count Files led to a "
+                        "different number of jxnHash per sample than before "
+                        "the merge.")
+
+    if not (numReadPerSample['startNum'] == numReadPerSample['postERPMerge']).all():
+        raise Exception("The merge of the ERP and Count Files led to a "
+                        "different number of reads per sample than before "
+                        "the merge.")
+
     # Convert to unique on ERP and sum reads accross jxnHash
     erpCntDf = erpMergeDf.groupby(['source', 'ERP', 'geneID']).agg({
         'jxnHash': 'size',
@@ -174,6 +179,22 @@ def main():
         'seqname': set,
         'numTranscripts': sum
     }).reset_index()
+
+    # Check that the groupby did not add/remove jxnHash per sample
+    numHashPerSample['postERPGrp'] = erpMergeDf.groupby('source').nunique()[
+        'jxnHash']
+    numReadPerSample['postERPGrp'] = erpMergeDf[[
+        'numTranscripts', 'source']].groupby('source').sum()
+
+    if not (numHashPerSample['startNum'] == numHashPerSample['postERPGrp']).all():
+        raise Exception("The merge of the ERP and Count Files led to a "
+                        "different number of jxnHash per sample than before "
+                        "the merge.")
+
+    if not (numReadPerSample['startNum'] == numReadPerSample['postERPGrp']).all():
+        raise Exception("The merge of the ERP and Count Files led to a "
+                        "different number of reads per sample than before "
+                        "the merge.")
 
     # Verify that total number of reads in converted Df matches counts in input
     if erpCntDf['numTranscripts'].sum() != cntDf['numTranscripts'].sum():
@@ -199,54 +220,68 @@ def main():
 
     erpCntDf = erpCntDf[['source', 'ERP', 'geneID',
                          'strand', 'seqname', 'numTranscripts']]
-    erpCntDf = erpCntDf.rename(columns={'numTranscripts': 'numRead'})
 
-    # pivot = pd.pivot_table(erpCntDf, index=['ERP','geneID','strand','seqname'], columns='source').reset_index()
+    erpCntDf = erpCntDf.rename(columns={'numTranscripts': 'numRead'})
     print("ERP counts complete and verified!")
 
-    ######### Part 2: Count Reads per exon region (ER) ########
+    # ######### Part 2: Count Reads per exon region (ER) ########
 
-    erMergeDf = pd.merge(erDf, cntDf, on='jxnHash',
-                         how='outer', indicator='merge_check')
+    # erMergeDf = pd.merge(erDf, cntDf, on='jxnHash',
+    #                      how='outer', indicator='merge_check')
 
-    erMergeDf['numTranscripts'] = erMergeDf.apply(
-        lambda x: x['numTranscripts'] if x['flagER'] == 1 else 0, axis=1)
+    # erMergeDf['numTranscripts'] = erMergeDf.apply(
+    #     lambda x: x['numTranscripts'] if x['flagER'] == 1 else 0, axis=1)
 
-    erCntDf = erMergeDf.groupby(['source', 'ER', 'geneID'], sort=False).agg({
-        'flagER': sum,
-        'numTranscripts': sum,
-        'strand': set,
-        'seqname': set,
-        'lengthER': max
-    }).reset_index()
+    # # Check that the merge did not add/remove jxnHash per sample (reads are
+    # # inherently counted multiple times due to there being more than 1 ER per read)
+    # numHashPerSample['postERMerge'] = erMergeDf.groupby('source').nunique()[
+    #     'jxnHash']
 
-    # TODO: need to figure out a verification step
+    # # numReadPerSample['postERMerge'] = erMergeDf[[
+    # #     'numTranscripts', 'source']].groupby('source').sum()
 
-    singleStrandER = erCntDf['strand'].apply(lambda x: len(x) == 1)
-    if not singleStrandER.all():
-        raise Exception(
-            "There are ERs belonging to more than one strand. Quitting.")
-    else:
-        erCntDf['strand'] = erCntDf['strand'].apply(
-            lambda x: list(x)[0])
+    # if not (numHashPerSample['startNum'] == numHashPerSample['postERMerge']).all():
+    #     raise Exception("The merge of the flagER and Count Files led to a "
+    #                     "different number of jxnHash per sample than before "
+    #                     "the merge.")
 
-    singleChrER = erCntDf['seqname'].apply(lambda x: len(x) == 1)
-    if not singleChrER.all():
-        raise Exception(
-            "There are ERPs belonging to more than one chromosome. Quitting.")
-    else:
-        erCntDf['seqname'] = erCntDf['seqname'].apply(
-            lambda x: list(x)[0])
+    # erCntDf = erMergeDf.groupby(['source', 'ER', 'geneID'], sort=False).agg({
+    #     'flagER': sum,
+    #     'numTranscripts': sum,
+    #     'strand': set,
+    #     'seqname': set,
+    #     'lengthER': max
+    # }).reset_index()
 
-    # Reorder columns to look nicer
-    erCntDf = erCntDf[['source', 'ER', 'geneID',
-                       'seqname', 'strand', 'numTranscripts']]
+    # # TODO: need to figure out a verification step
 
-    print("ER counts complete and verified!")
+    # singleStrandER = erCntDf['strand'].apply(lambda x: len(x) == 1)
+    # if not singleStrandER.all():
+    #     raise Exception(
+    #         "There are ERs belonging to more than one strand. Quitting.")
+    # else:
+    #     erCntDf['strand'] = erCntDf['strand'].apply(
+    #         lambda x: list(x)[0])
+
+    # singleChrER = erCntDf['seqname'].apply(lambda x: len(x) == 1)
+    # if not singleChrER.all():
+    #     raise Exception(
+    #         "There are ERPs belonging to more than one chromosome. Quitting.")
+    # else:
+    #     erCntDf['seqname'] = erCntDf['seqname'].apply(
+    #         lambda x: list(x)[0])
+
+    # # Reorder columns to look nicer
+    # erCntDf = erCntDf[['source', 'ER', 'geneID',
+    #                    'seqname', 'strand', 'numTranscripts']]
+
+    # erCntDf = erCntDf.rename(columns={'numTranscripts': 'numRead'})
+
+    # print("ER counts complete and verified!")
 
     # TODO: output stuff
     outReadsPerERPDf = erpCntDf.copy()
-    outReadsPerERDf = erCntDf.copy()
+    # outReadsPerERDf = erCntDf.copy()
 
     if prefix:
         outPrefix = "{}/{}_".format(outdir, prefix)
@@ -258,9 +293,9 @@ def main():
     outReadsPerERPDf.to_csv(
         readsPerERPFile, index=False)
 
-    readsPerERFile = outPrefix + "{}_2_{}_ER_cnts.csv".format(name, genome)
-    outReadsPerERDf.to_csv(
-        readsPerERFile, index=False)
+    # readsPerERFile = outPrefix + "{}_2_{}_ER_cnts.csv".format(name, genome)
+    # outReadsPerERDf.to_csv(
+    #     readsPerERFile, index=False)
 
     if erpOnlyHshLst:
         pd.Series(erpOnlyHshLst).to_csv(
@@ -277,6 +312,49 @@ def main():
     omegatoc = time.perf_counter()
 
     print(f"Process Complete! Took {(omegatoc-alphatic):0.4f} seconds.")
+
+    # Code for converting from stacked to side-by-side + some stats stuff I was trying
+    # erpCntWideDf = pd.pivot_table(erpCntDf, index=[
+    #                               'ERP', 'geneID', 'strand', 'seqname'], columns='source', values=['numRead'], aggfunc=sum)
+    # erpCntWideDf = erpCntWideDf.droplevel(0, axis=1).fillna(0)
+    # erpCntWideDf.columns = [col + '_numRead' for col in erpCntWideDf.columns]
+
+    # erpCntWideDf['sum_F_numRead'] = erpCntWideDf[[
+    #     col for col in erpCntWideDf.columns if '_F_numRead' in col]].apply(sum, axis=1)
+
+    # erpCntWideDf['sum_M_numRead'] = erpCntWideDf[[
+    #     col for col in erpCntWideDf.columns if '_M_numRead' in col]].apply(sum, axis=1)
+
+    # # statsTest = erpCntWideDf.copy()[['sum_F_numRead', 'sum_M_numRead']]
+
+    # # statsTest['numDiff'] = statsTest['sum_F_numRead'] - statsTest['sum_M_numRead']
+    # # statsTest = statsTest[statsTest['numDiff'] <= 574]
+
+    # # avgDiff = statsTest['numDiff'].mean()
+    # # stdDiff = statsTest['numDiff'].std()
+
+    # # statsTest['z_score'] = (statsTest['numDiff'] - avgDiff) / stdDiff
+
+    # erCntWideDf = pd.pivot_table(erCntDf, index=[
+    #                              'ER', 'geneID', 'strand', 'seqname'], columns='source', values=['numRead'], aggfunc=sum)
+    # erCntWideDf = erCntWideDf.droplevel(0, axis=1).fillna(0)
+    # erCntWideDf.columns = [col + '_numRead' for col in erCntWideDf.columns]
+
+    # erCntWideDf['sum_F_numRead'] = erCntWideDf[[
+    #     col for col in erCntWideDf.columns if '_F_numRead' in col]].apply(sum, axis=1)
+
+    # erCntWideDf['sum_M_numRead'] = erCntWideDf[[
+    #     col for col in erCntWideDf.columns if '_M_numRead' in col]].apply(sum, axis=1)
+
+    # # statsTest = erCntWideDf.copy()[['sum_F_numRead', 'sum_M_numRead']]
+
+    # # statsTest['numDiff'] = statsTest['sum_F_numRead'] - statsTest['sum_M_numRead']
+    # # statsTest = statsTest[statsTest['numDiff'] <= 544]
+
+    # # avgDiff = statsTest['numDiff'].mean()
+    # # stdDiff = statsTest['numDiff'].std()
+
+    # # statsTest['z_score'] = (statsTest['numDiff'] - avgDiff) / stdDiff
 
 
 if __name__ == '__main__':
