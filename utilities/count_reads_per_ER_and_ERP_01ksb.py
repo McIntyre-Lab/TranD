@@ -88,7 +88,7 @@ def main():
     # prefix = None
     # prefix = "sexdet"
 
-    inERFile = args.inERFile
+    # inERFile = args.inERFile
     inERPFile = args.inERPFile
     inCntFile = args.inCntFile
     genome = args.genome
@@ -99,16 +99,16 @@ def main():
     alphatic = time.perf_counter()
 
     # Read in Files
-    inERDf = pd.read_csv(inERFile, low_memory=False)
+    # inERDf = pd.read_csv(inERFile, low_memory=False)
     inERPDf = pd.read_csv(inERPFile, low_memory=False)
     inCntDf = pd.read_csv(inCntFile, low_memory=False)
 
     # verify that the ERP and flagER files have the same lis t of jxnHash
     # (if they don't there's an issue)
-    if len(inERPDf['jxnHash'].unique().tolist()) != inERDf['jxnHash'].nunique():
-        raise Exception("Error. The jxnHashes in the ERP file are different from "
-                        "the jxnHashes in the ER file. "
-                        " Files: {} {}".format(inERPFile, inERFile))
+    # if len(inERPDf['jxnHash'].unique().tolist()) != inERDf['jxnHash'].nunique():
+    #     raise Exception("Error. The jxnHashes in the ERP file are different from "
+    #                     "the jxnHashes in the ER file. "
+    #                     " Files: {} {}".format(inERPFile, inERFile))
 
     # Only count for jxnHashes in both the count file and ERP file so that
     # script can be used on uneven subsets.
@@ -134,7 +134,7 @@ def main():
                       "there is an issue. ")
 
     erpDf = inERPDf[inERPDf['jxnHash'].isin(hashInBoth)].copy()
-    erDf = inERDf[inERDf['jxnHash'].isin(hashInBoth)].copy()
+    # erDf = inERDf[inERDf['jxnHash'].isin(hashInBoth)].copy()
     cntDf = inCntDf[inCntDf['jxnHash'].isin(hashInBoth)].copy()
 
     cntDf['numTranscripts'] = cntDf['numTranscripts'].astype(int)
