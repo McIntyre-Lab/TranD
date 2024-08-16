@@ -261,6 +261,7 @@ def main():
         if str(error) == "NO DUPE ERROR":
             print(
                 "\nThere are no duplicate genes in this GTF! No output will be created.")
+            quit()
         else:
             raise
 
