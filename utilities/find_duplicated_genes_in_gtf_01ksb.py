@@ -314,10 +314,10 @@ def main():
 
     # OUTPUT CSVs
     dupeOutFile = f"{outPrefix}_duplicated_genes.csv"
-    dupeDf.to_csv(dupeOutFile, index=False)
+    dupeDf.to_csv(dupeOutFile, index=False, quoting=csv.QUOTE_NONE)
 
     dupXscrOutFile = f"{outPrefix}_transcripts_of_duplicated_genes.csv"
-    dupeXscriptDf.to_csv(dupXscrOutFile, index=False)
+    dupeXscriptDf.to_csv(dupXscrOutFile, index=False, quoting=csv.QUOTE_NONE)
 
     # OUTPUT NEW GTF
     outColLst = ['seqname', 'source', 'feature', 'start', 'end', 'score', 'strand',
