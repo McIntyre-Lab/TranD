@@ -10,7 +10,7 @@ def getOptions():
     parser = argparse.ArgumentParser(description="Outputs a list of genes that have a mismatch "
                                      "event (a transcript switches genes from "
                                      "original after GFFCompare) post-GFFCompare "
-                                     "for a self-mapped GTF (ex: dmel650_2_dmel6). "
+                                     "for a *self-mapped GTF* (ex: dmel650_2_dmel6). "
                                      "Also prints how many transcripts/genes have "
                                      "a mismatch event")
 
