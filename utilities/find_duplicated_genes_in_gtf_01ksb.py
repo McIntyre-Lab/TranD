@@ -52,10 +52,6 @@ def read_all_gtf_data_from_file(infile):
     all_gtf_columns = ['seqname', 'source', 'feature', 'start', 'end', 'score', 'strand', 'frame',
                        'attributes', 'comments']
 
-    # drop_columns = ['feature', 'score', 'frame', 'comments']
-    # drop_columns = ['source', 'feature', 'score', 'frame', 'comments']
-    # drop_columns = ['score', 'frame', 'comments']
-
     data = pd.read_csv(infile, sep='\t', comment='#',
                        header=None, low_memory=False)
     file_cols = data.columns
@@ -63,10 +59,6 @@ def read_all_gtf_data_from_file(infile):
     if len(file_cols) < len(all_gtf_columns):
         gtf_cols = all_gtf_columns[:len(file_cols)]
     data.columns = gtf_cols
-    # drop_cols = [x for x in drop_columns if x in gtf_cols]
-
-    # data = data[data['feature'] == 'gene']
-    # data = data.drop(labels=drop_cols, axis=1)
 
     data['seqname'] = data['seqname'].astype(str)
     data['source'] = data['source'].astype(str)
@@ -146,22 +138,6 @@ def read_all_gtf_data_from_file(infile):
         })
 
     print("GTF rows:", newData.shape[0])
-
-    # missing_value_num = newData.isnull().sum().sum()
-    # if missing_value_num > 0:
-    #     print("Total number of missing values:", missing_value_num)
-    # else:
-    #     print("No missing values in data")
-
-    # gene_id_missing_value_num = newData['geneID'].isnull().sum()
-
-    # gene_symbol_missing_value_num = newData['transcriptID'].isnull().sum()
-
-    # if gene_id_missing_value_num > 0:
-    #     print("Missing gene_id value number:", gene_id_missing_value_num)
-    # if gene_symbol_missing_value_num > 0:
-    #     print("Missing transcript_id value number:",
-    #           gene_symbol_missing_value_num)
 
     newData['start'] = pd.to_numeric(newData['start'], downcast="unsigned")
     newData['end'] = pd.to_numeric(newData['end'], downcast="unsigned")
