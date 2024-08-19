@@ -36,8 +36,8 @@ def getOptions():
     parser.add_argument("-p",
                         "--prefix",
                         dest="prefix",
-                        required=False,
-                        help="Name for output files. Optional. Defaults to name of original file.")
+                        required=True,
+                        help="Name for output files. Required.")
 
     parser.add_argument("-o",
                         "--outdir",
@@ -161,13 +161,17 @@ def read_all_gtf_data_from_file(infile):
 
 def main():
 
-    annoFile = "/TB14/TB14/blue_copy/references/dmel_fb650/dmel650_noDup.gtf"
-    pcGTFFile = "/TB14/TB14/blue_copy/references/dmel_fb650/dmel650_protein_coding_ref.gtf"
-    geneKeyFile = "/TB14/TB14/blue_copy/references/dmel_fb650/dmel650_2_dmel6_testNoDup_gffcompare_gene_key.csv"
+    # annoFile = "/TB14/TB14/blue_copy/references/dmel_fb650/dmel650_noDup.gtf"
+    # pcGTFFile = "/TB14/TB14/blue_copy/references/dmel_fb650/dmel650_protein_coding_ref.gtf"
+    # geneKeyFile = "/TB14/TB14/blue_copy/references/dmel_fb650/dmel650_2_dmel6_gffcompare_gene_key.csv"
+    # prefix = "test"
+    # outdir = "/nfshome/k.bankole/Desktop/test_folder"
 
-    # annoFile = args.annoFile
-    # pcGTFFile = args.pcGTFFile
-    # geneKeyFile = args.geneKeyFile
+    annoFile = args.annoFile
+    pcGTFFile = args.pcGTFFile
+    geneKeyFile = args.geneKeyFile
+    outdir = args.outdir
+    prefix = args.prefix
 
     # Read in annotation and protein coding annotation
     annoDf = read_all_gtf_data_from_file(annoFile)
@@ -205,6 +209,9 @@ def main():
     # there should be no left_only. right_only=unmapped (this is verified)
     if any(mergeDf['merge_check'] == 'left_only'):
         raise Exception("An error occurred during the merge.")
+    else:
+        print(
+            f"There should be {len(mergeDf[mergeDf['merge_check'] == 'right_only'])} unmapped transcripts.")
 
     # Subset to both
     bothDf = mergeDf[mergeDf['merge_check']
@@ -221,25 +228,35 @@ def main():
     print(f"There are {numTrNonMatch} ({pctTrMismatch:0.4%} of total) transcripts that "
           "have different genes after GFFCompare.")
 
-    # Count num genes diff post-GFFC
+    geneSet = set(bothDf['geneID_ORIG'].tolist() +
+                  bothDf['geneID_postGffc'].tolist())
 
-    bothDf['geneID_ORIG'].nunique()
-    17449
+    nonMatchDf = bothDf[bothDf['flag_geneMismatch'] == 1]
+    geneNonMatchSet = set(nonMatchDf['geneID_ORIG'].tolist(
+    ) + nonMatchDf['geneID_postGffc'].tolist())
 
-    geneOnlyDf = bothDf.groupby('')
+    numGnNonMatch = len(geneNonMatchSet)
 
-    geneOnlyDf = bothDf.drop('transcriptID', axis=1).drop_duplicates()
-
-    numGnNonMatch = geneOnlyDf[geneOnlyDf['flag_geneMismatch']
-                               == 1]['geneID_ORIG'].nunique()
-
-    numGnMatch = geneOnlyDf[geneOnlyDf['flag_geneMismatch']
-                            == 0]['geneID_ORIG'].nunique()
+    numGnMatch = len(geneSet) - len(geneNonMatchSet)
 
     pctGnMismatch = numGnNonMatch / (numGnMatch + numGnNonMatch)
 
-    print(f"There are {numGnNonMatch} ({pctGnMismatch:0.4%} of total) genes involved "
-          "in these mismatch events. ")
+    print(f"There are {numGnNonMatch} ({pctGnMismatch:0.4%} of total) ambigous genes (genes *involved* "
+          "in these mismatch events, switched to or switched from). ")
+
+    # output list of flag ambig genes
+    outAmbigDf = pd.DataFrame(geneSet, columns=['geneID'])
+    outAmbigDf['flag_ambig'] = outAmbigDf['geneID'].isin(
+        geneNonMatchSet).astype(int)
+
+    # Return transcripts
+
+    # OUTPUT PREFIX
+    outPrefix = "{}/{}".format(outdir, prefix)
+
+    outAmbigDf.to_csv(outPrefix + "_flag_ambig_gene.csv", index=False)
+    bothDf.to_csv(
+        outPrefix + "_compare_transcript_gene_assignment.csv", index=False)
 
 
 if __name__ == '__main__':
@@ -261,5 +278,3 @@ if __name__ == '__main__':
 #     'FBgn0263409',
 #     'FBgn0267612'
 # ])]
-
-# left_only = not an exon. right_only = unmapped
