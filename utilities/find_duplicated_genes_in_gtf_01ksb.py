@@ -213,7 +213,7 @@ def createDupeList(gtfDf):
 
 def main():
 
-    inAnno = "/TB14/TB14/blue_copy/references/dmel_fb650/dmel-all-r6.50.gtf"
+    inAnno = "/TB14/TB14/blue_copy/references/dmel_fb650/dmel-all-r6.50_subset_trans_spliced_gene.gtf"
     # inAnno = "/TB14/TB14/blue_copy/references/dsim_fb202/dsim-all-r2.02.gtf"
     # inAnno = "/TB14/TB14/blue_copy/references/dser1.1/GCF_002093755.2/genomic.gtf"
     # inAnno = "/TB14/TB14/blue_copy/references/dsan_Prin_1.1/GCF_016746245.2/genomic.gtf"
