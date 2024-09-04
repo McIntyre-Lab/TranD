@@ -33,8 +33,8 @@ def getOptions():
 
 def main():
 
-    catDscFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/dyak_data_2_dyak2_ujc_dscrptn_simpleCat.csv"
-    outDscFile = "/nfshome/k.bankole/Desktop/test_folder/catdscasiofgn.csv"
+    # catDscFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/dyak_data_2_dyak2_ujc_dscrptn_simpleCat.csv"
+    # outDscFile = "/nfshome/k.bankole/Desktop/test_folder/catdscasiofgn.csv"
 
     catDscFile = args.catDscFile
     outDscFile = args.outDscFile

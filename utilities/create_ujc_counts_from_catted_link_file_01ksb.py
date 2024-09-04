@@ -42,7 +42,7 @@ def getOptions():
 
 def main():
 
-    linkFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/dyak_data_2_dyak2_ujc_xscript_link_noMultiGene.csv"
+    linkFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/dsan_data_2_dsan1_ujc_xscript_link_noMultiGene.csv"
 
     outdir = "whaaat"
     prefix = "huhhhhh"
@@ -53,6 +53,8 @@ def main():
 
     nmgLinkDf = pd.read_csv(linkFile, low_memory=False)
 
+    print("Link file read complete...")
+
     nmgLinkDf = nmgLinkDf.rename({'source': 'sampleID'})
 
     countDf = nmgLinkDf.groupby(['source', 'jxnHash', 'geneID']).count()[
@@ -62,9 +64,16 @@ def main():
         columns={'transcriptID': 'numRead'})
     countDf = countDf[['source', 'geneID', 'jxnHash', 'numRead']]
 
+    print("Initial count complete...")
+
     readPerSampleID = countDf.groupby('source').count()[
         'numRead'].reset_index()
+
+    print("SampleID count complete...")
+
     readPerGene = countDf.groupby('geneID').count()['numRead'].reset_index()
+
+    print("Gene count complete...")
 
     outPrefix = outdir + f"/{prefix}"
 
@@ -76,6 +85,8 @@ def main():
 
     readPerGene.to_csv(
         f"{outPrefix}_read_per_gene.csv", index=False)
+
+    print("Output complete!")
 
 
 if __name__ == '__main__':
