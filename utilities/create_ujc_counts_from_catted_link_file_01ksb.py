@@ -42,7 +42,7 @@ def getOptions():
 
 def main():
 
-    linkFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/dsan_data_2_dsan1_ujc_xscript_link_noMultiGene.csv"
+    linkFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/dyak_data_2_dyak2_ujc_xscript_link_noMultiGene.csv"
 
     outdir = "whaaat"
     prefix = "huhhhhh"
@@ -55,23 +55,23 @@ def main():
 
     print("Link file read complete...")
 
-    nmgLinkDf = nmgLinkDf.rename({'source': 'sampleID'})
+    nmgLinkDf = nmgLinkDf.rename(columns={'source': 'sampleID'})
 
-    countDf = nmgLinkDf.groupby(['source', 'jxnHash', 'geneID']).count()[
+    countDf = nmgLinkDf.groupby(['sampleID', 'jxnHash', 'geneID']).count()[
         'transcriptID'].reset_index()
 
     countDf = countDf.rename(
         columns={'transcriptID': 'numRead'})
-    countDf = countDf[['source', 'geneID', 'jxnHash', 'numRead']]
+    countDf = countDf[['sampleID', 'geneID', 'jxnHash', 'numRead']]
 
     print("Initial count complete...")
 
-    readPerSampleID = countDf.groupby('source').count()[
-        'numRead'].reset_index()
+    readPerSampleID = countDf.groupby(
+        'sampleID')['numRead'].sum().reset_index()
 
     print("SampleID count complete...")
 
-    readPerGene = countDf.groupby('geneID').count()['numRead'].reset_index()
+    readPerGene = countDf.groupby('geneID')['numRead'].sum().reset_index()
 
     print("Gene count complete...")
 
