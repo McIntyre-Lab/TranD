@@ -75,6 +75,11 @@ def main():
 
     print("Gene count complete...")
 
+    readPerJxnhash = countDf.groupby(
+        'jxnHash')['numRead'].sum().reset_index()
+
+    print("Jxnhash count complete...")
+
     outPrefix = outdir + f"/{prefix}"
 
     countDf.to_csv(
@@ -85,6 +90,9 @@ def main():
 
     readPerGene.to_csv(
         f"{outPrefix}_read_per_gene.csv", index=False)
+
+    readPerJxnhash.to_csv(
+        f"{outPrefix}_read_per_jxnHash.csv", index=False)
 
     print("Output complete!")
 
