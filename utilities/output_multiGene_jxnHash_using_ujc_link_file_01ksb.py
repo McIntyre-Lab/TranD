@@ -75,7 +75,7 @@ def main():
     linkWFlagDf = pd.merge(linkDf, dscForMergeDf, how='outer',
                            on='jxnHash', indicator='merge_check')
 
-    if (linkWFlagDf['merge_check'] == 'both').all():
+    if (linkWFlagDf['merge_check'] != 'both').any():
         raise Exception("An error occurred with the merge. There are jxnHashes "
                         "in the dscrptn file that are not in the link file or  "
                         "vice versa.")
