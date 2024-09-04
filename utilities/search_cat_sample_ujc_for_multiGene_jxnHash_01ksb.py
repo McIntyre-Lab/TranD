@@ -2,6 +2,7 @@
 
 import argparse
 import pandas as pd
+import glob
 
 
 def getOptions():
@@ -9,7 +10,7 @@ def getOptions():
     parser = argparse.ArgumentParser(
         description="Input a \"ujc xscript link\" file that has been run by "
                     "gene and catted together. Script outputs a list of "
-                    "jxnHash that exist in multiple genes.")
+                    "jxnHash that exist in multiple genes and a list of jxnHash that is 'oneToOne'.")
 
     # Input data
     parser.add_argument("-i",
@@ -19,11 +20,18 @@ def getOptions():
                         help="Path to input file.")
 
     # Output data
-    parser.add_argument("-o",
-                        "--outfile",
-                        dest="outFile",
+    parser.add_argument("-p",
+                        "--prefix",
+                        dest="prefix",
                         required=True,
-                        help="Full path for output file.")
+                        help="Output prefix. Required."
+                        "Output will look like: 'list_{prefix}_oneToOne_jxnHash.csv'.")
+
+    parser.add_argument("-o",
+                        "--outdir",
+                        dest="outdir",
+                        required=True,
+                        help="Output directory. Must already exist.")
 
     args = parser.parse_args()
     return args
@@ -31,12 +39,20 @@ def getOptions():
 
 def main():
 
-    # inFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_species_gtf_combined_genes/dsan_data_2_dsan1_ujc_xscript_link.csv"
+    inFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/dsan_data_2_dsan1_ujc_xscript_link.csv"
+    prefix = "test"
+    outdir = "/nfshome/k.bankole/Desktop/test_folder/"
 
-    # outFile = "/nfshome/k.bankole/Desktop/test_folder/multigene.txt"
+    # inFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/annotation_id_ujc_output/dmel650_2_dmel6_ujc_xscript_link.csv"
+    # inFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/annotation_id_ujc_output/dsim202_2_dsim2_ujc_xscript_link.csv"
+    # inFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/annotation_id_ujc_output/dsimWXD_2_dsim2_ujc_xscript_link.csv"
+    # inFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/annotation_id_ujc_output/dsan11_2_dsan1_ujc_xscript_link.csv"
+    # inFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/annotation_id_ujc_output/dyak21_2_dyak2_ujc_xscript_link.csv"
+    # inFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/annotation_id_ujc_output/dser11_2_dser1_ujc_xscript_link.csv"
 
     inFile = args.inFile
-    outFile = args.outFile
+    outdir = args.outdir
+    prefix = args.prefix
 
     inDf = pd.read_csv(inFile, low_memory=False)
 
@@ -49,20 +65,26 @@ def main():
 
     print("Num unique jxnHash:", len(uniqHashDf))
 
-    uniqHashDf['multiGene'] = uniqHashDf['geneID'].apply(
-        lambda x: len(x) > 1)
+    uniqHashDf['flagMultiGene'] = uniqHashDf['geneID'].apply(
+        lambda x: len(x) > 1).astype(int)
 
-    multiGeneDf = uniqHashDf[uniqHashDf['multiGene']]
-    # singleGeneDf = uniqHashDf[~uniqHashDf['multiGene']]
+    multiGeneDf = uniqHashDf[uniqHashDf['flagMultiGene'] == 1].copy()
+    oneToOneDf = uniqHashDf[uniqHashDf['flagMultiGene'] == 0].copy()
 
     pctMultiGene = len(multiGeneDf) / len(uniqHashDf)
 
     print("Num multiGene jxnHash:", len(multiGeneDf))
     print(f"Percent of all jxnHash that are multiGene: {pctMultiGene:%}")
 
-    outDf = multiGeneDf['jxnHash']
+    outPrefix = outdir + f"/list_{prefix}"
 
-    outDf.to_csv(outFile, index=False, header=False)
+    oneToOneDf['geneID'] = oneToOneDf['geneID'].apply(lambda x: next(iter(x)))
+    oneToOneDf = oneToOneDf.drop('flagMultiGene', axis=1)
+    oneToOneDf.to_csv(outPrefix + "_oneToOne_jxnHash.csv", index=False)
+
+    multiGeneDf = multiGeneDf.explode('geneID')
+    multiGeneDf = multiGeneDf.drop('flagMultiGene', axis=1)
+    multiGeneDf.to_csv(outPrefix + "_multiGene_jxnHash.csv", index=False)
 
 
 if __name__ == '__main__':
