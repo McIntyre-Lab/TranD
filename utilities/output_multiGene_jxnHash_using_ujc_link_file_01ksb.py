@@ -34,14 +34,16 @@ def getOptions():
         "--outdir",
         dest="outdir",
         required=True,
-        help="Output directory. Must already exist.")
+        help="Output directory. Must already exist."
+    )
 
     parser.add_argument(
         "-x",
         "--prefix",
         dest="prefix",
         required=True,
-        help="Output prefix. Required.")
+        help="Output prefix. Required."
+    )
 
     args = parser.parse_args()
     return args
