@@ -187,7 +187,7 @@ def main():
 
     outPrefix = f"{outdir}/{prefix}_"
 
-    erpCntFile = outPrefix + "reads_per_ERP.csv"
+    erpCntFile = outPrefix + "read_per_ERP.csv"
 
     erpCntDf.to_csv(
         erpCntFile, index=False)
