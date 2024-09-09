@@ -355,7 +355,7 @@ def main():
     #                              'flagReverseIR']]
 
     outPatternDf = outPatternDf[['jxnHash', 'geneID', 'seqname', 'strand', 'ESP', 'patternESID', 'numExon',
-                                 'numDataOnlyExon', 'dataOnlyESID', 'flagReverseIR']]
+                                 'numDataOnlyExon', 'dataOnlyESID']]
 
     if sampleID:
         outFlagDf['sampleID'] = sampleID
