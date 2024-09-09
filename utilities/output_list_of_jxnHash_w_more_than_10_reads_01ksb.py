@@ -22,16 +22,20 @@ def getOptions():
 
 def main():
 
-    cntFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/dyak_data_2_dyak2_ujc_count.csv"
-    outFile = ""
+    DIR = "kopp_lmm_head_data"
+    SPECIES = "dser"
+    GENOME = "dser1"
 
-    cntFile = args.cntFile
-    outFile = args.outFile
+    cntFile = f"/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/{DIR}/{SPECIES}_data_2_{GENOME}_ujc_count.csv"
+    outFile = f"/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/readsWMoreThan10/list_{SPECIES}_data_2_{GENOME}_jxnHash_w_gt_10_read.txt"
+
+    # cntFile = args.cntFile
+    # outFile = args.outFile
 
     cntDf = pd.read_csv(cntFile, low_memory=False)
 
-    cntDf[['species', 'sex', 'techRep']
-          ] = cntDf['sampleID'].str.split('_', expand=True)
+    # cntDf[['species', 'sex', 'techRep']
+    #       ] = cntDf['sampleID'].str.split('_', expand=True)
 
     cntGrpDf = cntDf.groupby(['jxnHash']).agg({'numRead': sum}).reset_index()
 
