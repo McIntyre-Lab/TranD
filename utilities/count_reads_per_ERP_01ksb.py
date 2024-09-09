@@ -55,11 +55,14 @@ def getOptions():
 
 def main():
 
-    inERPFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/rlr_erp_output/fiveSpecies_2_dyak2_ujc_er_vs_dyak_data_2_dyak2_ujc_noMultiGene_ERP.csv"
-    inCntFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/dyak_data_2_dyak2_ujc_count.csv"
+    # inERPFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/rlr_erp_output/fiveSpecies_2_dyak2_ujc_er_vs_dyak_data_2_dyak2_ujc_noMultiGene_ERP.csv"
+    # inCntFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/dyak_data_2_dyak2_ujc_count.csv"
 
-    prefix = "wowee"
-    outdir = "tuidobgad"
+    inERPFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_exon_segments_on_fru_dmel6/fiveSpecies_2_dmel6_ujc_Fru_er_vs_dmel_data_FBgn0004652_job_24_run_811_ujc_ERP.csv"
+    inCntFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/ujc_byGene_output/dmel_data_FBgn0004652_job_24_run_811_ujc_count.csv"
+
+    prefix = "fiveSpecies_2_dmel6_ujc_Fru_er_vs_dmel_data_FBgn0004652_job_24_run_811_ujc"
+    outdir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_exon_segments_on_fru_dmel6"
 
     inERPFile = args.inERPFile
     inCntFile = args.inCntFile

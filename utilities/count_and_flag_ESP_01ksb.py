@@ -58,7 +58,8 @@ def getOptions():
 
 def main():
 
-    espFile = "/nfshome/k.bankole/Desktop/test_folder/fiveSpecies_2_dyak2_ujc_es_vs_dyak_data_2_dyak2_ujc_noMultiGene_ESP.csv"
+    espFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_exon_segments_on_fru_dmel6/fiveSpecies_2_dmel6_ujc_Fru_es_vs_dmel_data_FBgn0004652_job_24_run_811_ujc_ESP.csv"
+
     prefix = None
     sampleID = None
     outdir = ""
