@@ -9,13 +9,13 @@ import os
 def getOptions():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="Convert event analysis file from TranD 1 GTF gene output "
-                                                 "(event_analysis_er.csv) to a GTF where each transcript is "
-                                                 "represents all of the exon regions of a gene.")
+                                                 "(event_analysis_ef.csv) to a GTF where each transcript is "
+                                                 "represents all of the exon fragments of a gene.")
 
     # Input data
     parser.add_argument("-e",
                         "--event-analysis",
-                        dest="eaFile",
+                        dest="esFile",
                         required=True,
                         help="Path to event analysis file")
 
@@ -35,11 +35,11 @@ def main():
     # eaFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_conv_EA2GTF/event_analysis_er.csv"
     # gtfOutPath = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_conv_EA2GTF/test_gtf.gtf"
 
-    esFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/trand_1gtf_geneMode_fiveSpecies_sexDetSubset/fiveSpecies_2_dmel6_ujc_sexDetSubset_event_analysis_ef.csv"
-    gtfOutPath = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/TEST_fiveSpecies_2_dmel6_ujc_sexDetSubset_es.gtf"
+    # esFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/trand_1gtf_geneMode_fiveSpecies_sexDetSubset/fiveSpecies_2_dmel6_ujc_sexDetSubset_event_analysis_ef.csv"
+    # gtfOutPath = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/TEST_fiveSpecies_2_dmel6_ujc_sexDetSubset_es.gtf"
 
-    # eaFile = args.eaFile
-    # gtfOutPath = args.outGTF
+    esFile = args.esFile
+    gtfOutPath = args.outGTF
 
     esDf = pd.read_csv(esFile, low_memory=False)
 
