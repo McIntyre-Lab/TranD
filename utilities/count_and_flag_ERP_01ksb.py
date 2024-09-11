@@ -27,14 +27,6 @@ def getOptions():
         help="Location of ER pattern file"
     )
 
-    # parser.add_argument(
-    #     "-c",
-    #     "--count-file",
-    #     dest="countFile",
-    #     required=False,
-    #     help="Location of counts per jxnHash output from id_ujc"
-    # )
-
     # Output data
     parser.add_argument(
         "-o",
@@ -71,7 +63,7 @@ def main():
 
     # erpFile = "~/mclab/SHARE/McIntyre_Lab/sex_specific_splicing/compare_fiveSpecies_er_vs_data_gtf/mel_sexdet_er_vs_data_pattern_file_FBgn0004652.csv"
 
-    erpFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/aln_ujc_erp_output/fiveSpecies_2_dsan1_ujc_sexDetSubset_er_vs_dsan_F_2_dsan1_ujc_updGeneID_ERP.csv"
+    erpFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/rlr_erp_output/fiveSpecies_2_dyak2_ujc_er_vs_dyak_data_2_dyak2_ujc_noMultiGene_ERP.csv"
     prefix = "prefix"
     sampleID = "dsan_F"
     outdir = ""
@@ -81,24 +73,28 @@ def main():
     prefix = args.prefix
     sampleID = args.sampleID
 
+    # Read in ERP.csv
     inERPDf = pd.read_csv(erpFile, low_memory=False)
 
+    # Print number of unique jxnHash in ERP file
     numUniqJxnHash = inERPDf['jxnHash'].nunique()
     print("There are {} unique jxnHash in the ERP file.".format(numUniqJxnHash))
 
-    # Group into ERGs using ERPs and do some edits to the DF
-
-    erpDf = inERPDf.copy()
-    erpDf['flagDataOnlyExon'] = erpDf['numDataOnlyExon'].apply(
+    # Create flagDataOnly
+    inERPDf['flagDataOnlyExon'] = inERPDf['numDataOnlyExon'].apply(
         lambda x: 1 if x >= 1 else 0)
 
-    # TODO: data only exons? are patterns that are the same but with a different number of dataonly exons different?
-    erpDf = erpDf.groupby(['geneID', 'ERP', 'flagDataOnlyExon']).agg({
+    inERPDf = inERPDf.fillna(0)
+
+    # Make DF unique on ERP. ERPs that are from jxnHash w/ dataOnlyExon/IR are
+    # separate from ERPs from jxnHash without dataOnlyExon/IR
+    erpDf = inERPDf.groupby(['geneID', 'ERP', 'flagDataOnlyExon', 'flagIR']).agg({
         'jxnHash': set,
         'strand': set,
         'seqname': set
     }).reset_index()
 
+    # Make sure each ERP only has one strand and one chr
     singleStrandERP = erpDf['strand'].apply(lambda x: len(x) == 1)
 
     if not singleStrandERP.all():
@@ -117,15 +113,19 @@ def main():
         erpDf['seqname'] = erpDf['seqname'].apply(
             lambda x: list(x)[0])
 
-    erpDf = erpDf[['ERP', 'flagDataOnlyExon',
+    # Reorganize columns
+    erpDf = erpDf[['ERP', 'flagDataOnlyExon', 'flagIR',
                    'jxnHash', 'geneID', 'strand', 'seqname']]
 
+    # Count num jxnHash per ERP
     erpDf['numJxnHash'] = erpDf['jxnHash'].apply(len)
 
+    # Count num of annotated ER in ERP
     erpDf['numAnnotatedER'] = erpDf['ERP'].apply(lambda x: x.count('1'))
 
     patternSeekDf = erpDf.copy()
 
+    # List of test patterns for dev
     # erpLst = [
     #     '1'*22,
     #     '1'*23,
@@ -158,13 +158,10 @@ def main():
     #     'strand': strandLst
     # })
 
-    # patternSeekDf['flagHasDataOnlyExon'] = patternSeekDf.apply(
-    #     lambda x: 1 if len(x['ERP']) > numERDct[x['geneID']] else 0, axis=1)
-
+    # Pattern discernment for describing ERPs!
     patternSeekDf['patternSeek'] = patternSeekDf['ERP'].str.split(
         '_').str[1]
 
-    # Pattern discernment!
     # 1. flag transcripts with all exon regions in the gene and no reference exon regions
     patternSeekDf['flagNoSkip'] = patternSeekDf['patternSeek'].apply(
         lambda x: 1 if all(char == '1' for char in x) else 0)
@@ -232,7 +229,7 @@ def main():
     outFile = "{}_flagERP.csv".format(outPrefix)
 
     outDf = patternSeekDf[[
-        'ERP', 'flagDataOnlyExon', 'geneID', 'seqname', 'strand', 'numJxnHash', 'numAnnotatedER',
+        'ERP', 'flagDataOnlyExon', 'flagIR', 'geneID', 'seqname', 'strand', 'numJxnHash', 'numAnnotatedER',
         'flagNoSkip', 'flagNovel', 'flagERSkip', 'flag5pFragment',
         'flag3pFragment', 'flagIntrnlFrgmnt', 'flagFirstER',
         'flagLastER']].copy()

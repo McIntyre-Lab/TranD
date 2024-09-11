@@ -12,7 +12,7 @@ def getOptions():
     parser = argparse.ArgumentParser(
         description="Count num reads per ERP using read counts from "
                     "UJC output (ujc_count.csv) and \"ERP\" file. "
-                    "Output will include counts per ERP in a stacked format. "
+                    "Output will include counts per ERP in a sample stacked format. "
     )
 
     # Input data
@@ -55,14 +55,16 @@ def getOptions():
 
 def main():
 
-    # inERPFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/rlr_erp_output/fiveSpecies_2_dyak2_ujc_er_vs_dyak_data_2_dyak2_ujc_noMultiGene_ERP.csv"
-    # inCntFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/dyak_data_2_dyak2_ujc_count.csv"
+    inERPFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/rlr_erp_output/fiveSpecies_2_dyak2_ujc_er_vs_dyak_data_2_dyak2_ujc_noMultiGene_ERP.csv"
+    inCntFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/dyak_data_2_dyak2_ujc_count.csv"
 
-    inERPFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_exon_segments_on_fru_dmel6/fiveSpecies_2_dmel6_ujc_Fru_er_vs_dmel_data_FBgn0004652_job_24_run_811_ujc_ERP.csv"
-    inCntFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/ujc_byGene_output/dmel_data_FBgn0004652_job_24_run_811_ujc_count.csv"
+    prefix = "test"
+    outdir = "/nfshome/k.bankole/Desktop/test_folder"
+    # inERPFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_exon_segments_on_fru_dmel6/fiveSpecies_2_dmel6_ujc_Fru_er_vs_dmel_data_FBgn0004652_job_24_run_811_ujc_ERP.csv"
+    # inCntFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/ujc_byGene_output/dmel_data_FBgn0004652_job_24_run_811_ujc_count.csv"
 
-    prefix = "fiveSpecies_2_dmel6_ujc_Fru_er_vs_dmel_data_FBgn0004652_job_24_run_811_ujc"
-    outdir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_exon_segments_on_fru_dmel6"
+    # prefix = "fiveSpecies_2_dmel6_ujc_Fru_er_vs_dmel_data_FBgn0004652_job_24_run_811_ujc"
+    # outdir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_exon_segments_on_fru_dmel6"
 
     inERPFile = args.inERPFile
     inCntFile = args.inCntFile
@@ -89,15 +91,19 @@ def main():
 
     if len(genesInBoth) != len(uniqDataGeneSet):
         warnings.warn("WARNING !!!! There are genes that are only in the count file. "
-                      "If you did not subset the fiveSpecies ER annotation, "
-                      "there is an issue. ")
+                      "This could be due to TranD missing genes or the ER file being "
+                      "a gene subset.")
 
     if len(genesInBoth) != len(uniqERPGeneSet):
         raise Exception("Error. There are genes in the count file that are not "
                         "in the ERP file. Be sure to subset the count file to "
-                        "nonMultiGene jxnHash.")
+                        "noMultiGene jxnHash.")
 
     cntDf['numRead'] = cntDf['numRead'].astype(int)
+
+    erpDf = erpDf.fillna(0)
+    erpDf['flagDataOnlyExon'] = inERPDf['numDataOnlyExon'].apply(
+        lambda x: 1 if x >= 1 else 0)
 
     numHashPerSample = pd.DataFrame(cntDf.groupby(
         'sampleID')['jxnHash'].nunique().rename('startNum'))
@@ -108,7 +114,8 @@ def main():
     print(
         f"File read complete! Took {toc-alphatic:0.4f} seconds.")
 
-    erpDf = erpDf[['jxnHash', 'ERP', 'geneID', 'strand', 'seqname']]
+    erpDf = erpDf[['jxnHash', 'ERP', 'geneID', 'strand',
+                   'seqname', 'flagDataOnlyExon', 'flagIR']]
 
     # Merge ERP and counts
     erpMergeDf = pd.merge(erpDf, cntDf, on='jxnHash',
@@ -139,7 +146,7 @@ def main():
                         "the merge.")
 
     # Convert to unique on ERP and sum reads accross jxnHash
-    erpCntDf = erpMergeDf.groupby(['sampleID', 'ERP', 'geneID']).agg({
+    erpCntDf = erpMergeDf.groupby(['sampleID', 'ERP', 'geneID', 'flagDataOnlyExon', 'flagIR']).agg({
         'jxnHash': 'size',
         'strand': set,
         'seqname': set,
@@ -183,7 +190,7 @@ def main():
         erpCntDf['seqname'] = erpCntDf['seqname'].apply(
             lambda x: list(x)[0])
 
-    erpCntDf = erpCntDf[['sampleID', 'ERP', 'geneID',
+    erpCntDf = erpCntDf[['sampleID', 'ERP', 'flagDataOnlyExon', 'flagIR', 'geneID',
                          'strand', 'seqname', 'numRead']]
 
     print("ERP counts complete and verified!")
