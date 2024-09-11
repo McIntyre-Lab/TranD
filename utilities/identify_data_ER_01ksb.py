@@ -156,7 +156,7 @@ def main():
     geneDf['ER'] = geneDf['gene_id'] + ':ER' + \
         (geneDf.groupby('gene_id').cumcount() + 1).astype(str)
 
-    # Create a dictionary of genes and their ERs. Sort ERIDs to be in numerical order
+    # Create a dictionary of genes and their ERs. Sort ERIDs to be in numerical order (matches 5'->3' relative to + strand)
     geneDct = dict(geneDf.groupby('gene_id').apply(
         lambda x: sorted(set(x['ER']), key=lambda x: int(x.split("ER")[1]))))
 

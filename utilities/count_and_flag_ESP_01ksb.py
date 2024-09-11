@@ -57,6 +57,7 @@ def getOptions():
 
 
 def main():
+    # NOTE: This script has the **exact same logic** as the ERP version.
 
     espFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_exon_segments_on_fru_dmel6/fiveSpecies_2_dmel6_ujc_Fru_es_vs_dmel_data_FBgn0004652_job_24_run_811_ujc_ESP.csv"
 
@@ -74,12 +75,12 @@ def main():
     numUniqJxnHash = inESPDf['jxnHash'].nunique()
     print("There are {} unique jxnHash in the ESP file.".format(numUniqJxnHash))
 
-    espDf = inESPDf.copy()
-    espDf['flagDataOnlyExon'] = espDf['numDataOnlyExon'].apply(
+    inESPDf['flagDataOnlyExon'] = inESPDf['numDataOnlyExon'].apply(
         lambda x: 1 if x >= 1 else 0)
 
-    # TODO: data only exons? are patterns that are the same but with a different number of dataonly exons different?
-    espDf = espDf.groupby(['geneID', 'ESP', 'flagDataOnlyExon']).agg({
+    inESPDf = inESPDf.fillna(0)
+
+    espDf = inESPDf.groupby(['geneID', 'ESP', 'flagDataOnlyExon']).agg({
         'jxnHash': set,
         'strand': set,
         'seqname': set
@@ -151,7 +152,7 @@ def main():
         '_').str[1]
 
     # Pattern discernment!
-    # 1. flag transcripts with all exon regions in the gene and no reference exon regions
+    # 1. flag transcripts with all exon segments in the gene and no reference exon segments
     patternSeekDf['flagNoSkip'] = patternSeekDf['patternSeek'].apply(
         lambda x: 1 if all(char == '1' for char in x) else 0)
 

@@ -31,7 +31,7 @@ def getOptions():
                                      "reads in GTF form) to an exon segment (ES) "
                                      "GTF (-er). Creates exon segment patterns (ESP) which are "
                                      "binary patterns indicating which of a gene's exon "
-                                     "seqments a transcript has exons within. Outputs two files: "
+                                     "segments a transcript has exons within. Outputs two files: "
                                      "to desired output directory (-o). "
                                      "1. A list of transcripts and their ESPs. 2. A flag file "
                                      "that indicates which of the gene's exon segments the "
@@ -87,6 +87,7 @@ def getOptions():
 
 def main():
 
+    # NOTE: This script has the **exact same logic** as the ERP version.
     esFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dyak2_ujc_es.gtf"
     dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/dyak_data_2_dyak2_ujc_noMultiGene.gtf"
 
@@ -104,12 +105,14 @@ def main():
 
     alphatic = time.perf_counter()
 
+    # Read in both GTFs and subset them to genes that are in both GTF
     inGeneDf = trand.io.read_exon_data_from_file(esFile)
     inDataDf = trand.io.read_exon_data_from_file(dataFile)
 
     uniqDataGeneSet = set(inDataDf['gene_id'])
     uniqRefGeneSet = set(inGeneDf['gene_id'])
 
+    # Store genes only in one GTF for later output
     refOnlyGnLst = list(uniqRefGeneSet - uniqDataGeneSet)
     dataOnlyGnLst = list(uniqDataGeneSet - uniqRefGeneSet)
 
@@ -121,10 +124,12 @@ def main():
     # geneDf = inGeneDf[inGeneDf['gene_id'].isin(["LOC120456871"])].copy()
     # dataDf = inDataDf[inDataDf['gene_id'].isin(["LOC120456871"])].copy()
 
+    # Clean up ES GTF dataframe (geneDf)
     geneDf = geneDf[['gene_id', 'seqname', 'start', 'end', 'strand']].copy()
     geneDf = geneDf.sort_values(
         ['seqname', 'gene_id', 'start'], ignore_index=True)
 
+    # Check that each gene is only on one strand (don't know why they wouldn't be)
     singleStrandGene = geneDf.groupby('gene_id').agg(
         set)['strand'].apply(lambda x: len(x) == 1)
 
@@ -132,22 +137,19 @@ def main():
         print("There are genes belonging to more than one strand. Quitting.")
         quit()
 
+    # Assign each exon in the ES GTF its ES ID
     geneDf['ES'] = geneDf['gene_id'] + ':ES' + \
         (geneDf.groupby('gene_id').cumcount() + 1).astype(str)
 
+    # Create a dictionary of genes and their ESs. Sort ESIDs to be in numerical order (matches 5'->3' relative to + strand)
     geneDct = dict(geneDf.groupby('gene_id').apply(
         lambda x: sorted(set(x['ES']), key=lambda x: int(x.split("ES")[1]))))
 
     # TODO: CHECK THAT ALL SETS ARE OF SIZE ONE
-    erDf = geneDf.groupby('ES').agg('first')
-    erDf['length'] = erDf['end'] - erDf['start']
-    erDct = erDf.to_dict(orient='index')
-
-    # row = pd.DataFrame({'gene_id':'test','seqname':'test','start':0,'end':0,'strand':13341}, index=[len(dataDf)+1])
-    # row2 = pd.DataFrame({'gene_id':'test','seqname':'test','start':0,'end':0,'strand':13341}, index=[len(dataDf)+2])
-    # row3 = pd.DataFrame({'gene_id':'test','seqname':'test','start':0,'end':0,'strand':13341}, index=[len(dataDf)+3])
-    # yourBoat = pd.DataFrame({'gene_id':'test','seqname':'test','start':0,'end':0,'strand':13341}, index=[len(dataDf)+4])
-    # dataDf = pd.concat([dataDf,row,row2,row3,yourBoat])
+    # Create a dictionary of ESs and their information
+    esDf = geneDf.groupby('ES').agg('first')
+    esDf['length'] = esDf['end'] - esDf['start']
+    esDct = esDf.to_dict(orient='index')
 
     dataDf['numExon'] = dataDf.groupby('transcript_id')[
         'transcript_id'].transform('count')
@@ -163,43 +165,28 @@ def main():
 
         matchingESIDLst = []
 
-        if gene in geneDct.keys():
-            for esID in geneDct.get(gene):
+        # if gene in geneDct.keys():
+        for esID in geneDct.get(gene):
+            # print(esID)
+            esInfo = esDct.get(esID)
+            # print(esInfo)
+
+            # print("looping...")
+
+            if max(row['start'], esInfo['start']) < min(row['end'], esInfo['end']):
+                # print(row)
                 # print(esID)
-                esInfo = erDct.get(esID)
-                # print(esInfo)
+                # print(erInfo)
 
-                # print("looping...")
+                matchingESIDLst.append(esID)
 
-                if max(row['start'], esInfo['start']) < min(row['end'], esInfo['end']):
-                    # print(row)
-                    # print(esID)
-                    # print(erInfo)
-
-                    matchingESIDLst.append(esID)
-
-            if matchingESIDLst:
-                row['ES'] = matchingESIDLst
-            else:
-                row['dataOnlyExon'] = "{}:{}_{}".format(
-                    gene, row['start'], row['end'])
+        if matchingESIDLst:
+            row['ES'] = matchingESIDLst
+        else:
+            row['dataOnlyExon'] = "{}:{}_{}".format(
+                gene, row['start'], row['end'])
 
     dataWithESDf = pd.DataFrame(records)
-
-    # TODO: May not be true but makes sense right? if there is an exon that overlaps two exon regions
-    # it may not be true biological IR but its definitely overlapping an intron...
-    # dataWithESDf['flagIR'] = dataWithESDf['ES'].apply(
-    #     lambda x: x if not type(x) is list else 1 if len(x) > 1 else 0)
-
-    # dataWithESDf['IRES'] = dataWithESDf.apply(
-    #     lambda x: tuple(x['ES']) if x['flagIR'] == 1 else np.nan, axis=1)
-
-    # dataWithESDf['numIREvent'] = dataWithESDf.groupby(
-    #     'transcript_id')['flagIR'].transform('sum')
-
-    # intmdDf = dataWithESDf[['seqname', 'gene_id', 'transcript_id', 'ES',
-    #                         'dataOnlyExon', 'flagIR', 'numIREvent', 'IRES', 'numExon', 'strand']]
-    # intmdDf = intmdDf.explode('ES')
 
     intmdDf = dataWithESDf[['seqname', 'gene_id', 'transcript_id', 'ES',
                             'dataOnlyExon', 'numExon', 'strand']]
@@ -208,11 +195,8 @@ def main():
     xscriptESDf = intmdDf.groupby('transcript_id').agg({
         'ES': lambda x: set(x.dropna()),
         'numExon': max,
-        # 'flagIR': max,
         'dataOnlyExon': lambda x: set(x.dropna()),
-        # 'IRES': lambda x: set(tuple(sum(x.dropna(), ()))),
         'strand': set,
-        # 'numIREvent': max,
         'seqname': set
     }).reset_index()
 
@@ -234,8 +218,6 @@ def main():
     else:
         xscriptESDf['seqname'] = xscriptESDf['seqname'].apply(
             lambda x: list(x)[0])
-
-    # Accounts for situations where transcripts have multiple IR events
 
     xscriptESDct = dict(zip(xscriptESDf['transcript_id'], xscriptESDf['ES']))
 
@@ -289,7 +271,7 @@ def main():
             erLst.append(exonRegion)
             flagLst.append(flag)
             strandLst.append(strand)
-            lngthLst.append(erDct[exonRegion]['length'])
+            lngthLst.append(esDct[exonRegion]['length'])
 
         if dataOnlyExonDct[transcript]:
 
@@ -334,15 +316,7 @@ def main():
         lambda x: len(x) != 0)
 
     # TODO: no numES in ESP file
-    outPatternDf['numES'] = outPatternDf['ES'].apply(len)
     outPatternDf['numDataOnlyExon'] = outPatternDf['dataOnlyExon'].apply(len)
-
-    # TODO: rename reverseIR
-    # outPatternDf['flagReverseIR'] = outPatternDf.apply(
-    #     lambda x: 1 if x['numExon'] > x['numES'] + x['numDataOnlyExon'] else 0, axis=1)
-
-    # outPatternDf['IRES'] = outPatternDf['IRES'].apply(
-    #     lambda x: '|'.join(x) if x else np.nan)
 
     outPatternDf['dataOnlyESID'] = outPatternDf['dataOnlyExon'].apply(
         lambda x: '|'.join(x) if x else np.nan)
@@ -350,11 +324,8 @@ def main():
     outFlagDf = outFlagDf.sort_values(by=['geneID', 'jxnHash'])
     outPatternDf = outPatternDf.sort_values(by=['geneID', 'jxnHash'])
 
-    # outPatternDf = outPatternDf[['jxnHash', 'geneID', 'seqname', 'strand', 'ESP', 'patternESID', 'numExon',
-    #                              'numDataOnlyExon', 'dataOnlyESID', 'flagIR', 'numIREvent', 'IRES',
-    #                              'flagReverseIR']]
-
-    outPatternDf = outPatternDf[['jxnHash', 'geneID', 'seqname', 'strand', 'ESP', 'patternESID', 'numExon',
+    outPatternDf = outPatternDf[['jxnHash', 'geneID', 'seqname', 'strand',
+                                 'ESP', 'patternESID', 'numExon',
                                  'numDataOnlyExon', 'dataOnlyESID']]
 
     if sampleID:
@@ -362,7 +333,7 @@ def main():
         outPatternDf['sampleID'] = sampleID
 
     # Do not uncomment. Will probably crash the script.
-    # wideDf = pd.pivot_table(outDf, values='flag_ES', index=['jxnHash','geneID'], columns='exonRegion', fill_value=0)
+    # wideDf = pd.pivot_table(outDf, values='flagES', index=['jxnHash','geneID'], columns='exonRegion', fill_value=0)
 
     # Output
     esName = os.path.splitext(os.path.basename(esFile))[0]

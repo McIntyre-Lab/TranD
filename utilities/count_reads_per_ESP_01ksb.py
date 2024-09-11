@@ -55,11 +55,14 @@ def getOptions():
 
 def main():
 
-    inESPFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_exon_segments_on_fru_dmel6/fiveSpecies_2_dmel6_ujc_Fru_es_vs_dmel_data_FBgn0004652_job_24_run_811_ujc_ESP.csv"
-    inCntFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/ujc_byGene_output/dmel_data_FBgn0004652_job_24_run_811_ujc_count.csv"
+    inESPFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/rlr_esp_output/fiveSpecies_2_dyak2_ujc_es_vs_dyak_data_2_dyak2_ujc_noMultiGene_ESP.csv"
+    inCntFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/dyak_data_2_dyak2_ujc_count.csv"
 
-    prefix = "fiveSpecies_2_dmel6_ujc_Fru_es_vs_dmel_data_FBgn0004652_job_24_run_811_ujc"
-    outdir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_exon_segments_on_fru_dmel6"
+    # inESPFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_exon_segments_on_fru_dmel6/fiveSpecies_2_dmel6_ujc_Fru_es_vs_dmel_data_FBgn0004652_job_24_run_811_ujc_ESP.csv"
+    # inCntFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/ujc_byGene_output/dmel_data_FBgn0004652_job_24_run_811_ujc_count.csv"
+
+    # prefix = "fiveSpecies_2_dmel6_ujc_Fru_es_vs_dmel_data_FBgn0004652_job_24_run_811_ujc"
+    # outdir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_exon_segments_on_fru_dmel6"
 
     inESPFile = args.inESPFile
     inCntFile = args.inCntFile
@@ -96,6 +99,10 @@ def main():
 
     cntDf['numRead'] = cntDf['numRead'].astype(int)
 
+    espDf = espDf.fillna(0)
+    espDf['flagDataOnlyExon'] = inESPDf['numDataOnlyExon'].apply(
+        lambda x: 1 if x >= 1 else 0)
+
     numHashPerSample = pd.DataFrame(cntDf.groupby(
         'sampleID')['jxnHash'].nunique().rename('startNum'))
     numReadPerSample = pd.DataFrame(cntDf.groupby(
@@ -105,7 +112,8 @@ def main():
     print(
         f"File read complete! Took {toc-alphatic:0.4f} seconds.")
 
-    espDf = espDf[['jxnHash', 'ESP', 'geneID', 'strand', 'seqname']]
+    espDf = espDf[['jxnHash', 'ESP', 'flagDataOnlyExon',
+                   'geneID', 'strand', 'seqname']]
 
     # Merge ESP and counts
     espMergeDf = pd.merge(espDf, cntDf, on='jxnHash',
@@ -136,7 +144,7 @@ def main():
                         "the merge.")
 
     # Convert to unique on ESP and sum reads accross jxnHash
-    espCntDf = espMergeDf.groupby(['sampleID', 'ESP', 'geneID']).agg({
+    espCntDf = espMergeDf.groupby(['sampleID', 'ESP', 'flagDataOnlyExon', 'geneID']).agg({
         'jxnHash': 'size',
         'strand': set,
         'seqname': set,
@@ -180,7 +188,7 @@ def main():
         espCntDf['seqname'] = espCntDf['seqname'].apply(
             lambda x: list(x)[0])
 
-    espCntDf = espCntDf[['sampleID', 'ESP', 'geneID',
+    espCntDf = espCntDf[['sampleID', 'ESP', 'flagDataOnlyExon', 'geneID',
                          'strand', 'seqname', 'numRead']]
 
     print("ESP counts complete and verified!")
