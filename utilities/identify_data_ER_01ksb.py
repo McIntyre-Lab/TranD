@@ -31,16 +31,13 @@ def getOptions():
                                      "reads in GTF form) to an exon region (ER) "
                                      "GTF (-er). Creates exon region patterns (ERP) which are "
                                      "binary patterns indicating which of a gene's exon "
-                                     "regions a transcript has exons within. Outputs two files: "
+                                     "regions a read has exons within. Outputs two files: "
                                      "to desired output directory (-o). "
                                      "1. A list of transcripts and their ERPs. 2. A flag file "
                                      "that indicates which of the gene's exon regions the "
                                      "transcript has. Script will also output a list of genes"
                                      "that only appear one GTF. There is also an option to add an "
-                                     "output prefix (-x). Note that there are two forms of "
-                                     "these ERPs: one in which the exon regions "
-                                     "match the way they would appear in the DNA (takes strand into account "
-                                     "and one in which they match the order of the GTF. ")
+                                     "output prefix (-x).")
 
     # INPUT
     parser.add_argument(
@@ -123,12 +120,14 @@ def main():
 
     alphatic = time.perf_counter()
 
+    # Read in both GTFs and subset them to genes that are in both GTF
     inGeneDf = trand.io.read_exon_data_from_file(erFile)
     inDataDf = trand.io.read_exon_data_from_file(dataFile)
 
     uniqDataGeneSet = set(inDataDf['gene_id'])
     uniqRefGeneSet = set(inGeneDf['gene_id'])
 
+    # Store genes only in one GTF for later output
     refOnlyGnLst = list(uniqRefGeneSet - uniqDataGeneSet)
     dataOnlyGnLst = list(uniqDataGeneSet - uniqRefGeneSet)
 
@@ -140,10 +139,12 @@ def main():
     # geneDf = inGeneDf[inGeneDf['gene_id'].isin(["LOC120456871"])].copy()
     # dataDf = inDataDf[inDataDf['gene_id'].isin(["LOC120456871"])].copy()
 
+    # Clean up ER GTF dataframe (geneDf)
     geneDf = geneDf[['gene_id', 'seqname', 'start', 'end', 'strand']].copy()
     geneDf = geneDf.sort_values(
         ['seqname', 'gene_id', 'start'], ignore_index=True)
 
+    # Check that each gene is only on one strand (don't know why they wouldn't be)
     singleStrandGene = geneDf.groupby('gene_id').agg(
         set)['strand'].apply(lambda x: len(x) == 1)
 
@@ -151,13 +152,16 @@ def main():
         print("There are genes belonging to more than one strand. Quitting.")
         quit()
 
+    # Assign each exon in the ER GTF its ER ID
     geneDf['ER'] = geneDf['gene_id'] + ':ER' + \
         (geneDf.groupby('gene_id').cumcount() + 1).astype(str)
 
+    # Create a dictionary of genes and their ERs. Sort ERIDs to be in numerical order
     geneDct = dict(geneDf.groupby('gene_id').apply(
         lambda x: sorted(set(x['ER']), key=lambda x: int(x.split("ER")[1]))))
 
     # TODO: CHECK THAT ALL SETS ARE OF SIZE ONE
+    # Create a dictionary of ERs and their information
     erDf = geneDf.groupby('ER').agg('first')
     erDf['length'] = erDf['end'] - erDf['start']
     erDct = erDf.to_dict(orient='index')
@@ -168,6 +172,7 @@ def main():
     # yourBoat = pd.DataFrame({'gene_id':'test','seqname':'test','start':0,'end':0,'strand':13341}, index=[len(dataDf)+4])
     # dataDf = pd.concat([dataDf,row,row2,row3,yourBoat])
 
+    # Prepare data GTF/Dataframe for assigning ER
     dataDf['numExon'] = dataDf.groupby('transcript_id')[
         'transcript_id'].transform('count')
 
@@ -175,6 +180,7 @@ def main():
 
     records = dataDf.to_dict('records')
 
+    # Loop through every exon in the data and create a list of the ER(s) it overlaps
     for row in records:
 
         gene = row['gene_id']
@@ -182,44 +188,49 @@ def main():
 
         matchingERIDLst = []
 
-        if gene in geneDct.keys():
-            for erID in geneDct.get(gene):
+        # if gene in geneDct.keys():
+        for erID in geneDct.get(gene):
+            # print(erID)
+            erInfo = erDct.get(erID)
+            # print(erInfo)
+
+            # print("looping...")
+
+            if max(row['start'], erInfo['start']) < min(row['end'], erInfo['end']):
+                # print(row)
                 # print(erID)
-                erInfo = erDct.get(erID)
                 # print(erInfo)
 
-                # print("looping...")
+                matchingERIDLst.append(erID)
 
-                if max(row['start'], erInfo['start']) < min(row['end'], erInfo['end']):
-                    # print(row)
-                    # print(erID)
-                    # print(erInfo)
+        # If the exon does not overlap any annotated ERs, add it to a list of "dataOnlyExon"
+        if matchingERIDLst:
+            row['ER'] = matchingERIDLst
+        else:
+            row['dataOnlyExon'] = "{}:{}_{}".format(
+                gene, row['start'], row['end'])
 
-                    matchingERIDLst.append(erID)
-
-            if matchingERIDLst:
-                row['ER'] = matchingERIDLst
-            else:
-                row['dataOnlyExon'] = "{}:{}_{}".format(
-                    gene, row['start'], row['end'])
-
+    # Create new dataframe where every exon is assigned to its ER(s)
     dataWithERDf = pd.DataFrame(records)
 
-    # TODO: May not be true but makes sense right? if there is an exon that overlaps two exon regions
-    # it may not be true biological IR but its definitely overlapping an intron...
+    # flag exons with IR (one exon overlaps multiple ERs)
     dataWithERDf['flagIR'] = dataWithERDf['ER'].apply(
         lambda x: x if not type(x) is list else 1 if len(x) > 1 else 0)
 
+    # List the ERs involved in the IR event
     dataWithERDf['IRER'] = dataWithERDf.apply(
         lambda x: tuple(x['ER']) if x['flagIR'] == 1 else np.nan, axis=1)
 
+    # Give total number of times there is IR in that transcript (number of exons that have IR)
     dataWithERDf['numIREvent'] = dataWithERDf.groupby(
         'transcript_id')['flagIR'].transform('sum')
 
+    # Create an intermediate DF based on new data exon DF
     intmdDf = dataWithERDf[['seqname', 'gene_id', 'transcript_id', 'ER',
                             'dataOnlyExon', 'flagIR', 'numIREvent', 'IRER', 'numExon', 'strand']]
     intmdDf = intmdDf.explode('ER')
 
+    # Create a DF unique on transcript that lists all ERs associated with transcript
     xscriptERDf = intmdDf.groupby('transcript_id').agg({
         'ER': lambda x: set(x.dropna()),
         'numExon': max,
@@ -231,7 +242,7 @@ def main():
         'seqname': set
     }).reset_index()
 
-    # Check for no multi-strand transcripts
+    # Check for no multi-strand or multi-chr transcripts post-grouping
     singleStrandXscript = xscriptERDf['strand'].apply(lambda x: len(x) == 1)
 
     if not singleStrandXscript.all():
@@ -250,10 +261,11 @@ def main():
         xscriptERDf['seqname'] = xscriptERDf['seqname'].apply(
             lambda x: list(x)[0])
 
+    # Create a dict that lists every annotated ER associated with a transcript
     # Accounts for situations where transcripts have multiple IR events
-
     xscriptERDct = dict(zip(xscriptERDf['transcript_id'], xscriptERDf['ER']))
 
+    # Create a dict that lists every non-annotated exon assocaited with a transcript
     dataOnlyExonDct = dict(
         zip(xscriptERDf['transcript_id'], xscriptERDf['dataOnlyExon']))
 
@@ -262,8 +274,15 @@ def main():
     #       "34a6dd0389208ff91783b8ec557da2427785a0988ffa8243635e75c13b7f334c")
     #     | (dataWithERDf['transcript_id'] == "068509f23790d261052860383c257e94c8d917c9c67a0140875242cd7302b738")]
 
+    # Create a list of transcripts to loop through using the data GTF
     loopLst = [tuple(x) for x in dataWithERDf[[
         'gene_id', 'transcript_id', 'strand', 'seqname']].drop_duplicates().to_records(index=False)]
+
+    # Loop through every data transcript.
+    # Compare the ERs in the transcript to every ER in the gene and flag present ERs.
+    # Importantly, the ERs are looped through the gene's list of ERs, which are in order from
+    # 5' -> 3' due to the previous sort.
+    # Create the ERP
 
     xscriptLst = []
     geneLst = []
@@ -282,6 +301,7 @@ def main():
         pttrnLst = ["1" if ER in xscriptERSet else "0" for ER in geneERLst]
         erIDLst = [ER for ER in geneERLst if ER in xscriptERSet]
 
+        # Assure that ERPs are in transcription order in the pattern
         if strand == "-":
             pttrnLst.reverse()
             erIDLst.reverse()
@@ -306,6 +326,7 @@ def main():
             strandLst.append(strand)
             lngthLst.append(erDct[exonRegion]['length'])
 
+        # Add any data only exons if present
         if dataOnlyExonDct[transcript]:
 
             for exonRegion in dataOnlyExonDct[transcript]:
@@ -322,6 +343,7 @@ def main():
 
                 lngthLst.append(exonLngth)
 
+    # Create flagER file using lists created above
     outFlagDf = pd.DataFrame({
         'jxnHash': xscriptLst,
         'geneID': geneLst,
@@ -348,13 +370,12 @@ def main():
     outPatternDf['flagDataOnlyExon'] = outPatternDf['dataOnlyExon'].apply(
         lambda x: len(x) != 0)
 
-    # TODO: no numER in ERP file
-    outPatternDf['numER'] = outPatternDf['ER'].apply(len)
     outPatternDf['numDataOnlyExon'] = outPatternDf['dataOnlyExon'].apply(len)
 
     # TODO: rename reverseIR
+    # reverseIR = when multiple exons fit into one exon region
     outPatternDf['flagReverseIR'] = outPatternDf.apply(
-        lambda x: 1 if x['numExon'] > x['numER'] + x['numDataOnlyExon'] else 0, axis=1)
+        lambda x: 1 if x['numExon'] > len(x['ER']) + x['numDataOnlyExon'] else 0, axis=1)
 
     outPatternDf['IRER'] = outPatternDf['IRER'].apply(
         lambda x: '|'.join(x) if x else np.nan)
@@ -362,6 +383,7 @@ def main():
     outPatternDf['dataOnlyERID'] = outPatternDf['dataOnlyExon'].apply(
         lambda x: '|'.join(x) if x else np.nan)
 
+    # Output
     outFlagDf = outFlagDf.sort_values(by=['geneID', 'jxnHash'])
     outPatternDf = outPatternDf.sort_values(by=['geneID', 'jxnHash'])
 
@@ -376,7 +398,6 @@ def main():
     # Do not uncomment. Will probably crash the script.
     # wideDf = pd.pivot_table(outDf, values='flag_ER', index=['jxnHash','geneID'], columns='exonRegion', fill_value=0)
 
-    # Output
     erName = os.path.splitext(os.path.basename(erFile))[0]
     dataName = os.path.splitext(os.path.basename(dataFile))[0]
 
