@@ -101,6 +101,9 @@ def main():
 
     cntDf['numRead'] = cntDf['numRead'].astype(int)
 
+    sumReadCnt = cntDf['numRead'].sum()
+    cntGnDf = cntDf.groupby(['sampleID', 'geneID'])['numRead'].sum()
+
     erpDf = erpDf.fillna(0)
     erpDf['flagDataOnlyExon'] = inERPDf['numDataOnlyExon'].apply(
         lambda x: 1 if x >= 1 else 0)
@@ -192,6 +195,14 @@ def main():
 
     erpCntDf = erpCntDf[['sampleID', 'ERP', 'flagDataOnlyExon', 'flagIR', 'geneID',
                          'strand', 'seqname', 'numRead']]
+
+    sumERPCnt = erpCntDf['numRead'].sum()
+    erpGnDf = erpCntDf.groupby(['sampleID', 'geneID'])['numRead'].sum()
+
+    if not (cntGnDf == erpGnDf).all() or sumERPCnt != sumReadCnt:
+        raise Exception(
+            "Error, the number of reads per gene/the number of total reads "
+            "is not equivalent for input and output.")
 
     print("ERP counts complete and verified!")
 

@@ -99,6 +99,9 @@ def main():
 
     cntDf['numRead'] = cntDf['numRead'].astype(int)
 
+    sumReadCnt = cntDf['numRead'].sum()
+    cntGnDf = cntDf.groupby(['sampleID', 'geneID'])['numRead'].sum()
+
     espDf = espDf.fillna(0)
     espDf['flagDataOnlyExon'] = inESPDf['numDataOnlyExon'].apply(
         lambda x: 1 if x >= 1 else 0)
@@ -190,6 +193,14 @@ def main():
 
     espCntDf = espCntDf[['sampleID', 'ESP', 'flagDataOnlyExon', 'geneID',
                          'strand', 'seqname', 'numRead']]
+
+    sumESPCnt = espCntDf['numRead'].sum()
+    espGnDf = espCntDf.groupby(['sampleID', 'geneID'])['numRead'].sum()
+
+    if not (cntGnDf == espGnDf).all() or sumESPCnt != sumReadCnt:
+        raise Exception(
+            "Error, the number of reads per gene/the number of total reads "
+            "is not equivalent for input and output.")
 
     print("ESP counts complete and verified!")
 
