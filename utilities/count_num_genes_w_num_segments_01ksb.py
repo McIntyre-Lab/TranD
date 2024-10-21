@@ -33,12 +33,13 @@ def getOptions():
 
 def main():
 
-    # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dser1_ujc_es.gtf"
-    # threshold = 1
+    inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dser1_ujc_es.gtf"
+    threshold = 1
 
     inGTF = args.inGTF
     threshold = args.threshold
 
+    threshold = int(threshold)
     gtfDf = trand.io.read_exon_data_from_file(inGTF)
 
     gtfDf['ES'] = 'ES' + (gtfDf.groupby('gene_id').cumcount() + 1).astype(str)
