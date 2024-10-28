@@ -88,10 +88,17 @@ def getOptions():
 def main():
 
     # NOTE: This script has the **exact same logic** as the ERP version.
-    esFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dyak2_ujc_es.gtf"
-    dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/dyak_data_2_dyak2_ujc_noMultiGene.gtf"
+    # ## ^ NOT ANYMORE
+    # esFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dyak2_ujc_es.gtf"
+    # dataFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/dyak_data_2_dyak2_ujc_noMultiGene.gtf"
+    # # erFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dyak2_ujc_er.gtf"
 
-    outdir = "/nfshome/k.bankole/Desktop/test_folder"
+    # outdir = "/nfshome/k.bankole/Desktop/test_folder"
+
+    esFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc_es.gtf"
+    # dataFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/transcript_ortholog/dyak_data_2_dyak2_ujc_noMultiGene.gtf"
+    dataFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc.gtf"
+    erFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc_er.gtf"
 
     # prefix = "test_prefix"
     sampleID = None
@@ -121,12 +128,17 @@ def main():
     geneDf = inGeneDf[inGeneDf['gene_id'].isin(genesInBoth)].copy()
     dataDf = inDataDf[inDataDf['gene_id'].isin(genesInBoth)].copy()
 
-    # geneDf = inGeneDf[inGeneDf['gene_id'].isin(["LOC120456871"])].copy()
-    # dataDf = inDataDf[inDataDf['gene_id'].isin(["LOC120456871"])].copy()
+    inERDf = trand.io.read_exon_data_from_file(erFile)
+    geneERDf = inERDf[inERDf['gene_id'].isin(genesInBoth)].copy()
 
     # Clean up ES GTF dataframe (geneDf)
     geneDf = geneDf[['gene_id', 'seqname', 'start', 'end', 'strand']].copy()
     geneDf = geneDf.sort_values(
+        ['seqname', 'gene_id', 'start'], ignore_index=True)
+
+    geneERDf = geneERDf[['gene_id', 'seqname',
+                         'start', 'end', 'strand']].copy()
+    geneERDf = geneERDf.sort_values(
         ['seqname', 'gene_id', 'start'], ignore_index=True)
 
     # Check that each gene is only on one strand (don't know why they wouldn't be)
@@ -141,13 +153,66 @@ def main():
     geneDf['ES'] = geneDf['gene_id'] + ':ES' + \
         (geneDf.groupby('gene_id').cumcount() + 1).astype(str)
 
-    # Create a dictionary of genes and their ESs. Sort ESIDs to be in numerical order (matches 5'->3' relative to + strand)
-    geneDct = dict(geneDf.groupby('gene_id').apply(
-        lambda x: sorted(set(x['ES']), key=lambda x: int(x.split("ES")[1]))))
+    geneERDf['ER'] = geneERDf['gene_id'] + ':ER' + \
+        (geneERDf.groupby('gene_id').cumcount() + 1).astype(str)
+
+    erDct = geneERDf.set_index('ER').to_dict(orient='index')
+    geneERDct = dict(geneERDf.groupby('gene_id').apply(
+        lambda x: sorted(set(x['ER']), key=lambda x: int(x.split("ER")[1]))))
+
+    # Find overlapping exon region for every exon segment!
+    rowDct = geneDf.to_dict('records')
+
+    for row in rowDct:
+
+        gene = row['gene_id']
+        ES = row['ES']
+        esStart = row['start']
+        esEnd = row['end']
+
+        geneERLst = geneERDct[gene]
+
+        for erID in geneERLst:
+
+            erInfo = erDct[erID]
+
+            erStart = erInfo['start']
+            erEnd = erInfo['end']
+
+            if esStart <= erEnd and erStart <= esEnd:
+                row['ER'] = erID
+
+    # Seems like it worked!
+    geneERESDf = pd.DataFrame(rowDct)
+
+    if geneERESDf['ER'].isnull().any():
+        raise Exception(
+            "An error occurred when pairing exon segments to exon regions.")
+
+    # Create a dictionary of genes/ERs and their ESs. Sort ESIDs to be in numerical order (matches 5'->3' relative to + strand)
+    preDictDf = geneERESDf.groupby(['gene_id', 'ER']).apply(lambda x: sorted(
+        set(x['ES']), key=lambda x: int(x.split("ES")[1]))).reset_index()
+
+    preDictDf.columns = ['gene_id', 'ER', 'ES']
+
+    geneERESDct = dict(dict())
+    for row in preDictDf.to_dict('records'):
+
+        gene = row['gene_id']
+        ER = row['ER']
+        ES = row['ES']
+
+        if gene not in geneERESDct:
+            geneERESDct[gene] = {ER: ES}
+
+        geneERESDct[gene][ER] = ES
+
+    geneESDct = dict(geneERESDf.groupby(['gene_id']).apply(lambda x: sorted(
+        set(x['ES']), key=lambda x: int(x.split("ES")[1]))))
 
     # TODO: CHECK THAT ALL SETS ARE OF SIZE ONE
     # Create a dictionary of ESs and their information
-    esDf = geneDf.groupby('ES').agg('first')
+    esDf = geneERESDf.groupby('ES').agg('first')
     esDf['length'] = esDf['end'] - esDf['start']
     esDct = esDf.to_dict(orient='index')
 
@@ -166,7 +231,7 @@ def main():
         matchingESIDLst = []
 
         # if gene in geneDct.keys():
-        for esID in geneDct.get(gene):
+        for esID in geneESDct.get(gene):
             # print(esID)
             esInfo = esDct.get(esID)
             # print(esInfo)
@@ -204,8 +269,8 @@ def main():
     singleStrandXscript = xscriptESDf['strand'].apply(lambda x: len(x) == 1)
 
     if not singleStrandXscript.all():
-        print("There are transcripts belonging to more than one strand. Quitting.")
-        quit()
+        raise Exception(
+            "There are transcripts belonging to more than one strand. Quitting.")
     else:
         xscriptESDf['strand'] = xscriptESDf['strand'].apply(
             lambda x: list(x)[0])
@@ -213,8 +278,8 @@ def main():
     singleChrXscript = xscriptESDf['seqname'].apply(lambda x: len(x) == 1)
 
     if not singleChrXscript.all():
-        print("There are transcripts belonging to more than one strand. Quitting.")
-        quit()
+        raise Exception(
+            "There are transcripts belonging to more than one strand. Quitting.")
     else:
         xscriptESDf['seqname'] = xscriptESDf['seqname'].apply(
             lambda x: list(x)[0])
@@ -235,19 +300,39 @@ def main():
     xscriptLst = []
     geneLst = []
     seqnameLst = []
-    erLst = []
+    esLst = []
     flagLst = []
     strandLst = []
     lngthLst = []
 
+    # gene = "FBgn0287617"
+    # transcript = "01b14131049c89b4265a67ceb9f6305e84bd050fd97b0efec4a51fcd3720e4bf"
+    # strand = "+"
+    # seqname = "2L"
+
     patternDct = dict()
     for gene, transcript, strand, seqname in loopLst:
 
-        geneESLst = geneDct.get(gene)
         xscriptESSet = xscriptESDct.get(transcript)
 
-        pttrnLst = ["1" if ES in xscriptESSet else "0" for ES in geneESLst]
-        esIDLst = [ES for ES in geneESLst if ES in xscriptESSet]
+        pttrnLst = []
+        esIDLst = []
+        # loop through ER then ES here. allows for separation of ERs in ESP notation
+        for ER in list(geneERESDct.get(gene).keys()):
+
+            for ES in geneERESDct.get(gene).get(ER):
+                num = 1 if ES in xscriptESSet else 0
+                pttrnLst.append(num)
+
+                if ES in xscriptESSet:
+                    esIDLst.append(ES)
+
+            if ER != list(geneERESDct.get(gene).keys())[-1]:
+                pttrnLst.append("-")
+                esIDLst.append("_")
+
+        # pttrnLst = ["1" if ES in xscriptESSet else "0" for ES in geneESLst]
+        # esIDLst = [ES for ES in geneESLst if ES in xscriptESSet]
 
         if strand == "-":
             pttrnLst.reverse()
@@ -258,9 +343,10 @@ def main():
 
         patternDct[transcript] = [pattern, patternESID, gene]
 
-        for exonRegion in geneESLst:
+        geneESLst = geneESDct.get(gene)
+        for exonSegment in geneESLst:
 
-            if exonRegion in xscriptESSet:
+            if exonSegment in xscriptESSet:
                 flag = 1
             else:
                 flag = 0
@@ -268,10 +354,10 @@ def main():
             xscriptLst.append(transcript)
             geneLst.append(gene)
             seqnameLst.append(seqname)
-            erLst.append(exonRegion)
+            esLst.append(exonSegment)
             flagLst.append(flag)
             strandLst.append(strand)
-            lngthLst.append(esDct[exonRegion]['length'])
+            lngthLst.append(esDct[exonSegment]['length'])
 
         if dataOnlyExonDct[transcript]:
 
@@ -279,7 +365,7 @@ def main():
                 xscriptLst.append(transcript)
                 geneLst.append(gene)
                 seqnameLst.append(seqname)
-                erLst.append(exonRegion)
+                esLst.append(exonSegment)
                 flagLst.append(1)
                 strandLst.append(strand)
 
@@ -294,7 +380,7 @@ def main():
         'geneID': geneLst,
         'seqname': seqnameLst,
         'strand': strandLst,
-        'ES': erLst,
+        'ES': esLst,
         'flagES': flagLst,
         'lengthES': lngthLst
     })
