@@ -29,9 +29,11 @@ def getOptions():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="A script that compares a desired GTF (-d) (typically "
                                      "reads in GTF form) to an exon segment (ES) "
-                                     "GTF (-er). Creates exon segment patterns (ESP) which are "
+                                     "GTF (-es). Creates exon segment patterns (ESP) which are "
                                      "binary patterns indicating which of a gene's exon "
-                                     "segments a transcript has exons within. Outputs two files: "
+                                     "segments a transcript has exons within. Requires ER GTF "
+                                     "(-er) to include ER delineation in the notation of the ESP."
+                                     "Outputs two files: "
                                      "to desired output directory (-o). "
                                      "1. A list of transcripts and their ESPs. 2. A flag file "
                                      "that indicates which of the gene's exon segments the "
@@ -54,6 +56,14 @@ def getOptions():
         dest="dataFile",
         required=True,
         help="Location of data GTF"
+    )
+
+    parser.add_argument(
+        "-er",
+        "--er-gtf",
+        dest="erFile",
+        required=True,
+        help="Location of ER GTF"
     )
 
     # OUTPUT
@@ -106,6 +116,7 @@ def main():
 
     esFile = args.esFile
     dataFile = args.dataFile
+    erFile = args.erFile
     outdir = args.outdir
     prefix = args.prefix
     sampleID = args.sampleID
