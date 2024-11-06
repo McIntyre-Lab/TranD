@@ -410,7 +410,7 @@ def main():
             "Something went wrong. Merge of patterns and xscript information failed.")
 
     outPatternDf['flagDataOnlyExon'] = outPatternDf['dataOnlyExon'].apply(
-        lambda x: len(x) != 0)
+        lambda x: len(x) != 0).astype(int)
 
     # TODO: no numES in ESP file
     outPatternDf['numDataOnlyExon'] = outPatternDf['dataOnlyExon'].apply(len)
