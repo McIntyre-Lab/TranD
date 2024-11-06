@@ -422,7 +422,7 @@ def main():
     outPatternDf = outPatternDf.sort_values(by=['geneID', 'jxnHash'])
 
     outPatternDf = outPatternDf[['jxnHash', 'geneID', 'seqname', 'strand',
-                                 'ESP', 'patternESID', 'numExon',
+                                 'ESP', 'patternESID', 'flagDataOnlyExon', 'numExon',
                                  'numDataOnlyExon', 'dataOnlyESID']]
 
     if sampleID:

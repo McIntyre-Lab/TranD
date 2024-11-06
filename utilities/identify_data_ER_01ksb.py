@@ -387,7 +387,7 @@ def main():
     outFlagDf = outFlagDf.sort_values(by=['geneID', 'jxnHash'])
     outPatternDf = outPatternDf.sort_values(by=['geneID', 'jxnHash'])
 
-    outPatternDf = outPatternDf[['jxnHash', 'geneID', 'seqname', 'strand', 'ERP', 'patternERID', 'numExon',
+    outPatternDf = outPatternDf[['jxnHash', 'geneID', 'seqname', 'strand', 'ERP', 'patternERID', 'flagDataOnlyExon', 'numExon',
                                  'numDataOnlyExon', 'dataOnlyERID', 'flagIR', 'numIREvent', 'IRER',
                                  'flagReverseIR']]
 
