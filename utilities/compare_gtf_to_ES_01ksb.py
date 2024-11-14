@@ -549,7 +549,7 @@ def main():
 
     if refOnlyGnLst:
         pd.Series(refOnlyGnLst).to_csv(
-            outPrefix + "list_{}_vs_{}_er_only_genes.txt".format(esName, inName), index=False, header=False)
+            outPrefix + "list_{}_vs_{}_es_only_genes.txt".format(esName, inName), index=False, header=False)
 
     if inputOnlyGnLst:
         pd.Series(inputOnlyGnLst).to_csv(
