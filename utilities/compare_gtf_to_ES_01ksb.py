@@ -134,7 +134,7 @@ def flagESPStructure(inDf):
     # })
 
     # Pattern discernment for describing ERPs!
-    patternSeekDf['patternSeek'] = patternSeekDf['ERP'].str.split(
+    patternSeekDf['patternSeek'] = patternSeekDf['ESP'].str.split(
         '_').str[1]
 
     # Pattern discernment!
@@ -248,10 +248,6 @@ def main():
     geneERDf['ER'] = geneERDf['gene_id'] + ':ER' + \
         (geneERDf.groupby('gene_id').cumcount() + 1).astype(str)
 
-    # Assign each exon in the ES GTF its ES ID
-    geneESDf['tmpES'] = 'ES' + \
-        (geneESDf.groupby('gene_id').cumcount() + 1).astype(str)
-
     erDct = geneERDf.set_index('ER').to_dict(orient='index')
     geneERDct = dict(geneERDf.groupby('gene_id').apply(
         lambda x: sorted(set(x['ER']), key=lambda x: int(x.split("ER")[1]))))
@@ -262,7 +258,6 @@ def main():
     for row in rowDct:
 
         gene = row['gene_id']
-        ES = row['tmpES']
         esStart = row['start']
         esEnd = row['end']
 
@@ -280,7 +275,10 @@ def main():
 
     # Seems like it worked!
     geneERESDf = pd.DataFrame(rowDct)
-    geneERESDf['ES'] = geneERESDf['ER'] + ':' + geneERESDf['tmpES']
+
+    # Create ES IDs
+    geneERESDf['ES'] = geneERESDf['ER'] + ':ES' + \
+        (geneERESDf.groupby(['gene_id', 'ER']).cumcount() + 1).astype(str)
 
     if geneERESDf['ER'].isnull().any():
         raise Exception(
@@ -313,12 +311,12 @@ def main():
     esDf['length'] = esDf['end'] - esDf['start']
     esDct = esDf.to_dict(orient='index')
 
-    dataDf['numExon'] = dataDf.groupby('transcript_id')[
+    inDf['numExon'] = inDf.groupby('transcript_id')[
         'transcript_id'].transform('count')
 
-    dataDf['dataOnlyExon'] = np.nan
+    inDf['dataOnlyExon'] = np.nan
 
-    records = dataDf.to_dict('records')
+    records = inDf.to_dict('records')
 
     for row in records:
 
@@ -396,10 +394,8 @@ def main():
 
     xscriptLst = []
     geneLst = []
-    seqnameLst = []
     esLst = []
     flagLst = []
-    strandLst = []
     lngthLst = []
 
     # gene = "FBgn0287617"
@@ -450,10 +446,8 @@ def main():
 
             xscriptLst.append(transcript)
             geneLst.append(gene)
-            seqnameLst.append(seqname)
             esLst.append(exonSegment)
             flagLst.append(flag)
-            strandLst.append(strand)
             lngthLst.append(esDct[exonSegment]['length'])
 
         if dataOnlyExonDct[transcript]:
@@ -461,10 +455,8 @@ def main():
             for exonRegion in dataOnlyExonDct[transcript]:
                 xscriptLst.append(transcript)
                 geneLst.append(gene)
-                seqnameLst.append(seqname)
                 esLst.append(exonSegment)
                 flagLst.append(1)
-                strandLst.append(strand)
 
                 # TODO: CHANGE THIS IF THE DATA ONLY EXON FORMAT CHANGES
                 startNEnd = exonRegion.split(':')[1].split('_')
@@ -475,8 +467,6 @@ def main():
     outFlagDf = pd.DataFrame({
         'jxnHash': xscriptLst,
         'geneID': geneLst,
-        'seqname': seqnameLst,
-        'strand': strandLst,
         'ES': esLst,
         'flagES': flagLst,
         'lengthES': lngthLst
@@ -485,7 +475,7 @@ def main():
     # Making pattern output file
     pttrnInfo = [(xscript, *info) for xscript, info in patternDct.items()]
     patternDf = pd.DataFrame(pttrnInfo, columns=[
-        'transcript_id', 'ESP', 'patternESID', 'geneID'])
+        'transcript_id', 'ESP', 'patternES_ID', 'geneID'])
 
     outPatternDf = pd.merge(xscriptESDf, patternDf, on=[
         'transcript_id'], how='outer', indicator='merge_check')
@@ -501,15 +491,36 @@ def main():
     # TODO: no numES in ESP file
     outPatternDf['numDataOnlyExon'] = outPatternDf['dataOnlyExon'].apply(len)
 
-    outPatternDf['dataOnlyESID'] = outPatternDf['dataOnlyExon'].apply(
+    outPatternDf['dataOnlyES_ID'] = outPatternDf['dataOnlyExon'].apply(
         lambda x: '|'.join(x) if x else np.nan)
 
+    # Add ESP flags to output
+    # outPatternDf = flagESPStructure(inDf=outPatternDf)
+
+    # Output
     outFlagDf = outFlagDf.sort_values(by=['geneID', 'jxnHash'])
     outPatternDf = outPatternDf.sort_values(by=['geneID', 'jxnHash'])
 
-    outPatternDf = outPatternDf[['jxnHash', 'geneID', 'seqname', 'strand',
-                                 'ESP', 'patternESID', 'flagDataOnlyExon', 'numExon',
-                                 'numDataOnlyExon', 'dataOnlyESID']]
+    patternColLst = [
+        'jxnHash',
+        'geneID',
+        'ESP',
+        'numExon',
+        'flagDataOnlyExon',
+        'numDataOnlyExon',
+        'dataOnlyES_ID',
+        # 'flagNoSkip',
+        # 'flagNovel',
+        # 'flagERSkip',
+        # 'flag5pFragment',
+        # 'flag3pFragment',
+        # 'flagIntrnlFrgmnt',
+        # 'flagFirstER',
+        # 'flagLastER',
+        'patternES_ID'
+    ]
+
+    outPatternDf = outPatternDf[patternColLst]
 
     if sampleID:
         outFlagDf['sampleID'] = sampleID
@@ -518,32 +529,31 @@ def main():
     # Do not uncomment. Will probably crash the script.
     # wideDf = pd.pivot_table(outDf, values='flagES', index=['jxnHash','geneID'], columns='exonRegion', fill_value=0)
 
-    # Output
     esName = os.path.splitext(os.path.basename(esFile))[0]
-    dataName = os.path.splitext(os.path.basename(dataFile))[0]
+    inName = os.path.splitext(os.path.basename(inFile))[0]
 
     if prefix:
         outPrefix = "{}/{}_".format(outdir, prefix)
     else:
         outPrefix = "{}/".format(outdir)
 
-    erpFile = outPrefix + "{}_vs_{}_ESP.csv".format(esName, dataName)
+    espFile = outPrefix + "{}_vs_{}_infoESP.csv".format(esName, inName)
 
     outPatternDf.to_csv(
-        erpFile, index=False)
+        espFile, index=False)
 
-    flagFile = outPrefix + "{}_vs_{}_flagES.csv".format(esName, dataName)
+    flagFile = outPrefix + "{}_vs_{}_flagES.csv".format(esName, inName)
 
     outFlagDf.to_csv(
         flagFile, index=False)
 
     if refOnlyGnLst:
         pd.Series(refOnlyGnLst).to_csv(
-            outPrefix + "list_{}_vs_{}_anno_only_genes.txt".format(esName, dataName), index=False, header=False)
+            outPrefix + "list_{}_vs_{}_er_only_genes.txt".format(esName, inName), index=False, header=False)
 
-    if dataOnlyGnLst:
-        pd.Series(dataOnlyGnLst).to_csv(
-            outPrefix + "list_{}_vs_{}_data_only_genes.txt".format(esName, dataName), index=False, header=False)
+    if inputOnlyGnLst:
+        pd.Series(inputOnlyGnLst).to_csv(
+            outPrefix + "list_{}_vs_{}_input_only_genes.txt".format(esName, inName), index=False, header=False)
 
     omegatoc = time.perf_counter()
 
