@@ -11,17 +11,17 @@ def getOptions():
     # Parse command line arguments
     parser = argparse.ArgumentParser(
         description="Count num reads per ESP using read counts from "
-                    "UJC output (ujc_count.csv) and \"ESP\" file. "
-                    "Output will include counts per ESP in a stacked format. "
+                    "UJC output (ujc_count.csv) and \"infoESP\" file. "
+                    "Output will include counts per ESP in a sample stacked format. "
     )
 
     # Input data
     parser.add_argument(
-        "-p",
-        "--pattern-file",
-        dest="inESPFile",
+        "-i",
+        "--info-file",
+        dest="inInfoFile",
         required=True,
-        help="ESP File"
+        help="ERP File"
     )
 
     parser.add_argument(
@@ -55,39 +55,39 @@ def getOptions():
 
 def main():
 
-    inESPFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/rlr_esp_output/fiveSpecies_2_dyak2_ujc_es_vs_dyak_data_2_dyak2_ujc_noMultiGene_ESP.csv"
+    inInfoFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/rlr_esp_output/fiveSpecies_2_dyak2_ujc_es_vs_dyak_data_2_dyak2_ujc_noMultiGene_infoESP.csv"
     inCntFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/dyak_data_2_dyak2_ujc_count.csv"
 
-    # inESPFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_exon_segments_on_fru_dmel6/fiveSpecies_2_dmel6_ujc_Fru_es_vs_dmel_data_FBgn0004652_job_24_run_811_ujc_ESP.csv"
+    # inInfoFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_exon_segments_on_fru_dmel6/fiveSpecies_2_dmel6_ujc_Fru_es_vs_dmel_data_FBgn0004652_job_24_run_811_ujc_infoESP.csv"
     # inCntFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/ujc_byGene_output/dmel_data_FBgn0004652_job_24_run_811_ujc_count.csv"
 
     # prefix = "fiveSpecies_2_dmel6_ujc_Fru_es_vs_dmel_data_FBgn0004652_job_24_run_811_ujc"
     # outdir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_exon_segments_on_fru_dmel6"
 
-    inESPFile = args.inESPFile
+    inInfoFile = args.inInfoFile
     inCntFile = args.inCntFile
     prefix = args.prefix
     outdir = args.outdir
 
     alphatic = time.perf_counter()
 
-    inESPDf = pd.read_csv(inESPFile, low_memory=False)
+    inInfoDf = pd.read_csv(inInfoFile, low_memory=False)
     inCntDf = pd.read_csv(inCntFile, low_memory=False)
 
-    uniqDataGeneSet = set(inCntDf['geneID'])
-    uniqESPGeneSet = set(inESPDf['geneID'])
+    uniqCntGeneSet = set(inCntDf['geneID'])
+    uniqESPGeneSet = set(inInfoDf['geneID'])
 
     # espOnlyGnLst = list(uniqESPGeneSet - uniqDataGeneSet)
-    dataOnlyGnLst = list(uniqDataGeneSet - uniqESPGeneSet)
+    cntOnlyGnLst = list(uniqCntGeneSet - uniqESPGeneSet)
 
-    print("There should be", len(dataOnlyGnLst), "data only genes.")
+    print("There should be", len(cntOnlyGnLst), "data only genes.")
 
-    genesInBoth = list(uniqESPGeneSet.intersection(uniqDataGeneSet))
+    genesInBoth = list(uniqESPGeneSet.intersection(uniqCntGeneSet))
 
-    espDf = inESPDf[inESPDf['geneID'].isin(genesInBoth)].copy()
+    infoDf = inInfoDf[inInfoDf['geneID'].isin(genesInBoth)].copy()
     cntDf = inCntDf[inCntDf['geneID'].isin(genesInBoth)].copy()
 
-    if len(genesInBoth) != len(uniqDataGeneSet):
+    if len(genesInBoth) != len(uniqCntGeneSet):
         warnings.warn("WARNING !!!! There are genes that are only in the count file. "
                       "If you did not subset the fiveSpecies ER annotation, "
                       "there is an issue. ")
@@ -102,8 +102,8 @@ def main():
     sumReadCnt = cntDf['numRead'].sum()
     cntGnDf = cntDf.groupby(['sampleID', 'geneID'])['numRead'].sum()
 
-    espDf = espDf.fillna(0)
-    espDf['flagDataOnlyExon'] = inESPDf['numDataOnlyExon'].apply(
+    infoDf = infoDf.fillna(0)
+    infoDf['flagDataOnlyExon'] = inInfoDf['numDataOnlyExon'].apply(
         lambda x: 1 if x >= 1 else 0)
 
     numHashPerSample = pd.DataFrame(cntDf.groupby(
@@ -115,11 +115,10 @@ def main():
     print(
         f"File read complete! Took {toc-alphatic:0.4f} seconds.")
 
-    espDf = espDf[['jxnHash', 'ESP', 'flagDataOnlyExon',
-                   'geneID', 'strand', 'seqname']]
+    infoDf = infoDf[['jxnHash', 'ESP', 'geneID', 'flagDataOnlyExon']]
 
     # Merge ESP and counts
-    espMergeDf = pd.merge(espDf, cntDf, on='jxnHash',
+    espMergeDf = pd.merge(infoDf, cntDf, on='jxnHash',
                           how='outer', indicator='merge_check')
 
     # Check that geneIDs are the same (I don't know why they wouldn't!)
@@ -147,10 +146,8 @@ def main():
                         "the merge.")
 
     # Convert to unique on ESP and sum reads accross jxnHash
-    espCntDf = espMergeDf.groupby(['sampleID', 'ESP', 'flagDataOnlyExon', 'geneID']).agg({
+    espCntDf = espMergeDf.groupby(['sampleID', 'geneID', 'ESP', 'flagDataOnlyExon']).agg({
         'jxnHash': 'size',
-        'strand': set,
-        'seqname': set,
         'numRead': sum
     }).reset_index()
 
@@ -174,25 +171,8 @@ def main():
         raise Exception(
             "Error: Number of total reads in output does not match number of total reads in input.")
 
-    # Make sure all ESPs are on a single strand and chr (dont know why they wouldnt be)
-    singleStrandESP = espCntDf['strand'].apply(lambda x: len(x) == 1)
-    if not singleStrandESP.all():
-        raise Exception(
-            "There are ESPs belonging to more than one strand. Quitting.")
-    else:
-        espCntDf['strand'] = espCntDf['strand'].apply(
-            lambda x: list(x)[0])
-
-    singleChrESP = espCntDf['seqname'].apply(lambda x: len(x) == 1)
-    if not singleChrESP.all():
-        raise Exception(
-            "There are ESPs belonging to more than one seqname. Quitting.")
-    else:
-        espCntDf['seqname'] = espCntDf['seqname'].apply(
-            lambda x: list(x)[0])
-
-    espCntDf = espCntDf[['sampleID', 'ESP', 'flagDataOnlyExon', 'geneID',
-                         'strand', 'seqname', 'numRead']]
+    espCntDf = espCntDf[['sampleID', 'geneID',
+                         'ESP', 'flagDataOnlyExon', 'numRead']]
 
     sumESPCnt = espCntDf['numRead'].sum()
     espGnDf = espCntDf.groupby(['sampleID', 'geneID'])['numRead'].sum()
