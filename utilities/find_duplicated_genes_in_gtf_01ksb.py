@@ -159,29 +159,16 @@ def createDupeList(gtfDfr, manualDupGn=None):
 
     # Subset to gene Features
     geneDfr = gtfDfr[gtfDfr['feature'] == "gene"].copy()
+
     if manualDupGn:
 
-        # manualDfr= pd.DataFrame({0:['FBgn0085193','FBgn0261839','FBgn0267522','FBgn0287594'],
-        #                               'new':['FBgn0032404','FBgn0261843','FBgn0267516','FBgn0041164']})
-        manualDfr = pd.read_csv(manualDupGn, low_memory=False)
+        manualDfr = pd.read_csv(manualDupGn, low_memory=False, usecols=[
+                                'geneID_ORIG', 'geneID_NEW']).set_index('geneID_ORIG')['geneID_NEW'].to_dict()
 
-        for row in manualDfr.to_dict('records'):
-
-            oldGene = row['geneID_ORIG']
-            newGene = row['geneID_NEW']
-
-            print(oldGene)
-            print("INFO:")
-            print(geneDfr.loc[geneDfr['geneID'] == oldGene, ['start', 'end']])
-            print()
+        for oldGene, newGene in manualDfr.items():
 
             oldStart, oldEnd = geneDfr.loc[geneDfr['geneID'] == oldGene, [
                 'start', 'end']].iloc[0]
-
-            print(newGene)
-            print("INFO:")
-            print(geneDfr.loc[geneDfr['geneID'] == newGene, ['start', 'end']])
-            print()
 
             newStart = int(
                 geneDfr.loc[geneDfr['geneID'] == newGene, 'start'].values[0])
@@ -191,19 +178,10 @@ def createDupeList(gtfDfr, manualDupGn=None):
             geneDfr.loc[(geneDfr['start'] == oldStart) & (
                 geneDfr['end'] == oldEnd), ['start', 'end']] = [newStart, newEnd]
 
-            print(oldGene)
-            print("New INFO:")
-            print(geneDfr.loc[geneDfr['geneID'] == oldGene, ['start', 'end']])
-            print()
-
     # Keep geneID and attributes together so they are connected during the groupby
     geneDfr['geneInfo'] = geneDfr.apply(
         lambda x: (x['geneID'], x['attributes']), axis=1)
 
-    # a = geneDfr[geneDfr['geneID'] =="FBgn0287594"]
-
-    # TEST = geneDfr[geneDfr['geneID'].isin(['FBgn0085193', 'FBgn0261839','FBgn0267522','FBgn0287594','FBgn0032404','FBgn0261843','FBgn0267516','FBgn0041164'])]
-    # geneDfr
     # Group by strand and start/end to find genes that have the exact same coordinates
     grpByCoordDfr = geneDfr.groupby(['strand', 'start', 'end']).agg(
         {'geneInfo': list, 'seqname': set}).reset_index()
@@ -248,6 +226,15 @@ def createDupeList(gtfDfr, manualDupGn=None):
     dupeDfr['attributes_NEW'] = dupeDfr['geneInfo_ORIG'].apply(
         lambda x: x[0][1])
 
+    if manualDupGn:
+
+        rowLst = []
+        for row in dupeDfr.to_dict('records'):
+            if row['geneID_NEW'] in manualDfr.keys():
+                row['geneID_NEW'] = manualDfr[row['geneID_NEW']]
+            rowLst.append(row)
+        dupeDfr = pd.DataFrame(rowLst)
+
     # Make Dfr unique on original geneID, split "info" column into geneID and attributes
     dupeDfr = dupeDfr.explode('geneInfo_ORIG')
     dupeDfr[['geneID_ORIG', 'attributes_ORIG']] = pd.DataFrame(
@@ -256,8 +243,6 @@ def createDupeList(gtfDfr, manualDupGn=None):
     # Reorganize and cleanup columns
     dupeDfr = dupeDfr[['geneID_ORIG', 'attributes_ORIG', 'geneID_NEW',
                        'attributes_NEW', 'start', 'end', 'strand', 'seqname']]
-
-    save = dupeDfr
 
     return dupeDfr
 
@@ -271,12 +256,16 @@ def main():
     # inAnno = "/TB14/TB14/blue_copy/references/dyak_Prin_Tai18E2_2.1/GCF_016746365.2/genomic.gtf"
     prefix = None
     outdir = "/nfshome/k.bankole/Desktop/test_folder"
-    manualDupGn = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/list_dmel650_manual_dupe_gene.csv"
+    manualDupGn = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/dmel-all-r6.50_subset_trans_spliced_gene.gtf"
+
+    inAnno = "/TB14/TB14/bluecopy/dmel-all-r6.50_subset_trans_spliced_gene.gtf"
+    manualDupGn = "/TB14/TB14/bluecopy/list_dmel650_manual_dupe_gene.csv"
 
     inAnno = args.inAnno
     prefix = args.prefix
     outdir = args.outdir
     manualDupGn = args.manualDupGn
+
     # Read GTF
     gtfDfr = read_all_gtf_data_from_file(inAnno)
 
