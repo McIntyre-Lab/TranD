@@ -21,6 +21,13 @@ def getOptions():
                         required=True,
                         help="Annotation to be analyzed. Must have gene features.")
 
+    parser.add_argument("-m",
+                        "--manualLst",
+                        dest="manualDupGn",
+                        required=True,
+                        help="A list of genes to be manually considered duplicate genes. "
+                        "must have the columns: geneID_ORIG, geneID_NEW")
+
     # Output data
     parser.add_argument("-p",
                         "--prefix",
@@ -148,91 +155,136 @@ def read_all_gtf_data_from_file(infile):
     return newData
 
 
-def createDupeList(gtfDf):
+def createDupeList(gtfDfr, manualDupGn=None):
 
     # Subset to gene Features
-    geneDf = gtfDf[gtfDf['feature'] == "gene"].copy()
+    geneDfr = gtfDfr[gtfDfr['feature'] == "gene"].copy()
+    if manualDupGn:
+
+        # manualDfr= pd.DataFrame({0:['FBgn0085193','FBgn0261839','FBgn0267522','FBgn0287594'],
+        #                               'new':['FBgn0032404','FBgn0261843','FBgn0267516','FBgn0041164']})
+        manualDfr = pd.read_csv(manualDupGn, low_memory=False)
+
+        for row in manualDfr.to_dict('records'):
+
+            oldGene = row['geneID_ORIG']
+            newGene = row['geneID_NEW']
+
+            print(oldGene)
+            print("INFO:")
+            print(geneDfr.loc[geneDfr['geneID'] == oldGene, ['start', 'end']])
+            print()
+
+            oldStart, oldEnd = geneDfr.loc[geneDfr['geneID'] == oldGene, [
+                'start', 'end']].iloc[0]
+
+            print(newGene)
+            print("INFO:")
+            print(geneDfr.loc[geneDfr['geneID'] == newGene, ['start', 'end']])
+            print()
+
+            newStart = int(
+                geneDfr.loc[geneDfr['geneID'] == newGene, 'start'].values[0])
+            newEnd = int(geneDfr.loc[geneDfr['geneID']
+                         == newGene, 'end'].values[0])
+
+            geneDfr.loc[(geneDfr['start'] == oldStart) & (
+                geneDfr['end'] == oldEnd), ['start', 'end']] = [newStart, newEnd]
+
+            print(oldGene)
+            print("New INFO:")
+            print(geneDfr.loc[geneDfr['geneID'] == oldGene, ['start', 'end']])
+            print()
 
     # Keep geneID and attributes together so they are connected during the groupby
-    geneDf['geneInfo'] = geneDf.apply(
+    geneDfr['geneInfo'] = geneDfr.apply(
         lambda x: (x['geneID'], x['attributes']), axis=1)
 
+    # a = geneDfr[geneDfr['geneID'] =="FBgn0287594"]
+
+    # TEST = geneDfr[geneDfr['geneID'].isin(['FBgn0085193', 'FBgn0261839','FBgn0267522','FBgn0287594','FBgn0032404','FBgn0261843','FBgn0267516','FBgn0041164'])]
+    # geneDfr
     # Group by strand and start/end to find genes that have the exact same coordinates
-    grpByCoordDf = geneDf.groupby(['strand', 'start', 'end']).agg(
+    grpByCoordDfr = geneDfr.groupby(['strand', 'start', 'end']).agg(
         {'geneInfo': list, 'seqname': set}).reset_index()
 
     # Check that each set of coordinates is only on one chromosome (just in case some weird GTF is used)
-    singleChrDup = grpByCoordDf['seqname'].apply(lambda x: len(x) == 1)
+    singleChrDup = grpByCoordDfr['seqname'].apply(lambda x: len(x) == 1)
     if not singleChrDup.all():
         raise Exception(
-            "There are genes belonging to more than one seqname. Quitting.")
+            "There are genes belonging to more than one seqname/chromosome. Quitting.")
     else:
-        grpByCoordDf['seqname'] = grpByCoordDf['seqname'].apply(
+        grpByCoordDfr['seqname'] = grpByCoordDfr['seqname'].apply(
             lambda x: list(x)[0])
 
     # Count number of genes per start/end
-    grpByCoordDf['numGenePerCoords'] = grpByCoordDf['geneInfo'].apply(len)
+    grpByCoordDfr['numGenePerCoords'] = grpByCoordDfr['geneInfo'].apply(len)
 
-    numGenesWDup = grpByCoordDf[grpByCoordDf['numGenePerCoords']
-                                > 1]['numGenePerCoords'].sum()
-    pctDup = (numGenesWDup / len(grpByCoordDf))
+    # a = grpByCoordDfr[grpByCoordDfr['start'] == 3461315]
+
+    numGenesWDup = grpByCoordDfr[grpByCoordDfr['numGenePerCoords']
+                                 > 1]['numGenePerCoords'].sum()
+    pctDup = (numGenesWDup / len(grpByCoordDfr))
 
     print(f"{numGenesWDup} ({pctDup:.4%} of total) have duplicate geneIDs (2+ genes with the same coordinates and multiple geneIDs)")
 
     # Subset to only genes with dupes
-    dupeDf = grpByCoordDf[grpByCoordDf['numGenePerCoords']
-                          > 1].drop('numGenePerCoords', axis=1)
+    dupeDfr = grpByCoordDfr[grpByCoordDfr['numGenePerCoords']
+                            > 1].drop('numGenePerCoords', axis=1)
 
     # Raise a custom error to stop the program if there are no duplicate genes
-    if len(dupeDf) == 0:
+    if len(dupeDfr) == 0:
         raise ValueError("NO DUPE ERROR")
 
     # Sort geneIDs alphabetically
-    dupeDf['geneInfo'] = dupeDf['geneInfo'].apply(
+    dupeDfr['geneInfo'] = dupeDfr['geneInfo'].apply(
         lambda x: sorted(x, key=lambda y: y[0]))
 
-    dupeDf = dupeDf.rename(columns={'geneInfo': 'geneInfo_ORIG'})
+    dupeDfr = dupeDfr.rename(columns={'geneInfo': 'geneInfo_ORIG'})
 
     # For dupes, pick the first geneID (and related attributes) alphabetically
     # to represent all genes with the exact same coordinates
-    dupeDf['geneID_NEW'] = dupeDf['geneInfo_ORIG'].apply(lambda x: x[0][0])
-    dupeDf['attributes_NEW'] = dupeDf['geneInfo_ORIG'].apply(lambda x: x[0][1])
+    dupeDfr['geneID_NEW'] = dupeDfr['geneInfo_ORIG'].apply(lambda x: x[0][0])
+    dupeDfr['attributes_NEW'] = dupeDfr['geneInfo_ORIG'].apply(
+        lambda x: x[0][1])
 
-    # Make df unique on original geneID, split "info" column into geneID and attributes
-    dupeDf = dupeDf.explode('geneInfo_ORIG')
-    dupeDf[['geneID_ORIG', 'attributes_ORIG']] = pd.DataFrame(
-        dupeDf['geneInfo_ORIG'].tolist(), index=dupeDf.index)
+    # Make Dfr unique on original geneID, split "info" column into geneID and attributes
+    dupeDfr = dupeDfr.explode('geneInfo_ORIG')
+    dupeDfr[['geneID_ORIG', 'attributes_ORIG']] = pd.DataFrame(
+        dupeDfr['geneInfo_ORIG'].tolist(), index=dupeDfr.index)
 
     # Reorganize and cleanup columns
+    dupeDfr = dupeDfr[['geneID_ORIG', 'attributes_ORIG', 'geneID_NEW',
+                       'attributes_NEW', 'start', 'end', 'strand', 'seqname']]
 
-    dupeDf = dupeDf[['geneID_ORIG', 'attributes_ORIG', 'geneID_NEW',
-                     'attributes_NEW', 'start', 'end', 'strand', 'seqname']]
+    save = dupeDfr
 
-    return dupeDf
+    return dupeDfr
 
 
 def main():
 
-    inAnno = "/TB14/TB14/blue_copy/references/dmel_fb650/dmel-all-r6.50_subset_trans_spliced_gene.gtf"
+    inAnno = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/dmel-all-r6.50_subset_trans_spliced_gene.gtf"
     # inAnno = "/TB14/TB14/blue_copy/references/dsim_fb202/dsim-all-r2.02.gtf"
     # inAnno = "/TB14/TB14/blue_copy/references/dser1.1/GCF_002093755.2/genomic.gtf"
     # inAnno = "/TB14/TB14/blue_copy/references/dsan_Prin_1.1/GCF_016746245.2/genomic.gtf"
     # inAnno = "/TB14/TB14/blue_copy/references/dyak_Prin_Tai18E2_2.1/GCF_016746365.2/genomic.gtf"
     prefix = None
     outdir = "/nfshome/k.bankole/Desktop/test_folder"
+    manualDupGn = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/list_dmel650_manual_dupe_gene.csv"
 
     inAnno = args.inAnno
     prefix = args.prefix
     outdir = args.outdir
-
+    manualDupGn = args.manualDupGn
     # Read GTF
-    gtfDf = read_all_gtf_data_from_file(inAnno)
+    gtfDfr = read_all_gtf_data_from_file(inAnno)
 
-    print("Num unique genes:", gtfDf['geneID'].nunique())
+    print("Num unique gene IDs:", gtfDfr['geneID'].nunique())
 
     # Create list of duplicate genes. If there are no duplicate genes print and quit.
     try:
-        dupeDf = createDupeList(gtfDf=gtfDf)
+        dupeDfr = createDupeList(gtfDfr=gtfDfr, manualDupGn=manualDupGn)
     except ValueError as error:
         if str(error) == "NO DUPE ERROR":
             print(
@@ -242,22 +294,22 @@ def main():
             raise
 
     # Create a list of genes and their xscripts
-    gene2XscriptDf = gtfDf[['transcriptID', 'geneID', 'attributes']
-                           ].drop_duplicates().dropna(ignore_index=True).copy()
+    gene2XscriptDfr = gtfDfr[['transcriptID', 'geneID', 'attributes']
+                             ].drop_duplicates().dropna(ignore_index=True).copy()
 
     # Subset this to the genes that have dupes -> store a list of transcripts
     # that are from duplicate genes (unique on transcriptID)
-    dupeXscriptDf = gene2XscriptDf[gene2XscriptDf['geneID'].isin(
-        dupeDf['geneID_ORIG'])]
+    dupeXscriptDfr = gene2XscriptDfr[gene2XscriptDfr['geneID'].isin(
+        dupeDfr['geneID_ORIG'])]
 
     # 'Fix' original GTF by replacing duplicate genes with the first alphabetical selected earlier
     rowLst = []
-    for row in gtfDf.to_dict('records'):
+    for row in gtfDfr.to_dict('records'):
 
-        if row['geneID'] in dupeDf['geneID_ORIG'].tolist():
+        if row['geneID'] in dupeDfr['geneID_ORIG'].tolist():
 
-            replaceInfoDct = dupeDf[dupeDf['geneID_ORIG']
-                                    == row['geneID']].squeeze().to_dict()
+            replaceInfoDct = dupeDfr[dupeDfr['geneID_ORIG']
+                                     == row['geneID']].squeeze().to_dict()
 
             # Check that seqname and strand are the same?
             # I'm not sure why they wouldnt be but it doesn't hurt to check
@@ -273,25 +325,25 @@ def main():
         rowLst.append(row)
 
     # New GTF using 'fixed' geneIDs
-    newGTFDf = pd.DataFrame(rowLst)
+    newGTFDfr = pd.DataFrame(rowLst)
 
     # Check that this new GTF has the correct number of geneIDs:
     # number of unique genes originally - (number of genes with duplicates - number of genes used to represent the duplicates)
 
-    removedGenes = set(dupeDf['geneID_ORIG'].tolist()) - \
-        set(dupeDf['geneID_NEW'].tolist())
+    removedGenes = set(dupeDfr['geneID_ORIG'].tolist()) - \
+        set(dupeDfr['geneID_NEW'].tolist())
 
-    correctNewNumGene = gtfDf['geneID'].nunique() - len(removedGenes)
-    if newGTFDf['geneID'].nunique() != correctNewNumGene:
+    correctNewNumGene = gtfDfr['geneID'].nunique() - len(removedGenes)
+    if newGTFDfr['geneID'].nunique() != correctNewNumGene:
         raise Exception(
             "Something went wrong. The output GTF does not have the correct number of genes.")
     else:
 
         # Drop duplicates to remove duplicate gene features
-        outGTFDf = newGTFDf.drop_duplicates().copy()
+        outGTFDfr = newGTFDfr.drop_duplicates().copy()
 
     # If the removed genes are still in any of the GTF rows throw an error
-    if any(outGTFDf.isin(removedGenes).any()):
+    if any(outGTFDfr.isin(removedGenes).any()):
         raise Exception("Dupes were not correctly removed. Quitting.")
 
     # Create attributes column for output
@@ -302,7 +354,7 @@ def main():
             return "transcript_id \"{}\"; gene_id \"{}\"; {}".format(x['transcriptID'], x['geneID'], x['attributes'])
         else:
             return "gene_id \"{}\"; {}".format(x['geneID'], x['attributes'])
-    outGTFDf['attribute'] = outGTFDf.apply(
+    outGTFDfr['attribute'] = outGTFDfr.apply(
         lambda x: createAttributes(x), axis=1)
 
     # OUTPUT PREFIX
@@ -314,20 +366,20 @@ def main():
 
     # OUTPUT CSVs
     dupeOutFile = f"{outPrefix}_duplicated_genes.csv"
-    dupeDf.to_csv(dupeOutFile, index=False, quoting=csv.QUOTE_NONE)
+    dupeDfr.to_csv(dupeOutFile, index=False, quoting=csv.QUOTE_NONE)
 
     dupXscrOutFile = f"{outPrefix}_transcripts_of_duplicated_genes.csv"
-    dupeXscriptDf.to_csv(dupXscrOutFile, index=False, quoting=csv.QUOTE_NONE)
+    dupeXscriptDfr.to_csv(dupXscrOutFile, index=False, quoting=csv.QUOTE_NONE)
 
     # OUTPUT NEW GTF
     outColLst = ['seqname', 'source', 'feature', 'start', 'end', 'score', 'strand',
                  'frame', 'attribute']
-    outGTFDf = outGTFDf.reindex(columns=outColLst)
+    outGTFDfr = outGTFDfr.reindex(columns=outColLst)
 
     gtfOutFile = f"{outPrefix}_noDup.gtf"
 
-    outGTFDf.to_csv(gtfOutFile, sep="\t", index=False, header=False,
-                    doublequote=False, quoting=csv.QUOTE_NONE)
+    outGTFDfr.to_csv(gtfOutFile, sep="\t", index=False, header=False,
+                     doublequote=False, quoting=csv.QUOTE_NONE)
 
 
 if __name__ == '__main__':
