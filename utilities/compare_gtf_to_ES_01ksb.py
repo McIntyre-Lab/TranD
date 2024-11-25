@@ -422,7 +422,7 @@ def main():
 
             if ER != list(geneERESDct.get(gene).keys())[-1]:
                 pttrnLst.append("-")
-                esIDLst.append("_")
+                # esIDLst.append("_")
 
         # pttrnLst = ["1" if ES in xscriptESSet else "0" for ES in geneESLst]
         # esIDLst = [ES for ES in geneESLst if ES in xscriptESSet]
