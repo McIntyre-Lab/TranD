@@ -466,10 +466,10 @@ def main():
 
     outFlagDf = pd.DataFrame({
         'jxnHash': xscriptLst,
-        'geneID': geneLst,
         'ES': esLst,
         'flagES': flagLst,
-        'lengthES': lngthLst
+        'lengthES': lngthLst,
+        'geneID': geneLst,
     })
 
     # Making pattern output file

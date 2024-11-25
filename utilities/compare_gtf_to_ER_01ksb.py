@@ -420,10 +420,10 @@ def main():
     # Create flagER file using lists created above
     outFlagDf = pd.DataFrame({
         'jxnHash': xscriptLst,
-        'geneID': geneLst,
         'ER': erLst,
         'flagER': flagLst,
-        'lengthER': lngthLst
+        'lengthER': lngthLst,
+        'geneID': geneLst,
     })
 
     # Making pattern output file
