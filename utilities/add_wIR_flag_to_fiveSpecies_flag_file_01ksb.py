@@ -47,22 +47,25 @@ def main():
     inFlg = args.inFlg
     outfile = args.outfile
 
-    gnLstDf = pd.read_csv(inLst, header=None, low_memory=False)
-    flgDf = pd.read_csv(inFlg, low_memory=False)
+    gnLstDfr = pd.read_csv(inLst, header=None, low_memory=False)
+    flgDfr = pd.read_csv(inFlg, low_memory=False)
 
-    gnLstDf.columns = ['geneID']
+    gnLstDfr.columns = ['geneID']
 
-    mergeDf = pd.merge(gnLstDf, flgDf, how='outer', on=[
-                       'geneID'], indicator='merge_check')
+    mergeDfr = pd.merge(gnLstDfr, flgDfr, how='outer', on=[
+        'geneID'], indicator='merge_check')
 
-    if (mergeDf['merge_check'] == 'left_only').any():
+    if (mergeDfr['merge_check'] == 'left_only').any():
         raise Exception("An error ocurred. Please check your gene list.")
     else:
-        mergeDf['flagKeepIR'] = mergeDf['merge_check'].apply(
+        mergeDfr['flagKeepIR'] = mergeDfr['merge_check'].apply(
             lambda x: 1 if x == "both" else 0)
-        mergeDf.drop('merge_check', axis=1, inplace=True)
+        mergeDfr.drop('merge_check', axis=1, inplace=True)
 
-    mergeDf.to_csv(outfile, index=False)
+    moveCol = mergeDfr.pop('geneID')
+    mergeDfr.insert(1, 'geneID', moveCol)
+
+    mergeDfr.to_csv(outfile, index=False)
 
 
 if __name__ == '__main__':
