@@ -552,7 +552,7 @@ def do_ea_gene(raw_tx_data, keep_ir):
         if not tx_data:
             logger.warning(
                 "Missing transcript data for {} gene, skipping", gene_id)
-            return None, None, None, None
+            return None, None, None
         er_data, ef_data = ea_analysis(
             gene_id, tx_data, tx_coords, ir_exons, intron_data)
     er_df = pd.DataFrame(er_data, columns=er_df_cols)

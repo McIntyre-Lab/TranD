@@ -11,15 +11,15 @@ def getOptions():
     # Parse command line arguments
     parser = argparse.ArgumentParser(
         description="Count num reads per ERP using read counts from "
-                    "UJC output (ujc_count.csv) and \"ERP\" file. "
+                    "UJC output (ujc_count.csv) and \"infoERP\" file. "
                     "Output will include counts per ERP in a sample stacked format. "
     )
 
     # Input data
     parser.add_argument(
-        "-p",
-        "--pattern-file",
-        dest="inERPFile",
+        "-i",
+        "--info-file",
+        dest="inInfoFile",
         required=True,
         help="ERP File"
     )
@@ -55,14 +55,11 @@ def getOptions():
 
 def main():
 
-    inERPFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/rlr_erp_output/fiveSpecies_2_dyak2_ujc_er_vs_dyak_data_2_dyak2_ujc_noMultiGene_ERP.csv"
-    inCntFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/transcript_ortholog/dyak_data_2_dyak2_ujc_count.csv"
-
-    inERPFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/rmg_erp_output/fiveSpecies_2_dmel6_ujc_er_vs_dmel_data_2_dmel6_ujc_noMultiGene_ERP.csv"
-    inCntFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/rmg_lmm_dros_data/dmel_data_2_dmel6_ujc_count.csv"
-
-    inERPFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/rlr_erp_output/fiveSpecies_2_dyak2_ujc_er_vs_dyak_data_2_dyak2_ujc_noMultiGene_ERP.csv"
+    inInfoFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/rlr_erp_output/fiveSpecies_2_dyak2_ujc_er_vs_dyak_data_2_dyak2_ujc_noMultiGene_infoERP.csv"
     inCntFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/dyak_data_2_dyak2_ujc_count.csv"
+
+    # inInfoFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/rmg_erp_output/fiveSpecies_2_dmel6_ujc_er_vs_dmel_data_2_dmel6_ujc_noMultiGene_infoERP.csv"
+    # inCntFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/rmg_lmm_dros_data/dmel_data_2_dmel6_ujc_count.csv"
 
     prefix = "test"
     outdir = "/nfshome/k.bankole/Desktop/test_folder"
@@ -72,37 +69,37 @@ def main():
     # prefix = "fiveSpecies_2_dmel6_ujc_Fru_er_vs_dmel_data_FBgn0004652_job_24_run_811_ujc"
     # outdir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_exon_segments_on_fru_dmel6"
 
-    inERPFile = args.inERPFile
+    inInfoFile = args.inInfoFile
     inCntFile = args.inCntFile
     prefix = args.prefix
     outdir = args.outdir
 
     alphatic = time.perf_counter()
 
-    inERPDf = pd.read_csv(inERPFile, low_memory=False)
+    inInfoDf = pd.read_csv(inInfoFile, low_memory=False)
     inCntDf = pd.read_csv(inCntFile, low_memory=False)
 
-    uniqDataGeneSet = set(inCntDf['geneID'])
-    uniqERPGeneSet = set(inERPDf['geneID'])
+    uniqCntGeneSet = set(inCntDf['geneID'])
+    uniqERPGeneSet = set(inInfoDf['geneID'])
 
     # erpOnlyGnLst = list(uniqERPGeneSet - uniqDataGeneSet)
-    dataOnlyGnLst = list(uniqDataGeneSet - uniqERPGeneSet)
+    cntOnlyGnLst = list(uniqCntGeneSet - uniqERPGeneSet)
 
-    print("There should be", len(dataOnlyGnLst), "data only genes.")
+    print("There should be", len(cntOnlyGnLst), "data only genes.")
 
-    genesInBoth = list(uniqERPGeneSet.intersection(uniqDataGeneSet))
+    genesInBoth = list(uniqERPGeneSet.intersection(uniqCntGeneSet))
 
-    erpDf = inERPDf[inERPDf['geneID'].isin(genesInBoth)].copy()
+    infoDf = inInfoDf[inInfoDf['geneID'].isin(genesInBoth)].copy()
     cntDf = inCntDf[inCntDf['geneID'].isin(genesInBoth)].copy()
 
-    if len(genesInBoth) != len(uniqDataGeneSet):
+    if len(genesInBoth) != len(uniqCntGeneSet):
         warnings.warn("WARNING !!!! There are genes that are only in the count file. "
                       "This could be due to TranD missing genes or the ER file being "
                       "a gene subset.")
 
     if len(genesInBoth) != len(uniqERPGeneSet):
         raise Exception("Error. There are genes in the count file that are not "
-                        "in the ERP file. Be sure to subset the count file to "
+                        "in the infoERP file. Be sure to subset the count file to "
                         "noMultiGene jxnHash.")
 
     cntDf['numRead'] = cntDf['numRead'].astype(int)
@@ -110,8 +107,8 @@ def main():
     sumReadCnt = cntDf['numRead'].sum()
     cntGnDf = cntDf.groupby(['sampleID', 'geneID'])['numRead'].sum()
 
-    erpDf = erpDf.fillna(0)
-    erpDf['flagDataOnlyExon'] = inERPDf['numDataOnlyExon'].apply(
+    infoDf = infoDf.fillna(0)
+    infoDf['flagDataOnlyExon'] = inInfoDf['numDataOnlyExon'].apply(
         lambda x: 1 if x >= 1 else 0)
 
     numHashPerSample = pd.DataFrame(cntDf.groupby(
@@ -123,11 +120,11 @@ def main():
     print(
         f"File read complete! Took {toc-alphatic:0.4f} seconds.")
 
-    erpDf = erpDf[['jxnHash', 'ERP', 'geneID', 'strand',
-                   'seqname', 'flagDataOnlyExon', 'flagIR']]
+    infoDf = infoDf[['jxnHash', 'ERP', 'ERP_plus',
+                     'geneID', 'flagDataOnlyExon', 'flagIR']]
 
     # Merge ERP and counts
-    erpMergeDf = pd.merge(erpDf, cntDf, on='jxnHash',
+    erpMergeDf = pd.merge(infoDf, cntDf, on='jxnHash',
                           how='outer', indicator='merge_check')
 
     # Check that geneIDs are the same (I don't know why they wouldn't!)
@@ -155,33 +152,17 @@ def main():
                         "the merge.")
 
     # Convert to unique on ERP and sum reads accross jxnHash
-    erpCntDf = erpMergeDf.groupby(['sampleID', 'ERP', 'geneID', 'flagDataOnlyExon', 'flagIR']).agg({
+    erpCntDf = erpMergeDf.groupby(['sampleID', 'geneID', 'ERP_plus']).agg({
         'jxnHash': 'size',
-        'strand': set,
-        'seqname': set,
+        'ERP': 'first',
+        'flagDataOnlyExon': 'first',
+        'flagIR': 'first',
         'numRead': sum
     }).reset_index()
 
-    # Make sure all ERPs are on a single strand and chr (dont know why they wouldnt be)
-    singleStrandERP = erpCntDf['strand'].apply(lambda x: len(x) == 1)
-    if not singleStrandERP.all():
-        raise Exception(
-            "There are ERPs belonging to more than one strand. Quitting.")
-    else:
-        erpCntDf['strand'] = erpCntDf['strand'].apply(
-            lambda x: list(x)[0])
-
-    singleChrERP = erpCntDf['seqname'].apply(lambda x: len(x) == 1)
-    if not singleChrERP.all():
-        raise Exception(
-            "There are ERPs belonging to more than one seqname. Quitting.")
-    else:
-        erpCntDf['seqname'] = erpCntDf['seqname'].apply(
-            lambda x: list(x)[0])
-
-    numHashPerSample['postERPGrp'] = erpCntDf[[
-        'jxnHash', 'sampleID']].groupby('sampleID').sum()
-    numReadPerSample['postERPGrp'] = erpCntDf[[
+    numHashPerSample['postERPGrp'] = erpMergeDf.groupby('sampleID').nunique()[
+        'jxnHash']
+    numReadPerSample['postERPGrp'] = erpMergeDf[[
         'numRead', 'sampleID']].groupby('sampleID').sum()
 
     if not (numHashPerSample['startNum'] == numHashPerSample['postERPGrp']).all():
@@ -199,8 +180,8 @@ def main():
         raise Exception(
             "Error: Number of total reads in output does not match number of total reads in input.")
 
-    erpCntDf = erpCntDf[['sampleID', 'ERP', 'flagDataOnlyExon', 'flagIR', 'geneID',
-                         'strand', 'seqname', 'numRead']]
+    erpCntDf = erpCntDf[['sampleID', 'geneID', 'ERP', 'ERP_plus',
+                         'flagDataOnlyExon', 'flagIR', 'numRead']]
 
     sumERPCnt = erpCntDf['numRead'].sum()
     erpGnDf = erpCntDf.groupby(['sampleID', 'geneID'])['numRead'].sum()

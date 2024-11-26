@@ -22,18 +22,20 @@ Version 2.3: Output file prefix is now just input file name; junction string now
 # import pickle
 
 
+# TODO:
 
 
-import argparse
-import time
-import pandas as pd
-import os
-import csv
-import hashlib
-import copy
-import sys
-import os
+
+
 import trand.io
+import sys
+import copy
+import hashlib
+import csv
+import os
+import pandas as pd
+import time
+import argparse
 def getOptions():
     """
 
@@ -48,18 +50,23 @@ def getOptions():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description="Identifies unique junction chains (UJCs) found within a "
                                      "GTF file and groups transcripts based on these UJCs. Outputs 3 files: "
-                                     "1. An id file that is unique on jxnHash and provides the following "
-                                     "information: gene, chr, strand, xscript, numJxn, start, end, jxnString "
+                                     "1. An info file that is unique on jxnHash and provides the following "
+                                     "information: jxnHash, flagMultiXscript, flagMultiGene, chr, strand, numJxn, donorStart, acceptorEnd, jxnString "
                                      "and jxnHash. jxnStrings are in the format of chr_strand_start:end_start:end_start:end "
                                      "with monoexons as chr_strand_monoexon_start_end (with the start/end being for the exon)."
-                                     "jxnHash is the unique identifier for the group of transcripts. 2. A summary"
-                                     "file unique on transcript that more directly links a read/transcript to its "
-                                     "jxnHash and jxnString. 3. A GTF file with representative transcript models "
+                                     "jxnHash is the unique identifier for the group of transcripts. 2. An xscript link"
+                                     "file unique on transcriptID that more directly links a read/transcript to its "
+                                     "jxnHash. 3. A GTF file with representative transcript models "
                                      "for each group. The jxnHash will be the \'transcript_id\' for the group. "
                                      "Input: a GTF file (--gtf), and an output directory (--outdir). Output files will begin with "
-                                     "the name of the input file. Allows the option to skip the output of the GTF file "
+                                     "the name of the input GTF file. Allows the option to skip the output of the GTF file "
                                      "with representative transcript models. (--skip-gtf). Allows the option to output "
-                                     "another key file with the number of transcripts per jxnHash counted (--count-ujc).")
+                                     "another key file with the number of transcripts per jxnHash counted (--count-ujc). "
+                                     "Add -kg (--keep-geneID) to include geneID in output. There can jxnHash with more than one gene. "
+                                     "This option is most useful when running id_ujc on a GTF split by gene. "
+                                     "Add -ts (--track-source) to include the source column of the GTF in the output. "
+                                     "This option is most useful if the source column contains information about which sample "
+                                     "each transcript orignated from.")
 
     # INPUT
     parser.add_argument(
@@ -197,17 +204,17 @@ def extractJunction(exonData, trackSrc=False):
 
     """
 
-    exonDf = checkStrandAndChromosome(exonData=exonData)
+    exonDfr = checkStrandAndChromosome(exonData=exonData)
 
     print("Number of transcripts: ", end="")
-    print(len(exonDf['transcript_id'].unique()))
+    print(len(exonDfr['transcript_id'].unique()))
 
     print("Number of genes: ", end="")
-    print(len(exonDf['gene_id'].unique()))
+    print(len(exonDfr['gene_id'].unique()))
 
     # First, instead of grouping, then sorting
     # Sort by transcript -> sort by start. the whole dataframe
-    sortedDf = exonDf.sort_values(
+    sortedDfr = exonDfr.sort_values(
         by=['transcript_id', 'start']).reset_index(drop=True)
 
     ujcDct = {}
@@ -223,7 +230,7 @@ def extractJunction(exonData, trackSrc=False):
     # 8 = junction string
     # 9 = numJxn
 
-    for row in sortedDf.to_dict('records'):
+    for row in sortedDfr.to_dict('records'):
         xscript = row['transcript_id']
 
         seqname = row['seqname']
@@ -287,7 +294,7 @@ def extractJunction(exonData, trackSrc=False):
     return ujcDct
 
 
-def createUJCIndex(ujcDct, keepGene=False, trackSrc=False):
+def createUJCCSV(ujcDct, keepGene=False, trackSrc=False):
     """
     Takes extracted junction information and creates a dataframe that is 
     UJC focused (all transcripts under one UJC grouped into the transcript_id column).
@@ -317,7 +324,7 @@ def createUJCIndex(ujcDct, keepGene=False, trackSrc=False):
             monoExonDct.update({xscript: info})
 
     if len(monoExonDct) > 0:
-        monoXscriptDf = pd.DataFrame(
+        monoXscriptDfr = pd.DataFrame(
             monoExonDct,
             index=pd.Index(["exons",
                             "transcriptID",
@@ -332,11 +339,11 @@ def createUJCIndex(ujcDct, keepGene=False, trackSrc=False):
         ).T.sort_values(by=["jxnString", "start", "end"])
 
         # THIS IS WHERE OVERLAPPING MONOEXONS IN THE SAME GENE ARE COLLAPSED
-        monoXscriptDf['tmpStart'] = monoXscriptDf['start']
-        monoXscriptDf['tmpEnd'] = monoXscriptDf['end']
+        monoXscriptDfr['tmpStart'] = monoXscriptDfr['start']
+        monoXscriptDfr['tmpEnd'] = monoXscriptDfr['end']
 
         appendedRowLst = []
-        for row in monoXscriptDf.to_dict('records'):
+        for row in monoXscriptDfr.to_dict('records'):
             if appendedRowLst:
                 lastRow = appendedRowLst[-1]
 
@@ -368,9 +375,9 @@ def createUJCIndex(ujcDct, keepGene=False, trackSrc=False):
 
             row['jxnString'] = jString
 
-        newMonoDf = pd.DataFrame(appendedRowLst)
+        newMonoDfr = pd.DataFrame(appendedRowLst)
 
-        monoUJC = newMonoDf.sort_values(by=['start', 'end'])
+        monoUJC = newMonoDfr.sort_values(by=['start', 'end'])
         monoUJC.drop(columns=['tmpStart', 'tmpEnd'])
 
         monoUJC['pair'] = list(zip(monoUJC['geneID'], monoUJC['transcriptID']))
@@ -390,7 +397,7 @@ def createUJCIndex(ujcDct, keepGene=False, trackSrc=False):
 
     if len(multiExonDct) > 0:
 
-        multiXscriptDf = pd.DataFrame(
+        multiXscriptDfr = pd.DataFrame(
             multiExonDct,
             index=pd.Index(["exons",
                             "transcriptID",
@@ -404,11 +411,11 @@ def createUJCIndex(ujcDct, keepGene=False, trackSrc=False):
                             "numJxn"])
         ).T.sort_values(by=["jxnString", "start", "end"])
 
-        multiXscriptDf['pair'] = list(
-            zip(multiXscriptDf['geneID'], multiXscriptDf['transcriptID']))
+        multiXscriptDfr['pair'] = list(
+            zip(multiXscriptDfr['geneID'], multiXscriptDfr['transcriptID']))
 
         # THIS IS WHERE TRANSCRIPTS WITH 1+ EXONS HAVE THEIR STARTS/ENDS COLLAPSED
-        multiUJC = multiXscriptDf.groupby(["jxnString"]).agg({
+        multiUJC = multiXscriptDfr.groupby(["jxnString"]).agg({
             "geneID": set,
             "chr": "first",
             "start": "min",
@@ -422,90 +429,90 @@ def createUJCIndex(ujcDct, keepGene=False, trackSrc=False):
         multiExonDct = None
 
     if monoExonDct and multiExonDct:
-        ujcDscrptnDf = pd.concat([monoUJC, multiUJC], ignore_index=True)
+        ujcInfoDfr = pd.concat([monoUJC, multiUJC], ignore_index=True)
     elif monoExonDct:
-        ujcDscrptnDf = monoUJC.copy()
+        ujcInfoDfr = monoUJC.copy()
         del (monoUJC)
     else:
-        ujcDscrptnDf = multiUJC.copy()
+        ujcInfoDfr = multiUJC.copy()
         del (multiUJC)
 
-    ujcDscrptnDf['jxnHash'] = ujcDscrptnDf['jxnString'].apply(
+    ujcInfoDfr['jxnHash'] = ujcInfoDfr['jxnString'].apply(
         lambda x: hashlib.sha256(x.encode('utf-8')).hexdigest())
 
-    print("Number of UJCs: {}".format(len(ujcDscrptnDf['jxnHash'])))
+    print("Number of UJCs: {}".format(len(ujcInfoDfr['jxnHash'])))
 
-    if not ujcDscrptnDf['jxnHash'].is_unique:
+    if not ujcInfoDfr['jxnHash'].is_unique:
         print("Wow! A rare jxnHash collision: two jxnStrings have resulted in the exact same hash for these genes and transcripts: ")
         print("geneID", "transcriptID")
 
-        duplicateDf = ujcDscrptnDf[ujcDscrptnDf.duplicated(
-            subset='jxnHash', keep=False) | ujcDscrptnDf.duplicated(subset='jxnHash', keep='first')]
-        for row in duplicateDf.to_dict('records'):
+        duplicateDfr = ujcInfoDfr[ujcInfoDfr.duplicated(
+            subset='jxnHash', keep=False) | ujcInfoDfr.duplicated(subset='jxnHash', keep='first')]
+        for row in duplicateDfr.to_dict('records'):
             print(row['geneID'], row['transcriptID'])
 
-    ujcDscrptnDf['flagMultiGene'] = ujcDscrptnDf['geneID'].apply(
+    ujcInfoDfr['flagMultiGene'] = ujcInfoDfr['geneID'].apply(
         lambda x: 1 if len(x) > 1 else 0)
-    ujcDscrptnDf['flagMultiXscript'] = ujcDscrptnDf['pair'].apply(lambda pair: 1 if len(
+    ujcInfoDfr['flagMultiXscript'] = ujcInfoDfr['pair'].apply(lambda pair: 1 if len(
         set([tup[0] for tup in pair])) < len([tup[0] for tup in pair]) else 0)
 
-    ujcDscrptnDf = ujcDscrptnDf.sort_values(
+    ujcInfoDfr = ujcInfoDfr.sort_values(
         by=['chr', 'strand', 'start'], ascending=True)
 
     if keepGene:
-        ujcOutDf = ujcDscrptnDf[['jxnHash', 'geneID', 'flagMultiXscript', 'flagMultiGene',
-                                 'numJxn', 'chr', 'strand', 'start', 'end', 'jxnString']].copy()
+        ujcOutDfr = ujcInfoDfr[['jxnHash', 'geneID', 'flagMultiXscript', 'flagMultiGene',
+                                'numJxn', 'chr', 'strand', 'start', 'end', 'jxnString']].copy()
 
-        ujcOutDf['geneID'] = ujcOutDf['geneID'].apply(lambda x: '|'.join(x))
+        ujcOutDfr['geneID'] = ujcOutDfr['geneID'].apply(lambda x: '|'.join(x))
     else:
-        ujcOutDf = ujcDscrptnDf[['jxnHash', 'flagMultiXscript', 'flagMultiGene',
-                                 'numJxn', 'chr', 'strand', 'start', 'end', 'jxnString']]
+        ujcOutDfr = ujcInfoDfr[['jxnHash', 'flagMultiXscript', 'flagMultiGene',
+                                'numJxn', 'chr', 'strand', 'start', 'end', 'jxnString']]
 
-    ujcOutDf = ujcOutDf.rename(
+    ujcOutDfr = ujcOutDfr.rename(
         columns={'start': 'donorStart', 'end': 'acceptorEnd'})
 
-    xscriptLinkDf = ujcDscrptnDf.copy(deep=True).reset_index()
-    xscriptLinkDf = xscriptLinkDf[['pair', 'jxnHash', 'jxnString']]
-    xscriptLinkDf = xscriptLinkDf.explode('pair')
+    xscriptLinkDfr = ujcInfoDfr.copy(deep=True).reset_index()
+    xscriptLinkDfr = xscriptLinkDfr[['pair', 'jxnHash', 'jxnString']]
+    xscriptLinkDfr = xscriptLinkDfr.explode('pair')
 
     # Left for testing later (much faster)
-    # xscriptLinkDf[['geneID', 'transcriptID']] = pd.DataFrame(
-    #     xscriptLinkDf['pair'].tolist(), index=xscriptLinkDf.index)
+    # xscriptLinkDfr[['geneID', 'transcriptID']] = pd.DataFrame(
+    #     xscriptLinkDfr['pair'].tolist(), index=xscriptLinkDfr.index)
 
-    xscriptLinkDf[['geneID', 'transcriptID']
-                  ] = xscriptLinkDf['pair'].apply(pd.Series)
+    xscriptLinkDfr[['geneID', 'transcriptID']
+                   ] = xscriptLinkDfr['pair'].apply(pd.Series)
 
-    xscriptLinkDf = xscriptLinkDf.drop_duplicates(
-    )[['transcriptID', 'geneID', 'jxnHash', 'jxnString']]
+    xscriptLinkDfr = xscriptLinkDfr.drop_duplicates(
+    )[['transcriptID', 'geneID', 'jxnHash']]
 
     if trackSrc:
-        xscript2SrcDf = pd.DataFrame([
+        xscript2SrcDfr = pd.DataFrame([
             (xscript, info[7]) for xscript, info in ujcDct.items()
         ], columns=['transcriptID', 'source'])
 
-        xscriptLinkDf = pd.merge(xscriptLinkDf, xscript2SrcDf,
-                                 on='transcriptID', how='outer', indicator='merge_check')
+        xscriptLinkDfr = pd.merge(xscriptLinkDfr, xscript2SrcDfr,
+                                  on='transcriptID', how='outer', indicator='merge_check')
 
-        if not (xscriptLinkDf['merge_check'] == "both").all():
+        if not (xscriptLinkDfr['merge_check'] == "both").all():
             raise Exception(
                 "An error occurred when adding sample column to xscript_link file.")
         else:
-            xscriptLinkDf = xscriptLinkDf.drop('merge_check', axis=1)
+            xscriptLinkDfr = xscriptLinkDfr.drop('merge_check', axis=1)
 
-        xscriptLinkDf = xscriptLinkDf.drop_duplicates(
-        )[['source', 'transcriptID', 'geneID', 'jxnHash', 'jxnString']]
+        xscriptLinkDfr = xscriptLinkDfr.drop_duplicates(
+        )[['source', 'transcriptID', 'geneID', 'jxnHash']]
 
-    return ujcDscrptnDf, ujcOutDf, xscriptLinkDf
+    return ujcInfoDfr, ujcOutDfr, xscriptLinkDfr
 
 
-def createExonOutput(ujcDf, ujcDct, keepGene=False):
+def createExonOutput(infoDfr, ujcDct, keepGene=False):
     """
     Creates the dataframe with exon information to be output as a GTF file
     using the UJCs as transcripts.
 
     Parameters
     ----------
-    ujcDf : DATAFRAME
+    ujcDfr : DATAFRAME
             Dataframe with information on the UJCs, with their ids, transcripts, etc.
 
     ujcDct : DICTIONARY {Transcript_id: [info]}
@@ -513,19 +520,19 @@ def createExonOutput(ujcDf, ujcDct, keepGene=False):
 
     Returns
     -------
-    outExonDf : DATAFRAME
+    outExonDfr : DATAFRAME
             A dataframe in the proper format to be written as a GTF file.
 
     """
 
-    workingDf = ujcDf.explode(
+    workingDfr = infoDfr.explode(
         'pair')[['pair', 'chr', 'strand', 'jxnHash', 'start', 'end', 'numJxn']]
-    workingDf[['geneID', 'transcriptID']] = pd.DataFrame(
-        workingDf['pair'].to_list(), index=workingDf.index)
-    workingDf.drop('pair', axis=1, inplace=True)
+    workingDfr[['geneID', 'transcriptID']] = pd.DataFrame(
+        workingDfr['pair'].to_list(), index=workingDfr.index)
+    workingDfr.drop('pair', axis=1, inplace=True)
 
     if keepGene:
-        workingDf = workingDf.groupby(['jxnHash']).agg({
+        workingDfr = workingDfr.groupby(['jxnHash']).agg({
             "chr": "first",
             "start": "min",
             "end": "max",
@@ -534,15 +541,15 @@ def createExonOutput(ujcDf, ujcDct, keepGene=False):
             "geneID": set,
             "numJxn": "max"}).reset_index()
 
-        if workingDf['geneID'].apply(lambda x: len(x) > 1).any():
+        if workingDfr['geneID'].apply(lambda x: len(x) > 1).any():
             raise Exception(
                 "Error: The keepGene parameter is on but the GTF contains more than one gene.")
         else:
-            workingDf['geneID'] = workingDf['geneID'].apply(
+            workingDfr['geneID'] = workingDfr['geneID'].apply(
                 lambda x: next(iter(x)))
 
     else:
-        workingDf = workingDf.groupby(['jxnHash']).agg({
+        workingDfr = workingDfr.groupby(['jxnHash']).agg({
             "chr": "first",
             "start": "min",
             "end": "max",
@@ -557,8 +564,8 @@ def createExonOutput(ujcDf, ujcDct, keepGene=False):
     hashLst = []
     geneIDLst = []
 
-    # tested -> ujcDf contains accurate start and end
-    for row in workingDf.to_dict('records'):
+    # tested -> ujcDfr contains accurate start and end
+    for row in workingDfr.to_dict('records'):
 
         seqname = row['chr']
         strand = row['strand']
@@ -610,7 +617,7 @@ def createExonOutput(ujcDf, ujcDct, keepGene=False):
             strandLst.append(strand)
             geneIDLst.append(geneID)
 
-    outExonDf = pd.DataFrame(
+    outExonDfr = pd.DataFrame(
         {
             'seqname': seqnameLst,
             'start': startLst,
@@ -620,13 +627,14 @@ def createExonOutput(ujcDf, ujcDct, keepGene=False):
             'gene_id': geneIDLst
         })
 
-    outExonDf = outExonDf.sort_values(by=['seqname', 'transcript_id', 'start'])
+    outExonDfr = outExonDfr.sort_values(
+        by=['seqname', 'transcript_id', 'start'])
 
     # numColumns = ['start', 'end']
-    # outExonDf[numColumns] = outExonDf[numColumns].astype(int)
-    # result = outExonDf[outExonDf['end'] < outExonDf['start']]
+    # outExonDfr[numColumns] = outExonDfr[numColumns].astype(int)
+    # result = outExonDfr[outExonDfr['end'] < outExonDfr['start']]
 
-    return outExonDf
+    return outExonDfr
 
 
 def main():
@@ -640,14 +648,14 @@ def main():
     """
 
     # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/dmel-all-r6.50.gtf"
-    # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update/subset_dm650.gtf"
+    # # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update/subset_dm650.gtf"
     # outdir = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/test_id_ujc_update"
     # includeGTF = True
     # includeCnt = True
     # keepGene = True
     # trackSrc = True
 
-    inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_species_gtf/roz_dyak_data_XLOC_018390/dyak_data_XLOC_018390_job__run_26080.gtf"
+    # inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/ujc_species_gtf/roz_dyak_data_XLOC_018390/dyak_data_XLOC_018390_job__run_26080.gtf"
 
     inGTF = args.inGTF
     outdir = args.outdir
@@ -675,19 +683,19 @@ def main():
         f"Complete! Operation took {toc-tic:0.4f} seconds. Creating UJC DataFrame...")
     tic = time.perf_counter()
 
-    ujcDf, dscDf, linkDf = createUJCIndex(
+    infoDfr, outInfoDfr, linkDfr = createUJCCSV(
         ujcDct=ujcDct, keepGene=keepGene, trackSrc=trackSrc)
 
     toc = time.perf_counter()
     print(f"Complete! Operation took {toc-tic:0.4f} seconds. Writing files...")
     tic = time.perf_counter()
 
-    dscOutPath = outdir + "/" + prefix + "_ujc_dscrptn.csv"
+    infoOutPath = outdir + "/" + prefix + "_ujc_info.csv"
     linkOutPath = outdir + "/" + prefix + "_ujc_xscript_link.csv"
 
     try:
-        dscDf.to_csv(dscOutPath, index=False)
-        linkDf.to_csv(linkOutPath, index=False)
+        outInfoDfr.to_csv(infoOutPath, index=False)
+        linkDfr.to_csv(linkOutPath, index=False)
     except OSError:
         raise OSError("Output directory must already exist.")
 
@@ -695,13 +703,14 @@ def main():
 
         print("Writing GTF...")
 
-        gtfDf = createExonOutput(ujcDf=ujcDf, ujcDct=ujcDct, keepGene=keepGene)
+        gtfDfr = createExonOutput(
+            infoDfr=infoDfr, ujcDct=ujcDct, keepGene=keepGene)
         gtfOutPath = outdir + "/" + prefix + "_ujc.gtf"
 
         if os.path.isfile(gtfOutPath):
             os.remove(gtfOutPath)
 
-        trand.io.write_gtf(data=gtfDf, out_fhs={
+        trand.io.write_gtf(data=gtfDfr, out_fhs={
                            "gtf": gtfOutPath}, fh_name="gtf")
 
     if includeCnt:
@@ -709,23 +718,23 @@ def main():
         print("Counting transcripts per UJC...")
 
         if trackSrc:
-            countDf = linkDf.groupby(['jxnHash', 'source']).count()[
+            countDfr = linkDfr.groupby(['jxnHash', 'source']).count()[
                 'transcriptID'].reset_index()
 
-            countDf = countDf.rename(
+            countDfr = countDfr.rename(
                 columns={'transcriptID': 'numTranscripts'})
-            countDf = countDf[['source', 'jxnHash', 'numTranscripts']]
+            countDfr = countDfr[['source', 'jxnHash', 'numTranscripts']]
 
         else:
-            countDf = linkDf.groupby(['jxnHash']).count()[
+            countDfr = linkDfr.groupby(['jxnHash']).count()[
                 'transcriptID'].reset_index()
 
-            countDf.columns = ['jxnHash', 'numTranscripts']
+            countDfr.columns = ['jxnHash', 'numTranscripts']
 
         countOutPath = outdir + "/" + prefix + "_ujc_count.csv"
 
         try:
-            countDf.to_csv(countOutPath, index=False)
+            countDfr.to_csv(countOutPath, index=False)
         except OSError:
             raise OSError("Output directory must already exist.")
 
