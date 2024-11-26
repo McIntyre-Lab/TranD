@@ -291,8 +291,9 @@ def main():
             raise
 
     # Create a list of genes and their xscripts
-    gene2XscriptDfr = gtfDfr[['transcriptID', 'geneID', 'attributes']
-                             ].drop_duplicates().dropna(ignore_index=True).copy()
+    gene2XscriptDfr = gtfDfr[gtfDfr['feature'] != "gene"].copy()
+    gene2XscriptDfr = gene2XscriptDfr[['transcriptID', 'geneID', 'attributes']
+                                      ].drop_duplicates().dropna(ignore_index=True).copy()
 
     # Subset this to the genes that have dupes -> store a list of transcripts
     # that are from duplicate genes (unique on transcriptID)
@@ -366,7 +367,8 @@ def main():
     dupeDfr.to_csv(dupeOutFile, index=False, quoting=csv.QUOTE_NONE)
 
     dupXscrOutFile = f"{outPrefix}_transcripts_of_duplicated_genes.csv"
-    dupeXscriptDfr.to_csv(dupXscrOutFile, index=False, quoting=csv.QUOTE_NONE)
+    dupeXscriptDfr.to_csv(dupXscrOutFile, index=False,
+                          quoting=csv.QUOTE_NONE, escapechar='\\')
 
     # OUTPUT NEW GTF
     outColLst = ['seqname', 'source', 'feature', 'start', 'end', 'score', 'strand',
