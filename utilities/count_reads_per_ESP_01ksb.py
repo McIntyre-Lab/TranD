@@ -151,32 +151,9 @@ def main():
         'numRead': sum
     }).reset_index()
 
-<<<<<<< HEAD
-    # Make sure all ESPs are on a single strand and chr (dont know why they wouldnt be)
-    singleStrandESP = espCntDf['strand'].apply(lambda x: len(x) == 1)
-    if not singleStrandESP.all():
-        raise Exception(
-            "There are ESPs belonging to more than one strand. Quitting.")
-    else:
-        espCntDf['strand'] = espCntDf['strand'].apply(
-            lambda x: list(x)[0])
-
-    singleChrESP = espCntDf['seqname'].apply(lambda x: len(x) == 1)
-    if not singleChrESP.all():
-        raise Exception(
-            "There are ESPs belonging to more than one seqname. Quitting.")
-    else:
-        espCntDf['seqname'] = espCntDf['seqname'].apply(
-            lambda x: list(x)[0])
-
-    numHashPerSample['postERPGrp'] = espCntDf[[
-        'jxnHash', 'sampleID']].groupby('sampleID').sum()
-    numReadPerSample['postERPGrp'] = espCntDf[[
-=======
     numHashPerSample['postESPGrp'] = espMergeDf.groupby('sampleID').nunique()[
         'jxnHash']
     numReadPerSample['postESPGrp'] = espMergeDf[[
->>>>>>> 100c7b4d8a4727eeeec6f94984d2be70b879db58
         'numRead', 'sampleID']].groupby('sampleID').sum()
 
     if not (numHashPerSample['startNum'] == numHashPerSample['postESPGrp']).all():
@@ -194,13 +171,8 @@ def main():
         raise Exception(
             "Error: Number of total reads in output does not match number of total reads in input.")
 
-<<<<<<< HEAD
-    espCntDf = espCntDf[['sampleID', 'ESP', 'flagDataOnlyExon', 'geneID',
-                         'strand', 'seqname', 'numRead']]
-=======
     espCntDf = espCntDf[['sampleID', 'geneID',
                          'ESP', 'flagDataOnlyExon', 'numRead']]
->>>>>>> 100c7b4d8a4727eeeec6f94984d2be70b879db58
 
     sumESPCnt = espCntDf['numRead'].sum()
     espGnDf = espCntDf.groupby(['sampleID', 'geneID'])['numRead'].sum()

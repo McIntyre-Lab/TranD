@@ -24,7 +24,7 @@ def getOptions():
     parser.add_argument("-m",
                         "--manualLst",
                         dest="manualDupGn",
-                        required=True,
+                        required=False,
                         help="A list of genes to be manually considered duplicate genes. "
                         "must have the columns: geneID_ORIG, geneID_NEW")
 
@@ -256,10 +256,15 @@ def main():
     # inAnno = "/TB14/TB14/blue_copy/references/dyak_Prin_Tai18E2_2.1/GCF_016746365.2/genomic.gtf"
     prefix = None
     outdir = "/nfshome/k.bankole/Desktop/test_folder"
-    manualDupGn = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dmel_fb650/dmel-all-r6.50_subset_trans_spliced_gene.gtf"
 
     inAnno = "/TB14/TB14/bluecopy/dmel-all-r6.50_subset_trans_spliced_gene.gtf"
     manualDupGn = "/TB14/TB14/bluecopy/list_dmel650_manual_dupe_gene.csv"
+
+    inAnno = "//exasmb.rc.ufl.edu/blue/mcintyre/share/references/dmel_fb650/dmel-all-r6.50_subset_trans_spliced_gene.gtf"
+    manualDupGn = "//exasmb.rc.ufl.edu/blue/mcintyre/share/references/dmel_fb650/list_dmel650_manual_dupe_gene.csv"
+
+    inAnno = "//exasmb.rc.ufl.edu/blue/mcintyre/share/references/dsim_fb202/dsim-all-r2.02.gtf"
+    manualDupGn = "//exasmb.rc.ufl.edu/blue/mcintyre/share/references/dsim_fb202/list_dsim202_manual_dupe_gene.csv"
 
     inAnno = args.inAnno
     prefix = args.prefix
