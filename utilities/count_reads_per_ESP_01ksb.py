@@ -154,26 +154,6 @@ def main():
         'numRead': sum
     }).reset_index()
 
-    numHashPerSample['postESPGrp'] = espMergeDf.groupby('sampleID').nunique()[
-        'jxnHash']
-    numReadPerSample['postESPGrp'] = espMergeDf[[
-        'numRead', 'sampleID']].groupby('sampleID').sum()
-
-    if not (numHashPerSample['startNum'] == numHashPerSample['postESPGrp']).all():
-        raise Exception("The merge of the ESP and Count Files led to a "
-                        "different number of jxnHash per sample than before "
-                        "the merge.")
-
-    if not (numReadPerSample['startNum'] == numReadPerSample['postESPGrp']).all():
-        raise Exception("The merge of the ESP and Count Files led to a "
-                        "different number of reads per sample than before "
-                        "the merge.")
-
-    # Verify that total number of reads in converted Df matches counts in input
-    if espCntDf['numRead'].sum() != cntDf['numRead'].sum():
-        raise Exception(
-            "Error: Number of total reads in output does not match number of total reads in input.")
-
     # Make sure all ESPs are on a single strand and chr (dont know why they wouldnt be)
     singleStrandESP = espCntDf['strand'].apply(lambda x: len(x) == 1)
     if not singleStrandESP.all():
@@ -190,6 +170,26 @@ def main():
     else:
         espCntDf['seqname'] = espCntDf['seqname'].apply(
             lambda x: list(x)[0])
+
+    numHashPerSample['postERPGrp'] = espCntDf[[
+        'jxnHash', 'sampleID']].groupby('sampleID').sum()
+    numReadPerSample['postERPGrp'] = espCntDf[[
+        'numRead', 'sampleID']].groupby('sampleID').sum()
+
+    if not (numHashPerSample['startNum'] == numHashPerSample['postESPGrp']).all():
+        raise Exception("The merge of the ESP and Count Files led to a "
+                        "different number of jxnHash per sample than before "
+                        "the merge.")
+
+    if not (numReadPerSample['startNum'] == numReadPerSample['postESPGrp']).all():
+        raise Exception("The merge of the ESP and Count Files led to a "
+                        "different number of reads per sample than before "
+                        "the merge.")
+
+    # Verify that total number of reads in converted Df matches counts in input
+    if espCntDf['numRead'].sum() != cntDf['numRead'].sum():
+        raise Exception(
+            "Error: Number of total reads in output does not match number of total reads in input.")
 
     espCntDf = espCntDf[['sampleID', 'ESP', 'flagDataOnlyExon', 'geneID',
                          'strand', 'seqname', 'numRead']]

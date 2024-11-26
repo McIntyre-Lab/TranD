@@ -55,6 +55,12 @@ def getOptions():
 
 def main():
 
+    inERPFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/rlr_erp_output/fiveSpecies_2_dyak2_ujc_er_vs_dyak_data_2_dyak2_ujc_noMultiGene_ERP.csv"
+    inCntFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/transcript_ortholog/dyak_data_2_dyak2_ujc_count.csv"
+
+    inERPFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/sex_specific_splicing/rmg_erp_output/fiveSpecies_2_dmel6_ujc_er_vs_dmel_data_2_dmel6_ujc_noMultiGene_ERP.csv"
+    inCntFile = "//exasmb.rc.ufl.edu/blue/mcintyre/share/rmg_lmm_dros_data/dmel_data_2_dmel6_ujc_count.csv"
+
     inERPFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/rlr_erp_output/fiveSpecies_2_dyak2_ujc_er_vs_dyak_data_2_dyak2_ujc_noMultiGene_ERP.csv"
     inCntFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/transcript_ortholog/dyak_data_2_dyak2_ujc_count.csv"
 
@@ -156,26 +162,6 @@ def main():
         'numRead': sum
     }).reset_index()
 
-    numHashPerSample['postERPGrp'] = erpMergeDf.groupby('sampleID').nunique()[
-        'jxnHash']
-    numReadPerSample['postERPGrp'] = erpMergeDf[[
-        'numRead', 'sampleID']].groupby('sampleID').sum()
-
-    if not (numHashPerSample['startNum'] == numHashPerSample['postERPGrp']).all():
-        raise Exception("The merge of the ERP and Count Files led to a "
-                        "different number of jxnHash per sample than before "
-                        "the merge.")
-
-    if not (numReadPerSample['startNum'] == numReadPerSample['postERPGrp']).all():
-        raise Exception("The merge of the ERP and Count Files led to a "
-                        "different number of reads per sample than before "
-                        "the merge.")
-
-    # Verify that total number of reads in converted Df matches counts in input
-    if erpCntDf['numRead'].sum() != cntDf['numRead'].sum():
-        raise Exception(
-            "Error: Number of total reads in output does not match number of total reads in input.")
-
     # Make sure all ERPs are on a single strand and chr (dont know why they wouldnt be)
     singleStrandERP = erpCntDf['strand'].apply(lambda x: len(x) == 1)
     if not singleStrandERP.all():
@@ -192,6 +178,26 @@ def main():
     else:
         erpCntDf['seqname'] = erpCntDf['seqname'].apply(
             lambda x: list(x)[0])
+
+    numHashPerSample['postERPGrp'] = erpCntDf[[
+        'jxnHash', 'sampleID']].groupby('sampleID').sum()
+    numReadPerSample['postERPGrp'] = erpCntDf[[
+        'numRead', 'sampleID']].groupby('sampleID').sum()
+
+    if not (numHashPerSample['startNum'] == numHashPerSample['postERPGrp']).all():
+        raise Exception("The merge of the ERP and Count Files led to a "
+                        "different number of jxnHash per sample than before "
+                        "the merge.")
+
+    if not (numReadPerSample['startNum'] == numReadPerSample['postERPGrp']).all():
+        raise Exception("The merge of the ERP and Count Files led to a "
+                        "different number of reads per sample than before "
+                        "the merge.")
+
+    # Verify that total number of reads in converted Df matches counts in input
+    if erpCntDf['numRead'].sum() != cntDf['numRead'].sum():
+        raise Exception(
+            "Error: Number of total reads in output does not match number of total reads in input.")
 
     erpCntDf = erpCntDf[['sampleID', 'ERP', 'flagDataOnlyExon', 'flagIR', 'geneID',
                          'strand', 'seqname', 'numRead']]
