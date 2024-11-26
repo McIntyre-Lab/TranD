@@ -348,6 +348,7 @@ def main():
             return "transcript_id \"{}\"; gene_id \"{}\"; {}".format(x['transcriptID'], x['geneID'], x['attributes'])
         else:
             return "gene_id \"{}\"; {}".format(x['geneID'], x['attributes'])
+
     outGTFDfr['attribute'] = outGTFDfr.apply(
         lambda x: createAttributes(x), axis=1)
 
