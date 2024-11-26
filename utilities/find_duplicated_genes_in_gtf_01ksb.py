@@ -162,10 +162,10 @@ def createDupeList(gtfDfr, manualDupGn=None):
 
     if manualDupGn:
 
-        manualDfr = pd.read_csv(manualDupGn, low_memory=False, usecols=[
+        manualDct = pd.read_csv(manualDupGn, low_memory=False, usecols=[
                                 'geneID_ORIG', 'geneID_NEW']).set_index('geneID_ORIG')['geneID_NEW'].to_dict()
 
-        for oldGene, newGene in manualDfr.items():
+        for oldGene, newGene in manualDct.items():
 
             oldStart, oldEnd = geneDfr.loc[geneDfr['geneID'] == oldGene, [
                 'start', 'end']].iloc[0]
@@ -230,8 +230,8 @@ def createDupeList(gtfDfr, manualDupGn=None):
 
         rowLst = []
         for row in dupeDfr.to_dict('records'):
-            if row['geneID_NEW'] in manualDfr.keys():
-                row['geneID_NEW'] = manualDfr[row['geneID_NEW']]
+            if row['geneID_NEW'] in manualDct.keys():
+                row['geneID_NEW'] = manualDct[row['geneID_NEW']]
             rowLst.append(row)
         dupeDfr = pd.DataFrame(rowLst)
 
@@ -265,6 +265,9 @@ def main():
 
     inAnno = "//exasmb.rc.ufl.edu/blue/mcintyre/share/references/dsim_fb202/dsim-all-r2.02.gtf"
     manualDupGn = "//exasmb.rc.ufl.edu/blue/mcintyre/share/references/dsim_fb202/list_dsim202_manual_dupe_gene.csv"
+
+    inAnno = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dser1.1/GCF_002093755.2/genomic.gtf"
+    manualDupGn = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dser1.1/list_dser11_manual_dupe_gene.csv"
 
     inAnno = args.inAnno
     prefix = args.prefix
