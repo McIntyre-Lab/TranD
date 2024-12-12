@@ -28,7 +28,7 @@ def getOptions():
     parser.add_argument(
         '-e',
         '--erpFile',
-        required=True,
+        required=False,
         dest="erpFile",
         help='Path to the ERP file.'
     )
@@ -56,6 +56,7 @@ def getOptions():
 def main():
     inGTF = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc.gtf"
     erpFile = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/sex_specific_splicing/fiveSpecies_annotations/fiveSpecies_2_dmel6_ujc_er_vs_fiveSpecies_2_dmel6_ujc_infoERP.csv"
+    erpFile = None
     genome = 'dmel6'
     outfile = ""
 
@@ -77,14 +78,17 @@ def main():
     data['transcriptID'] = data['attribute'].str.extract(
         r'transcript_id "([^"]+)"')
 
-    erpDfr = pd.read_csv(erpFile, low_memory=False)[
-        ['jxnHash', 'ERP']].set_index('jxnHash')
+    if erpFile:
+        erpDfr = pd.read_csv(erpFile, low_memory=False)[
+            ['jxnHash', 'ERP']].set_index('jxnHash')
 
-    erpDct = erpDfr['ERP'].to_dict()
+        erpDct = erpDfr['ERP'].to_dict()
 
-    data['transcriptID'] = data['transcriptID'].apply(
-        lambda x: genome + "_" + x + "_" + erpDct[x])
-
+        data['transcriptID'] = data['transcriptID'].apply(
+            lambda x: genome + "_" + x + "_" + erpDct[x])
+    else:
+        data['transcriptID'] = data['transcriptID'].apply(
+            lambda x: genome + "_" + x)
     data['attributes'] = data.apply(
         lambda row: f'transcript_id "{row["transcriptID"]}"; gene_id "{row["geneID"]}";', axis=1)
     data.drop(columns=['geneID', 'transcriptID'], inplace=True)
