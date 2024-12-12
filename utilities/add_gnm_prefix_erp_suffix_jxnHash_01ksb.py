@@ -8,7 +8,7 @@ Created on Thu Dec 12 12:43:51 2024
 
 import argparse
 import pandas as pd
-import csv.QUOTE_NONE
+import csv
 
 
 def getOptions():
