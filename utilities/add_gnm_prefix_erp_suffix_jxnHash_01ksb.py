@@ -8,6 +8,7 @@ Created on Thu Dec 12 12:43:51 2024
 
 import argparse
 import pandas as pd
+import csv.QUOTE_NONE
 
 
 def getOptions():
@@ -93,7 +94,8 @@ def main():
     data = data[gtf_columns]
 
     # Output the DataFrame to GTF format
-    data.to_csv(outfile, sep='\t', header=False, index=False)
+    data.to_csv(outfile, sep='\t', header=False,
+                index=False, quoting=csv.QUOTE_NONE)
 
 
 if __name__ == '__main__':
