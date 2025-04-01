@@ -66,7 +66,7 @@ def main():
                            'frame', 'attribute']
     
     dfr = dfr.reindex(columns=output_column_names)
-    dfr.to_csv(outfile, sep="\t", mode='a', index=False, header=False,
+    dfr.to_csv(outfile, sep="\t", index=False, header=False,
                 doublequote=False, quoting=csv.QUOTE_NONE)
 
 
