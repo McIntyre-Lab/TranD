@@ -54,15 +54,13 @@ def main():
     
     dfr['exonLabel'] = dfr.groupby('transcript_id').cumcount() + 1
     dfr['exonLabel'] = label + '_' + dfr['exonLabel'].astype(str)
-    
-    dfr['transcript_id'] = dfr['transcript_id'] + '_' + dfr['exonLabel']
-    
+        
     dfr.loc[:, 'source'] = "TranD"
     dfr.loc[:, 'feature'] = "exon"
     dfr.loc[:, 'score'] = "."
     dfr.loc[:, 'frame'] = "."
     # dfr.loc[:, 'attribute'] = dfr.apply(lambda row: 'transcript_id "{}"; gene_id "{}"; {}_number "{}";'.format(row['transcript_id'],row['gene_id'],label,row['exonLabel']), axis=1)
-    dfr.loc[:, 'attribute'] = dfr.apply(lambda row: 'transcript_id "{}"; gene_id "{}";'.format(row['transcript_id'],row['gene_id'], axis=1))
+    dfr.loc[:, 'attribute'] = dfr.apply(lambda row: 'transcript_id "{}_{}"; gene_id "{}";'.format(row['transcript_id'], row['exonLabel'], row['gene_id']), axis=1)
                                          
     output_column_names = ['seqname', 'source', 'feature', 'start', 'end', 'score', 'strand',
                            'frame', 'attribute']
