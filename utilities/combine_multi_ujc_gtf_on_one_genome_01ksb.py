@@ -4,8 +4,8 @@ import argparse
 import os
 import pandas as pd
 import numpy as np
-import trand.io
-
+# import trand.io
+import csv
 
 def getOptions():
     # Parse command line arguments
@@ -46,6 +46,8 @@ def getOptions():
     args = parser.parse_args()
     return args
 
+def get_gtf_attribute(transcript_id, gene_id):
+    return f'transcript_id "{transcript_id}"; gene_id "{gene_id}";'
 
 def main():
     # Parse command line arguments
@@ -269,7 +271,19 @@ def main():
     if os.path.isfile(outGTF):
         os.remove(outGTF)
 
-    trand.io.write_gtf(data=outDf, out_fhs={"gtf": outGTF}, fh_name="gtf")
+    data.loc[:, 'source'] = "TranD"
+    data.loc[:, 'feature'] = "exon"
+    data.loc[:, 'score'] = "."
+    data.loc[:, 'frame'] = "."
+    data.loc[:, 'attribute'] = data.apply(lambda x: get_gtf_attribute(x['transcript_id'],
+                                          x['gene_id']), axis=1)
+    output_column_names = ['seqname', 'source', 'feature', 'start', 'end', 'score', 'strand',
+                           'frame', 'attribute']
+    data = data.reindex(columns=output_column_names)
+    data.to_csv(outGTF, sep="\t", mode='a', index=False, header=False,
+                doublequote=False, quoting=csv.QUOTE_NONE)
+        
+    # trand.io.write_gtf(data=outDf, out_fhs={"gtf": outGTF}, fh_name="gtf")
 
     print("Script Complete!")
 

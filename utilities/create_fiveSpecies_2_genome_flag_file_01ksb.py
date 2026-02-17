@@ -190,14 +190,14 @@ def main():
 
     # Flag if jxnHash in all
     outDfr['numIn'] = outDfr.sum(axis=1, numeric_only=True)
-    outDfr['flag_all'] = outDfr['numIn'].apply(lambda x: 1 if x == 6 else 0)
+    # outDfr['flag_all'] = outDfr['numIn'].apply(lambda x: 1 if x == 6 else 0)
     outDfr.drop(columns='numIn', inplace=True)
 
-    melBranchCol = [
-        col for col in outDfr.columns if 'flag' in col and not 'dser' in col]
-    outDfr['numIn_melBranchOnly'] = outDfr[melBranchCol].sum(axis=1)
-    outDfr['flag_melBranchOnly'] = outDfr.apply(
-        lambda x: 1 if x['numIn_melBranchOnly'] == 5 and x['flag_all'] != 1 else 0, axis=1)
+    # melBranchCol = [
+    #     col for col in outDfr.columns if 'flag' in col and not 'dser' in col]
+    # outDfr['numIn_melBranchOnly'] = outDfr[melBranchCol].sum(axis=1)
+    # outDfr['flag_melBranchOnly'] = outDfr.apply(
+    #     lambda x: 1 if x['numIn_melBranchOnly'] == 5 and x['flag_all'] != 1 else 0, axis=1)
 
     outDfr.drop(
         columns=[col for col in outDfr.columns if 'numIn' in col], inplace=True)

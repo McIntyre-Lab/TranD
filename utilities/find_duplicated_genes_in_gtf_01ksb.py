@@ -162,10 +162,10 @@ def createDupeList(gtfDfr, manualDupGn=None):
 
     if manualDupGn:
 
-        manualDfr = pd.read_csv(manualDupGn, low_memory=False, usecols=[
+        manualDct = pd.read_csv(manualDupGn, low_memory=False, usecols=[
                                 'geneID_ORIG', 'geneID_NEW']).set_index('geneID_ORIG')['geneID_NEW'].to_dict()
 
-        for oldGene, newGene in manualDfr.items():
+        for oldGene, newGene in manualDct.items():
 
             oldStart, oldEnd = geneDfr.loc[geneDfr['geneID'] == oldGene, [
                 'start', 'end']].iloc[0]
@@ -230,8 +230,8 @@ def createDupeList(gtfDfr, manualDupGn=None):
 
         rowLst = []
         for row in dupeDfr.to_dict('records'):
-            if row['geneID_NEW'] in manualDfr.keys():
-                row['geneID_NEW'] = manualDfr[row['geneID_NEW']]
+            if row['geneID_NEW'] in manualDct.keys():
+                row['geneID_NEW'] = manualDct[row['geneID_NEW']]
             rowLst.append(row)
         dupeDfr = pd.DataFrame(rowLst)
 
@@ -266,6 +266,9 @@ def main():
     inAnno = "//exasmb.rc.ufl.edu/blue/mcintyre/share/references/dsim_fb202/dsim-all-r2.02.gtf"
     manualDupGn = "//exasmb.rc.ufl.edu/blue/mcintyre/share/references/dsim_fb202/list_dsim202_manual_dupe_gene.csv"
 
+    inAnno = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dser1.1/GCF_002093755.2/genomic.gtf"
+    manualDupGn = "/nfshome/k.bankole/mnt/exasmb.rc.ufl.edu-blue/mcintyre/share/references/dser1.1/list_dser11_manual_dupe_gene.csv"
+
     inAnno = args.inAnno
     prefix = args.prefix
     outdir = args.outdir
@@ -288,8 +291,9 @@ def main():
             raise
 
     # Create a list of genes and their xscripts
-    gene2XscriptDfr = gtfDfr[['transcriptID', 'geneID', 'attributes']
-                             ].drop_duplicates().dropna(ignore_index=True).copy()
+    gene2XscriptDfr = gtfDfr[gtfDfr['feature'] != "gene"].copy()
+    gene2XscriptDfr = gene2XscriptDfr[['transcriptID', 'geneID', 'attributes']
+                                      ].drop_duplicates().dropna(ignore_index=True).copy()
 
     # Subset this to the genes that have dupes -> store a list of transcripts
     # that are from duplicate genes (unique on transcriptID)
@@ -364,7 +368,8 @@ def main():
     dupeDfr.to_csv(dupeOutFile, index=False, quoting=csv.QUOTE_NONE)
 
     dupXscrOutFile = f"{outPrefix}_transcripts_of_duplicated_genes.csv"
-    dupeXscriptDfr.to_csv(dupXscrOutFile, index=False, quoting=csv.QUOTE_NONE)
+    dupeXscriptDfr.to_csv(dupXscrOutFile, index=False,
+                          quoting=csv.QUOTE_NONE, escapechar='\\')
 
     # OUTPUT NEW GTF
     outColLst = ['seqname', 'source', 'feature', 'start', 'end', 'score', 'strand',
